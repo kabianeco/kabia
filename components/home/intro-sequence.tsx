@@ -57,9 +57,18 @@ import {
  * fallback content, which browsers never paint. The hero ends up blank for the
  * whole download. Not worth ~400ms.
  */
-const almondScene = import("@/components/home/almond-scene");
+if (
+  typeof window !== "undefined" &&
+  window.matchMedia("(min-width: 768px)").matches
+) {
+  // Warm the chunk, but only where it will actually be rendered. A phone never
+  // shows the sculpture, so pulling ~250 KB of three.js down there would be
+  // pure waste on the connection least able to afford it. The result is
+  // discarded: `dynamic` below requests the same module and gets this one.
+  void import("@/components/home/almond-scene");
+}
 
-const AlmondScene = dynamic(() => almondScene, {
+const AlmondScene = dynamic(() => import("@/components/home/almond-scene"), {
   ssr: false,
   loading: () => (
     <div className="flex h-full w-full items-center justify-center">
@@ -260,6 +269,9 @@ function ScrollIntro() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
+  const [viewportKnown, setViewportKnown] = useState(false);
+  /** The sculpture is a wide-stage device only. */
+  const showSculpture = viewportKnown && !compact;
   // Starts true (the intro is at the top on mount) so the render loop is
   // never gated on an IntersectionObserver's first callback.
   const [inView, setInView] = useState(true);
@@ -285,7 +297,14 @@ function ScrollIntro() {
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 767px)");
-    const update = () => setCompact(query.matches);
+    const update = () => {
+      setCompact(query.matches);
+      // Separate from `compact`, which starts false and so cannot distinguish
+      // "wide" from "not measured yet". The sculpture must only mount once the
+      // answer is known, or a phone would briefly satisfy the wide branch and
+      // pull three.js down before the effect corrected it.
+      setViewportKnown(true);
+    };
     update();
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
@@ -337,9 +356,47 @@ function ScrollIntro() {
   const aOpacity = useTransform(scrollYProgress, (v) =>
     1 - smoothstep(0.08, 0.17, v),
   );
-  const aX = useTransform(
+  /* ---------------------------------------------------------------- */
+  /* The swept exit — phone only                                        */
+  /*                                                                    */
+  /* On a wide stage the almond does the clearing: it crosses the copy  */
+  /* and the text gets out of its way sideways. With no sculpture on a  */
+  /* phone that sideways move reads as text sliding into nothing, so    */
+  /* the beats leave upward instead, narrowing as they go.              */
+  /*                                                                    */
+  /* The narrowing is what makes it a sweep rather than a scroll: the   */
+  /* origin sits above the block, so width collapses toward a point off */
+  /* the top of the screen and the line appears drawn up into it. Width */
+  /* carries the gesture; the slight height squeeze only keeps the      */
+  /* shape from looking stretched on the way out.                       */
+  /* ---------------------------------------------------------------- */
+  const SWEEP_RISE = 16; // vh
+  const SWEEP_NARROW = 0.48; // scaleX travels 1 → 0.52
+  const SWEEP_SQUEEZE = 0.14; // scaleY travels 1 → 0.86
+  const SWEEP_ORIGIN = "50% -30%";
+
+  /** 0 on a wide stage, so every sweep below collapses to a no-op there. */
+  const sweptBy = useCallback(
+    (v: number, from: number, to: number) =>
+      compact ? smoothstep(from, to, v) : 0,
+    [compact],
+  );
+
+  const aSweepY = useTransform(
     scrollYProgress,
-    (v) => -56 * smoothstep(0.09, 0.19, v),
+    (v) => `${-SWEEP_RISE * sweptBy(v, 0.09, 0.19)}vh`,
+  );
+  const aSweepScaleX = useTransform(
+    scrollYProgress,
+    (v) => 1 - SWEEP_NARROW * sweptBy(v, 0.09, 0.19),
+  );
+  const aSweepScaleY = useTransform(
+    scrollYProgress,
+    (v) => 1 - SWEEP_SQUEEZE * sweptBy(v, 0.09, 0.19),
+  );
+
+  const aX = useTransform(scrollYProgress, (v) =>
+    compact ? 0 : -56 * smoothstep(0.09, 0.19, v),
   );
   const aVisibility = useTransform(scrollYProgress, (v) =>
     v > 0.175 ? "hidden" : "visible",
@@ -375,9 +432,30 @@ function ScrollIntro() {
     scrollYProgress,
     (v) => smoothstep(0.2, 0.27, v) * (1 - smoothstep(bOut, bOut + 0.07, v)),
   );
-  const bEnterX = useTransform(
+  /* Entry stays sideways on a wide stage, where the two beats occupy
+     opposite columns and the direction says which one is arriving. Dead
+     centre on a phone there is no such geography, so they rise in — the
+     same axis they leave on, read backwards. */
+  const bEnterX = useTransform(scrollYProgress, (v) =>
+    compact ? 0 : 44 * (1 - smoothstep(0.2, 0.28, v)),
+  );
+  /* Arrival and departure share one axis on a phone, so they share one
+     value: rises in from just below, then is drawn up and out. */
+  const bY = useTransform(
     scrollYProgress,
-    (v) => 44 * (1 - smoothstep(0.2, 0.28, v)),
+    (v) =>
+      `${
+        (compact ? 6 : 0) * (1 - smoothstep(0.2, 0.28, v)) -
+        SWEEP_RISE * sweptBy(v, bOut, bOut + 0.07)
+      }vh`,
+  );
+  const bSweepScaleX = useTransform(
+    scrollYProgress,
+    (v) => 1 - SWEEP_NARROW * sweptBy(v, bOut, bOut + 0.07),
+  );
+  const bSweepScaleY = useTransform(
+    scrollYProgress,
+    (v) => 1 - SWEEP_SQUEEZE * sweptBy(v, bOut, bOut + 0.07),
   );
   const bVisibility = useTransform(scrollYProgress, (v) =>
     v > 0.19 && v < bOut + 0.08 ? "visible" : "hidden",
@@ -387,9 +465,24 @@ function ScrollIntro() {
     scrollYProgress,
     (v) => smoothstep(cIn, cIn + 0.07, v) * (1 - smoothstep(0.745, 0.8, v)),
   );
-  const cExitX = useTransform(
+  const cExitX = useTransform(scrollYProgress, (v) =>
+    compact ? 0 : -44 * smoothstep(0.745, 0.8, v),
+  );
+  const cY = useTransform(
     scrollYProgress,
-    (v) => -44 * smoothstep(0.745, 0.8, v),
+    (v) =>
+      `${
+        (compact ? 6 : 0) * (1 - smoothstep(cIn, cIn + 0.07, v)) -
+        SWEEP_RISE * sweptBy(v, 0.745, 0.8)
+      }vh`,
+  );
+  const cSweepScaleX = useTransform(
+    scrollYProgress,
+    (v) => 1 - SWEEP_NARROW * sweptBy(v, 0.745, 0.8),
+  );
+  const cSweepScaleY = useTransform(
+    scrollYProgress,
+    (v) => 1 - SWEEP_SQUEEZE * sweptBy(v, 0.745, 0.8),
   );
   const cVisibility = useTransform(scrollYProgress, (v) =>
     v > cIn - 0.01 && v < 0.805 ? "visible" : "hidden",
@@ -471,10 +564,16 @@ function ScrollIntro() {
               WebkitMaskImage: oldMask,
             }}
           >
-            <div className="mx-auto flex h-full max-w-[1200px] items-start px-6 pt-[15vh] md:items-center md:px-10 md:pt-0">
+            <div className="mx-auto flex h-full max-w-[1200px] items-center justify-center px-6 md:px-10">
               <motion.div
-                style={{ x: bEnterX }}
-                className="w-full md:ml-auto md:w-[47%] md:pl-4 lg:pl-10"
+                style={{
+                  x: bEnterX,
+                  y: bY,
+                  scaleX: bSweepScaleX,
+                  scaleY: bSweepScaleY,
+                  transformOrigin: SWEEP_ORIGIN,
+                }}
+                className="w-full text-center md:ml-auto md:w-[47%] md:pl-4 md:text-left lg:pl-10"
               >
                 <EditorialBeat
                   kicker={intro.act2.kicker}
@@ -494,10 +593,16 @@ function ScrollIntro() {
               WebkitMaskImage: newMask,
             }}
           >
-            <div className="mx-auto flex h-full max-w-[1200px] items-start px-6 pt-[15vh] md:items-center md:px-10 md:pt-0">
+            <div className="mx-auto flex h-full max-w-[1200px] items-center justify-center px-6 md:px-10">
               <motion.div
-                style={{ x: cExitX }}
-                className="w-full md:mr-auto md:w-[47%] md:pr-4 lg:pr-10"
+                style={{
+                  x: cExitX,
+                  y: cY,
+                  scaleX: cSweepScaleX,
+                  scaleY: cSweepScaleY,
+                  transformOrigin: SWEEP_ORIGIN,
+                }}
+                className="w-full text-center md:mr-auto md:w-[47%] md:pr-4 md:text-left lg:pr-10"
               >
                 <EditorialBeat
                   kicker={intro.act3.kicker}
@@ -507,9 +612,15 @@ function ScrollIntro() {
             </div>
           </motion.div>
 
-          {/* The 3D stage: one continuous shot across all four acts */}
+          {/* The 3D stage: one continuous shot across all four acts.
+              Wide viewports only — a phone runs the same four beats as pure
+              typography, so neither the sculpture nor its poster is rendered
+              there, and the three.js chunk is never requested. `hidden md:block`
+              rather than a `compact` check because this has to be in the server
+              HTML for the poster to paint at first paint; the class settles the
+              question before any JavaScript has an opinion. */}
           <div
-            className="pointer-events-none absolute inset-0 z-20"
+            className="pointer-events-none absolute inset-0 z-20 hidden md:block"
             role="img"
             aria-label={intro.sceneDescription}
           >
@@ -555,28 +666,38 @@ function ScrollIntro() {
                 // frame sat empty for that whole window — worse than the flat
                 // SVG this replaced, which cost nothing because it was inline.
                 placeholder="blur"
-                sizes="(max-width: 767px) 30vh, 66vh"
-                className="absolute left-[65%] top-[81%] h-[28.2vh] w-auto -translate-x-1/2 -translate-y-1/2 md:left-[73.7%] md:top-[48.6%] md:h-[65.8vh]"
+                // The phone never displays this, but the preload has no media
+                // query, so it would still fetch something. Pointing the narrow
+                // case at a thumbnail-sized candidate keeps that to a couple of
+                // kilobytes instead of the full poster.
+                sizes="(max-width: 767px) 16px, 66vh"
+                className="absolute left-[73.7%] top-[48.6%] h-[65.8vh] w-auto -translate-x-1/2 -translate-y-1/2"
               />
             </div>
 
-            <div
-              className={`absolute inset-0 transition-opacity duration-700 ease-out motion-reduce:transition-none ${
-                sceneReady ? "opacity-100" : "opacity-0"
-              }`}
-            >
-              <AlmondScene
-                progress={scrollYProgress}
-                active={inView}
-                compact={compact}
-                onReady={handleSceneReady}
-                fallback={
-                  <div className="flex h-full w-full items-center justify-center">
-                    <AlmondFigure className="h-[62%] w-auto" />
-                  </div>
-                }
-              />
-            </div>
+            {/* Gated in JavaScript, not CSS: `hidden` would still mount the
+                component, and mounting it is what pulls three.js down. The
+                wrapper above can stay in the markup because an image costs
+                nothing once the media query has hidden it. */}
+            {showSculpture && (
+              <div
+                className={`absolute inset-0 transition-opacity duration-700 ease-out motion-reduce:transition-none ${
+                  sceneReady ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                <AlmondScene
+                  progress={scrollYProgress}
+                  active={inView}
+                  compact={compact}
+                  onReady={handleSceneReady}
+                  fallback={
+                    <div className="flex h-full w-full items-center justify-center">
+                      <AlmondFigure className="h-[62%] w-auto" />
+                    </div>
+                  }
+                />
+              </div>
+            )}
           </div>
 
           {/* Act 1 — copy left, almond right, in front for legibility */}
@@ -584,12 +705,22 @@ function ScrollIntro() {
             className="pointer-events-none absolute inset-0 z-30"
             style={{ opacity: aOpacity, visibility: aVisibility }}
           >
-            {/* On a phone the copy sits high so the almond has the lower
-                third to itself and never lands on the buttons */}
-            <div className="mx-auto flex h-full max-w-[1200px] items-start px-6 pt-[10vh] md:items-center md:px-10 md:pt-0">
+            {/* The copy used to sit high on a phone to leave the lower third
+                for the almond. With no sculpture there it takes the middle of
+                the screen instead: centred as a block, but still ragged-right
+                inside it, so the headline keeps its left edge to read down. */}
+            <div className="mx-auto flex h-full max-w-[1200px] items-center justify-center px-6 md:justify-start md:px-10">
               <motion.div
-                style={{ x: aX }}
-                className={act1Hot ? "pointer-events-auto" : "pointer-events-none"}
+                style={{
+                  x: aX,
+                  y: aSweepY,
+                  scaleX: aSweepScaleX,
+                  scaleY: aSweepScaleY,
+                  transformOrigin: SWEEP_ORIGIN,
+                }}
+                className={`w-full max-w-md md:max-w-none ${
+                  act1Hot ? "pointer-events-auto" : "pointer-events-none"
+                }`}
               >
                 <Act1Copy hot={act1Hot} />
               </motion.div>
