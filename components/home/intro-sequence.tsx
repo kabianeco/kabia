@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,7 +35,29 @@ import {
   type VeilPhase,
 } from "@/components/home/kabia-transition";
 
-const AlmondScene = dynamic(() => import("@/components/home/almond-scene"), {
+/**
+ * Start fetching the scene the moment this module evaluates, rather than when
+ * React gets around to mounting the component.
+ *
+ * `ssr: false` is deliberate — it is what puts the SVG almond in the server
+ * HTML, so the hero is never empty. The cost is that Next emits no preload hint
+ * for the scene chunk, so the browser cannot discover ~250 KB of three.js until
+ * something asks for it. Left to `dynamic()` alone that request fires on mount,
+ * which on a throttled phone measured ~3.0s in — about 1.5s after the page had
+ * already finished hydrating, with the network sitting idle in between.
+ *
+ * Hoisting the `import()` to module scope starts it as soon as this chunk runs,
+ * so the download overlaps hydration instead of queueing behind it. `dynamic()`
+ * then just awaits the promise that is already in flight.
+ *
+ * Server-rendering the Canvas instead would also earn a preload, and was tried:
+ * it moves the *canvas element* into the HTML but renders the SVG as canvas
+ * fallback content, which browsers never paint. The hero ends up blank for the
+ * whole download. Not worth ~400ms.
+ */
+const almondScene = import("@/components/home/almond-scene");
+
+const AlmondScene = dynamic(() => almondScene, {
   ssr: false,
   loading: () => (
     <div className="flex h-full w-full items-center justify-center">
@@ -242,8 +270,16 @@ function ScrollIntro() {
   // be used when the page opens and only steps aside once you commit
   const [atTop, setAtTop] = useState(true);
   const [veilPhase, setVeilPhase] = useState<VeilPhase>("off");
+  // Flips once the sculpture has painted its first frame, which cross-fades the
+  // static almond out. Not a ref: it drives a class, so it has to re-render.
+  const [sceneReady, setSceneReady] = useState(false);
   const timers = useRef<number[]>([]);
   const router = useRouter();
+
+  // Stable, and idempotent: ReadySignal fires once per mount, but a remount
+  // (a resize that flips `compact`, say) would call it again on an already-true
+  // state, and React bails out of a no-op setState rather than re-rendering.
+  const handleSceneReady = useCallback(() => setSceneReady(true), []);
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 767px)");
@@ -475,16 +511,53 @@ function ScrollIntro() {
             role="img"
             aria-label={intro.sceneDescription}
           >
-            <AlmondScene
-              progress={scrollYProgress}
-              active={inView}
-              compact={compact}
-              fallback={
-                <div className="flex h-full w-full items-center justify-center">
-                  <AlmondFigure className="h-[62%] w-auto" />
-                </div>
-              }
-            />
+            {/* The static almond holds the frame until the sculpture is drawn.
+                It is a sibling of the canvas rather than `dynamic`'s loading
+                slot, because a loading slot is unmounted the moment the chunk
+                arrives — a beat before WebGL has painted anything — which left
+                the hero empty. Here the two cross-fade, so nothing pops in.
+
+                Its transform parks it where the sculpture actually rests in act
+                one (DESKTOP xFrac 0.47 / yFrac -0.08, COMPACT 0.30 / -0.62 in
+                lib/intro-choreography.ts, expressed there as fractions of the
+                half-viewport, hence the halved percentages here). Centred, as
+                it used to be, the swap jumped the almond most of the way across
+                the stage. */}
+            <div
+              aria-hidden="true"
+              className={`absolute inset-0 flex items-center justify-center transition-opacity duration-700 ease-out motion-reduce:transition-none ${
+                sceneReady ? "opacity-0" : "opacity-100"
+              }`}
+            >
+              {/* The offsets are on this full-bleed wrapper, not on the figure:
+                  a percentage translate resolves against the element's own box,
+                  so putting them on the SVG scaled them by the almond's width
+                  and landed it barely right of centre. On the wrapper they
+                  resolve against the stage, which is what the choreography's
+                  fractions-of-half-viewport actually mean — 0.47 of a half is
+                  0.235 of the whole. */}
+              <div className="flex h-full w-full translate-x-[15%] translate-y-[31%] items-center justify-center md:translate-x-[23.5%] md:translate-y-[4%]">
+                <AlmondFigure className="h-[46%] w-auto md:h-[62%]" />
+              </div>
+            </div>
+
+            <div
+              className={`absolute inset-0 transition-opacity duration-700 ease-out motion-reduce:transition-none ${
+                sceneReady ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              <AlmondScene
+                progress={scrollYProgress}
+                active={inView}
+                compact={compact}
+                onReady={handleSceneReady}
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center">
+                    <AlmondFigure className="h-[62%] w-auto" />
+                  </div>
+                }
+              />
+            </div>
           </div>
 
           {/* Act 1 — copy left, almond right, in front for legibility */}

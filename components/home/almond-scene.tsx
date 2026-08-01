@@ -42,6 +42,26 @@ interface AlmondSceneProps {
   /** Stacked staging for narrow viewports: lower density, tighter frame. */
   compact: boolean;
   fallback: React.ReactNode;
+  /**
+   * Fires once the sculpture has actually been drawn, not merely mounted.
+   *
+   * The intro cross-fades the static almond out against this, so it has to mean
+   * "there are pixels on the canvas". `onCreated` is too early — it fires when
+   * the renderer exists, while the first frame is still a blank transparent
+   * canvas, and fading to that produces the empty flash this replaces.
+   */
+  onReady?: () => void;
+}
+
+/** Calls back after the first committed frame, then removes itself. */
+function ReadySignal({ onReady }: { onReady?: () => void }) {
+  const fired = useRef(false);
+  useFrame(() => {
+    if (fired.current || !onReady) return;
+    fired.current = true;
+    onReady();
+  });
+  return null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -739,6 +759,7 @@ export default function AlmondScene({
   active,
   compact,
   fallback,
+  onReady,
 }: AlmondSceneProps) {
   return (
     <Canvas
@@ -750,6 +771,7 @@ export default function AlmondScene({
       fallback={fallback}
       aria-hidden="true"
     >
+      <ReadySignal onReady={onReady} />
       <AlmondSculpture progress={progress} compact={compact} />
     </Canvas>
   );
