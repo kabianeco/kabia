@@ -1,6 +1,7 @@
 import "server-only"
 
 import { cache } from "react"
+import { redirect } from "next/navigation"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { AdminAuthError } from "@/lib/admin/errors"
@@ -89,6 +90,63 @@ export async function requirePermission(permission: Permission): Promise<AdminSe
   const session = await requireAdmin()
   if (!can(session.role, permission)) throw new AdminAuthError("forbidden")
   return session
+}
+
+/**
+ * The page- and layout-facing guard, and the counterpart to `requireAdmin()`.
+ *
+ * A server action must *throw*, so the caller can turn the failure into a form
+ * error. A page must *redirect* — and it must do so from the page itself rather
+ * than leaning on the layout above it.
+ *
+ * On a soft navigation between two routes in the same layout group, Next.js
+ * reuses the already-rendered layout from the client router cache and
+ * re-renders only the page. A guard that lives solely in the protected layout
+ * therefore never runs on those navigations. A page that throws instead lands
+ * in `error.tsx`, which leaves an administrator whose role was just revoked
+ * pinned inside the admin shell: every in-app link is another soft navigation
+ * into the same group, so it throws again, and the retry button re-renders the
+ * same failing page. Only a full document request re-ran the layout and reached
+ * `/admin/unauthorized`, which is why signing out, hard-refreshing or clearing
+ * cookies appeared to fix it.
+ *
+ * The decision is made once per request, from a fresh `user_roles` read, and it
+ * is deterministic:
+ *
+ *   no session                → /admin/login
+ *   session, no admin role    → /admin/unauthorized
+ *   admin, wrong permission   → /admin/unauthorized
+ *   admin owing a password    → /admin/sifre-degistir
+ *   otherwise                 → render
+ *
+ * Every one of those targets sits outside this layout group, so a redirect can
+ * never resolve back into the route that issued it.
+ */
+export async function requireAdminPage(permission?: Permission): Promise<AdminSession> {
+  const session = await getAdminSession()
+
+  if (!session) {
+    // Distinguish "not signed in" from "signed in without a role", so a
+    // customer who wanders in gets an explanation rather than a login form they
+    // have already satisfied.
+    const supabase = await createSupabaseServerClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    redirect(user ? "/admin/unauthorized" : "/admin/login")
+  }
+
+  if (session.mustChangePassword) redirect("/admin/sifre-degistir")
+  if (permission && !can(session.role, permission)) redirect("/admin/unauthorized")
+
+  return session
+}
+
+/** The page-level counterpart to `adminContext()`. Redirects; never throws. */
+export async function adminPageContext(permission?: Permission) {
+  const session = await requireAdminPage(permission)
+  const supabase = await createSupabaseServerClient()
+  return { session, supabase }
 }
 
 /**

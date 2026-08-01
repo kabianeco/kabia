@@ -45,10 +45,18 @@ npm start          # serve the production build
 npm run lint       # ESLint
 npm run typecheck  # tsc --noEmit
 npm test           # route smoke tests (run `npm run build` first)
+
+npm run test:role-revocation   # needs .env.local + a running server
 ```
 
 `npm test` boots the production server on port 3399 and asserts real responses;
 override with `SMOKE_PORT`.
+
+`npm run test:role-revocation` is separate because it needs Supabase credentials
+and a live server. It creates two throwaway accounts, has a super admin revoke
+the other's admin role, and asserts the denial is one stable redirect with no
+loop — then deletes both accounts. It skips cleanly when either prerequisite is
+missing.
 
 ## Architecture
 
@@ -117,8 +125,24 @@ seeded catalogue still uses — remove that entry once real photography is in.
 
 ## Known limitations
 
-- Seeded product images are `picsum.photos` placeholders; replace them in the
-  database, not in code.
+- Seeded product images are `picsum.photos` placeholders. Replace them from
+  **Yönetim → Medya**: upload, then pick them on the product with *Medyadan seç*.
+  They are deliberately still supported, so historical products keep working.
 - Signed-in account and checkout screens have not been driven end to end
   against the live project — see `docs/merge-report.md`.
-- No middleware, matching the pre-merge application.
+- A revoked administrator's already-open page keeps showing what it rendered
+  until they navigate; nothing polls authorization. Their next request is denied.
+- Images uploaded directly through the Supabase dashboard bypass the app and do
+  not appear in the media library.
+
+## Admin dashboard
+
+`proxy.ts` guards `/admin/*` for session presence only; roles are re-read from
+the database on every request by `lib/admin/auth.ts`, never taken from a JWT
+claim. Media lives in the public-read `product-media` Storage bucket, catalogued
+in `public.media_assets`.
+
+- `docs/admin-media-architecture.md` — media library and the authorization model
+- `docs/admin-media-database-changes.md` — schema, RLS and Storage policies
+- `docs/admin-operations.md` — operator procedures
+- `docs/admin-architecture.md` — the wider dashboard

@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "node --test --conditions=react-server --import ./tests/alias-hook.mjs \"tests/**/*.test.js\" \"tests/**/*.test.ts\"",
+    "test:role-revocation": "node --test --conditions=react-server --import ./tests/alias-hook.mjs --env-file=.env.local tests/role-revocation.test.js",
     "admin:bootstrap": "node --env-file=.env.local scripts/bootstrap-admin.ts"
   },
   "dependencies": {

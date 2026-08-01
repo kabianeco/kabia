@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { adminContext } from "@/lib/admin/auth"
+import { adminPageContext } from "@/lib/admin/auth"
 import {
   countOrderReferences,
   loadCategories,
@@ -24,7 +24,7 @@ export default async function EditProductPage({
   params: Promise<{ productId: string }>
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const { supabase } = await adminContext("manageCatalogue")
+  const { supabase } = await adminPageContext("manageCatalogue")
   const { productId } = await params
   const query = await searchParams
 

@@ -28,6 +28,7 @@ export type AuditAction =
   | "category.update"
   | "category.delete"
   | "media.upload"
+  | "media.update"
   | "media.delete"
   | "settings.update"
   | "content.update"
@@ -91,6 +92,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "category.delete": "Kategori silindi",
   "inventory.adjust": "Stok güncellendi",
   "media.upload": "Medya yüklendi",
+  "media.update": "Medya bilgileri güncellendi",
   "media.delete": "Medya silindi",
   "order.status_change": "Sipariş durumu değişti",
   "order.cancel": "Sipariş iptal edildi",

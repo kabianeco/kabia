@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { adminContext } from "@/lib/admin/auth"
+import { adminPageContext } from "@/lib/admin/auth"
 import { AUDIT_ACTION_LABELS, describeAuditAction, describeAuditEntity } from "@/lib/admin/audit"
 import { loadEmailsFor } from "@/lib/admin/queries/customers"
 import { sanitizeSearch } from "@/lib/admin/queries/products"
@@ -49,7 +49,7 @@ export default async function AuditLogsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const { session, supabase } = await adminContext()
+  const { session, supabase } = await adminPageContext()
   const params = await searchParams
   const seesEverything = can(session.role, "viewAllAuditLogs")
 

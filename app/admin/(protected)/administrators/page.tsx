@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { adminContext } from "@/lib/admin/auth"
+import { adminPageContext } from "@/lib/admin/auth"
 import { hasServiceRoleKey } from "@/lib/supabase/admin"
 import { loadEmailsFor } from "@/lib/admin/queries/customers"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
@@ -16,12 +16,12 @@ export const dynamic = "force-dynamic"
 
 /**
  * Super-admin only. The route group's layout has already confirmed an
- * administrative role; `adminContext("manageAdministrators")` narrows that to
+ * administrative role; `adminPageContext("manageAdministrators")` narrows that to
  * super_admin and throws otherwise, and every action on this page repeats the
  * check independently.
  */
 export default async function AdministratorsPage() {
-  const { session, supabase } = await adminContext("manageAdministrators")
+  const { session, supabase } = await adminPageContext("manageAdministrators")
 
   const { data, error } = await supabase
     .from("user_roles")

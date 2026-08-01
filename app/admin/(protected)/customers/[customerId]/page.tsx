@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { adminContext } from "@/lib/admin/auth"
+import { adminPageContext } from "@/lib/admin/auth"
 import {
   loadAuthSummary,
   loadCustomerAddresses,
@@ -22,7 +22,7 @@ export default async function CustomerDetailPage({
 }: {
   params: Promise<{ customerId: string }>
 }) {
-  const { supabase } = await adminContext("viewCustomers")
+  const { supabase } = await adminPageContext("viewCustomers")
   const { customerId } = await params
 
   const { data, error } = await supabase

@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { adminContext } from "@/lib/admin/auth"
+import { adminPageContext } from "@/lib/admin/auth"
 import { formatCurrency, formatDateTime, toNumber } from "@/lib/admin/format"
 import { logQueryError } from "@/lib/admin/errors"
 import { InlineAlert, PageHeader, Panel } from "@/components/admin/ui/surfaces"
@@ -29,7 +29,7 @@ export default async function OrderDetailPage({
 }: {
   params: Promise<{ orderId: string }>
 }) {
-  const { supabase } = await adminContext("manageOrders")
+  const { supabase } = await adminPageContext("manageOrders")
   const { orderId } = await params
 
   const { data, error } = await supabase

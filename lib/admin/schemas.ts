@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { APP_ROLES } from "@/lib/admin/roles"
+import { MEDIA_MAX_BYTES } from "@/lib/admin/media"
 
 /**
  * Every administrative mutation validates through one of these before touching
@@ -94,6 +95,29 @@ export const variantSchema = z.object({
     .optional(),
 })
 
+/**
+ * `variantSchema` after its transforms have run.
+ *
+ * The editor submits variants as a JSON string, which the save action parses
+ * with `variantSchema` *before* validating the product as a whole. That parse
+ * turns `price` from the form's string into a number. Re-running
+ * `variantSchema` inside `productSchema` on that already-transformed array then
+ * fed a number to `priceField`, which begins with `z.string()`, and every save
+ * failed with "expected string, received number" — no product with a variant
+ * could be saved at all.
+ *
+ * So `productSchema` validates the *output* shape rather than the input shape.
+ * The two are declared next to each other deliberately: they have to move
+ * together.
+ */
+export const parsedVariantSchema = z.object({
+  id: uuid.optional().nullable(),
+  label: z.string().trim().min(1, "Seçenek adı zorunlu.").max(60),
+  price: z.number().nonnegative("Fiyat negatif olamaz."),
+  stock_quantity: z.number().int("Stok tam sayı olmalı.").min(0).max(1_000_000),
+  sku: z.string().max(64).nullable().optional(),
+})
+
 export const imageSchema = z.object({
   id: uuid.optional().nullable(),
   image_url: z.string().trim().min(1, "Görsel adresi zorunlu.").max(1000),
@@ -128,7 +152,7 @@ export const productSchema = z
       .max(200, "SEO açıklaması en fazla 200 karakter.")
       .optional()
       .nullable(),
-    variants: z.array(variantSchema).min(1, "En az bir ürün seçeneği gerekli."),
+    variants: z.array(parsedVariantSchema).min(1, "En az bir ürün seçeneği gerekli."),
   })
   .superRefine((value, ctx) => {
     if (value.original_price !== null && value.original_price !== undefined) {
@@ -277,7 +301,11 @@ export const passwordChangeSchema = z
   })
 
 export const MEDIA_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const
-export const MEDIA_MAX_BYTES = 5 * 1024 * 1024
+
+// The size limit is defined once, in lib/admin/media.ts, next to the bucket
+// name it must agree with. Re-exported here so existing importers of this
+// module keep working and the two cannot drift to different numbers.
+export { MEDIA_MAX_BYTES }
 
 export const mediaUploadSchema = z.object({
   fileName: z.string().trim().min(1).max(200),
@@ -288,8 +316,15 @@ export const mediaUploadSchema = z.object({
     .number()
     .int()
     .positive("Dosya boş.")
-    .max(MEDIA_MAX_BYTES, "Dosya 5 MB sınırını aşıyor."),
+    .max(MEDIA_MAX_BYTES, "Dosya 10 MB sınırını aşıyor."),
   alt_text: z.string().trim().max(200).optional().nullable(),
+})
+
+/** Metadata an administrator may edit after upload. */
+export const mediaMetadataSchema = z.object({
+  id: uuid,
+  display_name: z.string().trim().max(120).nullish().transform((v) => v || null),
+  alt_text: z.string().trim().max(200).nullish().transform((v) => v || null),
 })
 
 /** List-screen query parameters. Bounded by construction. */

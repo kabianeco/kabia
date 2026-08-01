@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { adminContext } from "@/lib/admin/auth"
+import { adminPageContext } from "@/lib/admin/auth"
 import { sanitizeSearch } from "@/lib/admin/queries/products"
 import { formatCurrency, formatDateTime, formatInteger, formatRelative } from "@/lib/admin/format"
 import { logQueryError } from "@/lib/admin/errors"
@@ -47,7 +47,7 @@ export default async function InventoryPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const { supabase } = await adminContext("manageInventory")
+  const { supabase } = await adminPageContext("manageInventory")
   const params = await searchParams
 
   const page = pickPage(params)

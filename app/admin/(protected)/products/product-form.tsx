@@ -1,11 +1,22 @@
 "use client"
 
-import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react"
+import {
+  useActionState,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+} from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { GripVertical, Plus, Trash2, Upload } from "lucide-react"
+import { GripVertical, Image as ImageIcon, Plus, Trash2, Upload } from "lucide-react"
 import { saveProductAction } from "./actions"
 import { uploadMediaAction } from "../media/actions"
+import { MediaPicker } from "@/components/admin/media/media-picker"
+import type { MediaAsset } from "@/lib/admin/media"
+import { cn } from "@/lib/utils"
 import { ACTION_IDLE } from "@/lib/admin/errors"
 import type { ProductDetail } from "@/lib/admin/queries/products"
 import type { CategoryOption } from "@/lib/admin/queries/products"
@@ -492,8 +503,40 @@ function ImagesPanel({
   const fileRef = useRef<HTMLInputElement>(null)
   const [pending, startTransition] = useTransition()
   const uploadId = useId()
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const result = uploadState as { ok: boolean; url?: string; path?: string; message?: string }
+
+  /**
+   * Adds assets chosen in the media library, skipping any already attached.
+   *
+   * Alt text comes across from the library when the asset has one, so a caption
+   * written once in /admin/media does not have to be retyped on every product
+   * that uses the image. It stays editable per-product below, because the same
+   * photograph can warrant a different description in a different context.
+   */
+  const addFromLibrary = useCallback(
+    (assets: MediaAsset[]) => {
+      setImages((prev) => {
+        const existing = new Set(prev.map((image) => image.image_url))
+        const additions = assets
+          .filter((asset) => !existing.has(asset.url))
+          .map((asset) => ({
+            key: crypto.randomUUID(),
+            id: null,
+            image_url: asset.url,
+            alt_text: asset.altText ?? "",
+            storage_path: asset.objectPath,
+          }))
+        return additions.length > 0 ? [...prev, ...additions] : prev
+      })
+      // The first image a product ever gets becomes its primary image, so the
+      // common case needs no second click.
+      const first = assets[0]
+      if (first) setMainImageUrl((current) => current || first.url)
+    },
+    [setImages, setMainImageUrl],
+  )
 
   // Append the uploaded object to the gallery once the action resolves. This
   // runs in an effect rather than during render: appending is a side effect of
@@ -527,9 +570,29 @@ function ImagesPanel({
     >
       <input type="hidden" name="main_image_url" value={mainImageUrl} />
 
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <AdminButton variant="primary" onClick={() => setPickerOpen(true)}>
+          <ImageIcon className="h-4 w-4" aria-hidden="true" />
+          Medyadan seç
+        </AdminButton>
+        <p className="text-xs text-ink/50">
+          Daha önce yüklediğiniz görselleri arayıp seçin — adres kopyalamanız gerekmez.
+        </p>
+      </div>
+
+      <MediaPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={addFromLibrary}
+        multiple
+        initialSelected={images
+          .map((image) => image.storage_path)
+          .filter((path): path is string => Boolean(path))}
+      />
+
       <div className="mb-5 rounded-[3px] border border-dashed border-ink/20 p-4">
         <label htmlFor={uploadId} className="label mb-2 block text-olive">
-          Görsel yükle
+          Yeni görsel yükle
         </label>
         <div className="flex flex-wrap items-center gap-3">
           <input
@@ -558,7 +621,7 @@ function ImagesPanel({
           )}
           <Upload className="h-4 w-4 text-ink/30" aria-hidden="true" />
         </div>
-        <p className="mt-2 text-xs text-ink/45">JPEG, PNG, WebP veya AVIF · en fazla 5 MB</p>
+        <p className="mt-2 text-xs text-ink/45">JPEG, PNG, WebP veya AVIF · en fazla 10 MB</p>
         {result.message && !result.ok && (
           <p role="alert" className="mt-2 text-xs text-clay">
             {result.message}
@@ -574,14 +637,20 @@ function ImagesPanel({
 
       {images.length === 0 ? (
         <p className="py-6 text-center text-sm text-ink/45">
-          Henüz görsel eklenmedi. Bir dosya yükleyin veya aşağıdan adres ekleyin.
+          Henüz görsel eklenmedi. Medyadan seçin, yeni bir dosya yükleyin veya aşağıdan
+          adres ekleyin.
         </p>
       ) : (
         <ul className="space-y-3">
-          {images.map((image, index) => (
+          {images.map((image, index) => {
+            const isPrimary = Boolean(image.image_url) && mainImageUrl === image.image_url
+            return (
             <li
               key={image.key}
-              className="flex flex-wrap items-start gap-4 rounded-[3px] border border-ink/10 bg-ivory/60 p-3"
+              className={cn(
+                "flex flex-wrap items-start gap-4 rounded-[3px] border p-3",
+                isPrimary ? "border-brand/50 bg-brand/[0.03]" : "border-ink/10 bg-ivory/60",
+              )}
             >
               <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-media bg-ink/[0.06]">
                 {image.image_url && (
@@ -597,6 +666,12 @@ function ImagesPanel({
               </span>
 
               <div className="min-w-0 flex-1 space-y-3">
+                {/* Position and primary status are stated in text, not conveyed
+                    by the highlighted border alone. */}
+                <p className="text-xs text-ink/50">
+                  {index + 1}. sıra
+                  {isPrimary && <span className="text-brand"> · Ana görsel</span>}
+                </p>
                 <AdminInput
                   label="Görsel adresi"
                   value={image.image_url}
@@ -625,7 +700,7 @@ function ImagesPanel({
               <div className="flex shrink-0 flex-col gap-1">
                 <AdminButton
                   variant="ghost"
-                  aria-label="Yukarı taşı"
+                  aria-label={`${index + 1}. görseli yukarı taşı`}
                   disabled={index === 0}
                   onClick={() =>
                     setImages((prev) => {
@@ -640,17 +715,38 @@ function ImagesPanel({
                 </AdminButton>
                 <AdminButton
                   variant="ghost"
-                  onClick={() => setMainImageUrl(image.image_url)}
-                  disabled={mainImageUrl === image.image_url}
+                  aria-label={`${index + 1}. görseli aşağı taşı`}
+                  disabled={index === images.length - 1}
+                  onClick={() =>
+                    setImages((prev) => {
+                      const next = [...prev]
+                      ;[next[index], next[index + 1]] = [next[index + 1], next[index]]
+                      return next
+                    })
+                  }
                 >
-                  {mainImageUrl === image.image_url ? "Ana görsel" : "Ana görsel yap"}
+                  <GripVertical className="h-4 w-4" aria-hidden="true" />
+                  Aşağı
+                </AdminButton>
+                <AdminButton
+                  variant="ghost"
+                  onClick={() => setMainImageUrl(image.image_url)}
+                  disabled={isPrimary || !image.image_url}
+                >
+                  {isPrimary ? "Ana görsel" : "Ana görsel yap"}
                 </AdminButton>
                 <AdminButton
                   variant="ghost"
                   className="text-clay hover:text-clay"
                   onClick={() => {
                     setImages((prev) => prev.filter((_, i) => i !== index))
-                    if (mainImageUrl === image.image_url) setMainImageUrl("")
+                    // Removing the primary image promotes the next remaining
+                    // one rather than leaving the product with none, which the
+                    // schema forbids (products.main_image_url is NOT NULL).
+                    if (isPrimary) {
+                      const remaining = images.filter((_, i) => i !== index)
+                      setMainImageUrl(remaining[0]?.image_url ?? "")
+                    }
                   }}
                 >
                   <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -658,7 +754,8 @@ function ImagesPanel({
                 </AdminButton>
               </div>
             </li>
-          ))}
+            )
+          })}
         </ul>
       )}
 

@@ -1,193 +1,100 @@
 "use client"
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react"
-import Image from "next/image"
-import { useRouter } from "next/navigation"
-import { Upload } from "lucide-react"
-import { deleteMediaAction, uploadMediaAction } from "./actions"
-import { ACTION_IDLE } from "@/lib/admin/errors"
-import { AdminButton, FormMessage, SubmitButton } from "@/components/admin/ui/form"
-import { EmptyState, Panel } from "@/components/admin/ui/surfaces"
-import { ConfirmAction } from "@/components/admin/ui/confirm-dialog"
+import { useState } from "react"
+import { MediaThumb } from "@/components/admin/media/media-thumb"
+import { MediaPreviewDialog } from "@/components/admin/media/media-preview-dialog"
+import { EmptyState } from "@/components/admin/ui/surfaces"
+import {
+  formatBytes,
+  formatDimensions,
+  MEDIA_MIME_LABELS,
+  type MediaAsset,
+  type MediaUsage,
+} from "@/lib/admin/media"
+import { cn } from "@/lib/utils"
 
-export interface MediaObject {
-  name: string
-  path: string
-  url: string
-  size: number
-  createdAt: string | null
-  usedBy: { productId: string; productName: string }[]
-}
+export { MediaUploader } from "@/components/admin/media/media-uploader"
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
+/**
+ * The library grid.
+ *
+ * Every tile is a button rather than a div with a click handler, so the grid is
+ * traversable with Tab and activates with Enter or Space without any key
+ * handling of its own. Usage is shown on the tile itself — an image a product
+ * depends on should look different before anyone opens it, not only once they
+ * try to delete it.
+ */
+export function MediaGrid({
+  assets,
+  usage,
+}: {
+  assets: MediaAsset[]
+  usage: Record<string, MediaUsage[]>
+}) {
+  const [selected, setSelected] = useState<MediaAsset | null>(null)
 
-export function MediaUploader() {
-  const [state, formAction] = useActionState(uploadMediaAction, ACTION_IDLE as never)
-  const [pending, startTransition] = useTransition()
-  const router = useRouter()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const result = state as { ok: boolean; message?: string; url?: string }
-  const lastSeen = useRef<string | null>(null)
-
-  useEffect(() => {
-    if (result.ok && result.url && lastSeen.current !== result.url) {
-      lastSeen.current = result.url
-      router.refresh()
-    }
-  }, [result.ok, result.url, router])
-
-  return (
-    <Panel title="Görsel yükle" description="JPEG, PNG, WebP veya AVIF · en fazla 5 MB">
-      <div className="flex flex-wrap items-center gap-3">
-        <input
-          ref={inputRef}
-          id="media-upload"
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/avif"
-          aria-label="Yüklenecek görseli seçin"
-          className="block w-full max-w-sm text-sm text-ink/70 file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-full file:border file:border-ink/20 file:bg-transparent file:px-4 file:text-sm file:text-ink hover:file:border-brand hover:file:text-brand"
-          onChange={(event) => {
-            const file = event.target.files?.[0]
-            if (!file) return
-            const data = new FormData()
-            data.set("file", file)
-            startTransition(() => formAction(data))
-            event.target.value = ""
-          }}
-        />
-        <Upload className="h-4 w-4 text-ink/30" aria-hidden="true" />
-        {pending && (
-          <span className="inline-flex items-center gap-2 text-xs text-ink/55" role="status">
-            <span
-              aria-hidden="true"
-              className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent motion-reduce:animate-none"
-            />
-            Yükleniyor…
-          </span>
-        )}
-      </div>
-      <div className="mt-3">
-        <FormMessage state={result} />
-      </div>
-    </Panel>
-  )
-}
-
-export function MediaGrid({ objects }: { objects: MediaObject[] }) {
-  const [state, formAction] = useActionState(deleteMediaAction, ACTION_IDLE)
-  const router = useRouter()
-  const [query, setQuery] = useState("")
-
-  useEffect(() => {
-    if (state.ok) router.refresh()
-  }, [state.ok, router])
-
-  const filtered = query.trim()
-    ? objects.filter((object) =>
-        object.name.toLocaleLowerCase("tr").includes(query.trim().toLocaleLowerCase("tr")),
-      )
-    : objects
-
-  if (objects.length === 0) {
+  if (assets.length === 0) {
     return (
       <EmptyState
-        title="Henüz görsel yok"
+        title="Görsel bulunamadı"
         description="Yüklediğiniz görseller burada listelenir ve ürün düzenleme ekranından seçilebilir."
       />
     )
   }
 
   return (
-    <div className="space-y-4">
-      <div className="max-w-xs">
-        <label htmlFor="media-search" className="label mb-1.5 block text-olive">
-          Dosya adına göre filtrele
-        </label>
-        <input
-          id="media-search"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          className="min-h-11 w-full rounded-[3px] border border-ink/15 bg-ivory px-3 py-2 text-sm text-ink placeholder:text-ink/30 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/40"
-          placeholder="badem…"
-        />
-      </div>
+    <>
+      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {assets.map((asset) => {
+          const used = usage[asset.id] ?? []
+          return (
+            <li key={asset.id}>
+              <button
+                type="button"
+                onClick={() => setSelected(asset)}
+                className="group block w-full overflow-hidden rounded-[4px] border border-ink/10 bg-paper/50 text-left transition-colors duration-200 hover:border-brand/40 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-brand"
+              >
+                <span className="relative block aspect-[4/3] bg-ink/[0.05]">
+                  <MediaThumb asset={asset} />
+                </span>
 
-      <FormMessage state={state} />
-
-      {filtered.length === 0 ? (
-        <EmptyState title="Sonuç bulunamadı" compact />
-      ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map((object) => (
-            <li
-              key={object.path}
-              className="flex flex-col overflow-hidden rounded-[4px] border border-ink/10 bg-paper/50"
-            >
-              <div className="relative aspect-[4/3] bg-ink/[0.05]">
-                <Image
-                  src={object.url}
-                  alt=""
-                  fill
-                  sizes="(min-width: 1280px) 20vw, (min-width: 640px) 33vw, 90vw"
-                  className="object-cover"
-                  unoptimized
-                />
-              </div>
-
-              <div className="flex flex-1 flex-col p-3">
-                <p className="truncate text-sm text-ink" title={object.name}>
-                  {object.name}
-                </p>
-                <p className="mt-1 text-xs text-ink/45">{formatBytes(object.size)}</p>
-
-                {object.usedBy.length > 0 ? (
-                  <p className="mt-2 text-xs text-ink/60">
-                    Kullanımda: {object.usedBy.map((u) => u.productName).join(", ")}
-                  </p>
-                ) : (
-                  <p className="mt-2 text-xs text-ink/40">Hiçbir üründe kullanılmıyor</p>
-                )}
-
-                <div className="mt-auto flex flex-wrap items-center gap-2 pt-3">
-                  <AdminButton
-                    variant="ghost"
-                    onClick={() => navigator.clipboard?.writeText(object.url)}
+                <span className="block p-3">
+                  <span className="block truncate text-sm text-ink" title={asset.label}>
+                    {asset.label}
+                  </span>
+                  <span className="mt-1 block text-xs text-ink/45">
+                    {MEDIA_MIME_LABELS[asset.mimeType] ?? asset.mimeType} ·{" "}
+                    {formatBytes(asset.fileSize)}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-ink/40">
+                    {formatDimensions(asset.width, asset.height)}
+                  </span>
+                  <span
+                    className={cn(
+                      "mt-2 block text-xs",
+                      used.length > 0 ? "text-olive" : "text-ink/35",
+                    )}
                   >
-                    Adresi kopyala
-                  </AdminButton>
-
-                  {object.usedBy.length === 0 ? (
-                    <ConfirmAction
-                      trigger="Sil"
-                      triggerVariant="danger"
-                      title="Görseli sil"
-                      description="Bu dosya Supabase Storage'dan kalıcı olarak silinir. İşlem geri alınamaz."
-                      entityName={object.name}
-                      confirmLabel="Sil"
-                      pendingLabel="Siliniyor…"
-                      action={formAction}
-                      hiddenFields={{ path: object.path }}
-                    />
-                  ) : (
-                    <span className="text-xs text-ink/40">
-                      Kullanımda olduğu için silinemez
-                    </span>
+                    {used.length > 0
+                      ? `${used.length} üründe kullanılıyor`
+                      : "Kullanılmıyor"}
+                  </span>
+                  {!asset.altText && (
+                    <span className="mt-1 block text-xs text-clay/80">Alt metni eksik</span>
                   )}
-                </div>
-              </div>
+                </span>
+              </button>
             </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
+          )
+        })}
+      </ul>
 
-export function SubmitPlaceholder() {
-  return <SubmitButton>Kaydet</SubmitButton>
+      <MediaPreviewDialog
+        asset={selected}
+        usage={selected ? (usage[selected.id] ?? []) : []}
+        open={selected !== null}
+        onClose={() => setSelected(null)}
+      />
+    </>
+  )
 }

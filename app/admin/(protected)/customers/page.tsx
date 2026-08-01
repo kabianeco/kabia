@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { adminContext } from "@/lib/admin/auth"
+import { adminPageContext } from "@/lib/admin/auth"
 import { sanitizeSearch } from "@/lib/admin/queries/products"
 import { loadEmailsFor, type CustomerRow } from "@/lib/admin/queries/customers"
 import { formatCurrency, formatDate, formatInteger, toNumber } from "@/lib/admin/format"
@@ -39,7 +39,7 @@ export default async function CustomersPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const { supabase } = await adminContext("viewCustomers")
+  const { supabase } = await adminPageContext("viewCustomers")
   const params = await searchParams
 
   const page = pickPage(params)

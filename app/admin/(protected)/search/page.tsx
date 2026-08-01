@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { adminContext } from "@/lib/admin/auth"
+import { adminPageContext } from "@/lib/admin/auth"
 import { sanitizeSearch } from "@/lib/admin/queries/products"
 import { formatCurrency, formatDate, formatDateTime, formatInteger, toNumber } from "@/lib/admin/format"
 import { logQueryError } from "@/lib/admin/errors"
@@ -27,7 +27,7 @@ export default async function AdminSearchPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const { session, supabase } = await adminContext()
+  const { session, supabase } = await adminPageContext()
   const params = await searchParams
   const raw = pickString(params, "q", 60)
   const term = sanitizeSearch(raw)

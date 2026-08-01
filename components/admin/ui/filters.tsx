@@ -33,8 +33,11 @@ function useQueryWriter() {
         if (value === null || value === "") params.delete(key)
         else params.set(key, value)
       }
-      // Any filter change invalidates the current page offset.
+      // Any filter change invalidates the current page offset. Both spellings
+      // are cleared: list screens read `sayfa`, and clearing only `page` left a
+      // filtered view stranded on page 4 of a two-page result.
       if (!("page" in updates)) params.delete("page")
+      if (!("sayfa" in updates)) params.delete("sayfa")
       const query = params.toString()
       startTransition(() => {
         router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })

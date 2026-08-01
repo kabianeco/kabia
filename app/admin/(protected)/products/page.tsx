@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
-import { adminContext } from "@/lib/admin/auth"
+import { adminPageContext } from "@/lib/admin/auth"
 import {
   loadCategories,
   loadProductList,
@@ -37,7 +37,7 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const { supabase } = await adminContext("manageCatalogue")
+  const { supabase } = await adminPageContext("manageCatalogue")
   const params = await searchParams
 
   const page = pickPage(params)

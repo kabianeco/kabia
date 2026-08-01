@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { adminContext } from "@/lib/admin/auth"
+import { adminPageContext } from "@/lib/admin/auth"
 import { loadSettingsByGroup } from "@/lib/admin/queries/settings"
 import { can } from "@/lib/admin/roles"
 import { EmptyState, InlineAlert, PageHeader } from "@/components/admin/ui/surfaces"
@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Ayarlar" }
 export const dynamic = "force-dynamic"
 
 export default async function SettingsPage() {
-  const { session, supabase } = await adminContext("manageSettings")
+  const { session, supabase } = await adminPageContext("manageSettings")
   const groups = await loadSettingsByGroup(supabase)
   const canEditSensitive = can(session.role, "manageSensitiveSettings")
 

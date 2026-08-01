@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { adminContext } from "@/lib/admin/auth"
+import { adminPageContext } from "@/lib/admin/auth"
 import { loadCategoriesWithCount } from "@/lib/admin/queries/categories"
 import { PageHeader, Panel } from "@/components/admin/ui/surfaces"
 import { Table, TableScroll, Td, Th, Tr } from "@/components/admin/ui/table"
@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Kategoriler" }
 export const dynamic = "force-dynamic"
 
 export default async function CategoriesPage() {
-  const { supabase } = await adminContext("manageCategories")
+  const { supabase } = await adminPageContext("manageCategories")
   const categories = await loadCategoriesWithCount(supabase)
 
   return (

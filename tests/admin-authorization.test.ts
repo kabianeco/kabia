@@ -30,6 +30,7 @@ import {
   stockAdjustmentSchema,
   settingValueSchemas,
   mediaUploadSchema,
+  variantSchema,
 } from "../lib/admin/schemas.ts"
 import { formatCurrency, storeDayRange, toNumber } from "../lib/admin/format.ts"
 
@@ -233,7 +234,8 @@ describe("product validation", () => {
     is_featured: false,
     low_stock_threshold: "5",
     display_order: "0",
-    variants: [{ label: "500 g", price: "100", stock_quantity: 10, sku: "" }],
+    // Already through variantSchema — see the two-stage test below.
+    variants: [{ label: "500 g", price: 100, stock_quantity: 10, sku: null }],
   }
 
   it("accepts a well-formed product", () => {
@@ -257,8 +259,8 @@ describe("product validation", () => {
     const result = productSchema.safeParse({
       ...base,
       variants: [
-        { label: "500 g", price: "100", stock_quantity: 1, sku: "" },
-        { label: "500 G", price: "100", stock_quantity: 1, sku: "" },
+        { label: "500 g", price: 100, stock_quantity: 1, sku: null },
+        { label: "500 G", price: 100, stock_quantity: 1, sku: null },
       ],
     })
     assert.equal(result.success, false)
@@ -269,8 +271,8 @@ describe("product validation", () => {
       ...base,
       base_price: "100",
       variants: [
-        { label: "500 g", price: "100", stock_quantity: 1, sku: "KB-1" },
-        { label: "1 kg", price: "180", stock_quantity: 1, sku: "KB-1" },
+        { label: "500 g", price: 100, stock_quantity: 1, sku: "KB-1" },
+        { label: "1 kg", price: 180, stock_quantity: 1, sku: "KB-1" },
       ],
     })
     assert.equal(result.success, false)
@@ -279,6 +281,35 @@ describe("product validation", () => {
   it("requires at least one variant", () => {
     const result = productSchema.safeParse({ ...base, variants: [] })
     assert.equal(result.success, false)
+  })
+
+  /**
+   * Regression: saving any product with a variant used to fail outright.
+   *
+   * The save action parses the editor's variants JSON with `variantSchema`
+   * first, which transforms `price` from the form's string into a number, and
+   * then validated the whole product with `productSchema`. When that schema
+   * re-ran `variantSchema` over the already-transformed array, `priceField`'s
+   * leading `z.string()` received a number and every save died with "expected
+   * string, received number".
+   *
+   * The tests above missed it because they fed the *form* shape straight into
+   * `productSchema` — a combination the application never produces. This one
+   * runs both stages in the order the action runs them.
+   */
+  it("accepts variants that have already been through variantSchema", () => {
+    const fromEditor = { id: null, label: "500 g", price: "100", stock_quantity: 10, sku: "" }
+
+    const stageOne = variantSchema.safeParse(fromEditor)
+    assert.equal(stageOne.success, true, JSON.stringify(stageOne.error?.issues))
+    assert.equal(typeof stageOne.data!.price, "number", "stage one must yield a number")
+
+    const stageTwo = productSchema.safeParse({ ...base, variants: [stageOne.data] })
+    assert.equal(
+      stageTwo.success,
+      true,
+      `second stage rejected first-stage output: ${JSON.stringify(stageTwo.error?.issues)}`,
+    )
   })
 
   it("rejects a negative price", () => {
@@ -291,12 +322,24 @@ describe("product validation", () => {
   })
 
   it("accepts a Turkish decimal comma", () => {
+    // The comma is normalised by priceField, which runs in variantSchema for a
+    // variant's price and in productSchema for base_price. Both are exercised:
+    // the variant goes through its own stage first, as the save action does.
+    const variant = variantSchema.safeParse({
+      label: "500 g",
+      price: "129,90",
+      stock_quantity: 1,
+      sku: "",
+    })
+    assert.equal(variant.success, true, JSON.stringify(variant.error?.issues))
+    assert.equal(variant.data!.price, 129.9, "comma must be normalised in a variant price")
+
     const result = productSchema.safeParse({
       ...base,
       base_price: "129,90",
-      variants: [{ label: "500 g", price: "129,90", stock_quantity: 1, sku: "" }],
+      variants: [variant.data],
     })
-    assert.equal(result.success, true)
+    assert.equal(result.success, true, JSON.stringify(result.error?.issues))
     assert.equal(result.data!.base_price, 129.9)
   })
 })
@@ -383,11 +426,11 @@ describe("media upload validation", () => {
     assert.equal(result.success, false, "SVG must be rejected — it can carry script")
   })
 
-  it("rejects a file over the 5 MB limit", () => {
+  it("rejects a file over the 10 MB limit", () => {
     const result = mediaUploadSchema.safeParse({
       fileName: "big.jpg",
       mimeType: "image/jpeg",
-      size: 6 * 1024 * 1024,
+      size: 11 * 1024 * 1024,
     })
     assert.equal(result.success, false)
   })

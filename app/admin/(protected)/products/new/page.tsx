@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { adminContext } from "@/lib/admin/auth"
+import { adminPageContext } from "@/lib/admin/auth"
 import { loadCategories } from "@/lib/admin/queries/products"
 import { PageHeader } from "@/components/admin/ui/surfaces"
 import { ProductForm } from "../product-form"
@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Yeni Ürün" }
 export const dynamic = "force-dynamic"
 
 export default async function NewProductPage() {
-  const { supabase } = await adminContext("manageCatalogue")
+  const { supabase } = await adminPageContext("manageCatalogue")
   const categories = await loadCategories(supabase)
 
   return (

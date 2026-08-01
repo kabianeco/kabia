@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
-import { adminContext } from "@/lib/admin/auth"
+import { adminPageContext } from "@/lib/admin/auth"
 import { loadSettingsByGroup } from "@/lib/admin/queries/settings"
 import { can } from "@/lib/admin/roles"
 import { formatCurrency, toNumber } from "@/lib/admin/format"
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "İçerik" }
 export const dynamic = "force-dynamic"
 
 export default async function ContentPage() {
-  const { session, supabase } = await adminContext("manageContent")
+  const { session, supabase } = await adminPageContext("manageContent")
 
   const [groups, productsRes] = await Promise.all([
     loadSettingsByGroup(supabase),

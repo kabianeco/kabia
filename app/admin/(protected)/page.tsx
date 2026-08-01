@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import dynamicImport from "next/dynamic"
-import { requireAdmin, adminClient } from "@/lib/admin/auth"
+import { requireAdminPage, adminClient } from "@/lib/admin/auth"
 import { loadDashboard } from "@/lib/admin/queries/dashboard"
 import {
   formatCurrency,
@@ -62,7 +62,7 @@ export default async function AdminOverviewPage({
 }: {
   searchParams: Promise<{ gun?: string }>
 }) {
-  await requireAdmin()
+  await requireAdminPage()
   const supabase = await adminClient()
 
   const { gun } = await searchParams

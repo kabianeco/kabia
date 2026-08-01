@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { cookies } from "next/headers"
-import { redirect } from "next/navigation"
-import { getAdminSession } from "@/lib/admin/auth"
+import { requireAdminPage } from "@/lib/admin/auth"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { AdminShell, type ShellAlerts } from "@/components/admin/admin-shell"
 import { adminSignOutAction } from "../login/actions"
@@ -14,10 +13,18 @@ export const metadata: Metadata = {
 /**
  * Layer 2 of admin route protection: the role check.
  *
- * Runs on the server for every page in the group. `getAdminSession()` validates
- * the session against the Auth server and re-reads the role from `user_roles`
- * on each request, so revoking an administrator takes effect on their very next
- * navigation rather than whenever their JWT happens to expire.
+ * Runs on the server for every *document* request in the group.
+ * `requireAdminPage()` validates the session against the Auth server and
+ * re-reads the role from `user_roles` on each request, so revoking an
+ * administrator takes effect on their very next navigation rather than whenever
+ * their JWT happens to expire.
+ *
+ * This layer is not sufficient on its own. On a soft navigation between two
+ * routes in this group, Next.js reuses the already-rendered layout from the
+ * client router cache and this function does not run at all — which is why
+ * every page below also calls `requireAdminPage()` / `adminPageContext()`
+ * rather than assuming the layout vouched for it. Both go through the same
+ * helper so the two layers cannot drift apart.
  *
  * Nothing is cached: administrative data is private and must never end up in a
  * shared cache.
@@ -55,20 +62,7 @@ export default async function ProtectedAdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await getAdminSession()
-
-  if (!session) {
-    // Distinguish "not signed in" from "signed in without a role", so a
-    // customer who wanders in gets an explanation rather than a login form they
-    // have already satisfied.
-    const supabase = await createSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    redirect(user ? "/admin/unauthorized" : "/admin/login")
-  }
-
-  if (session.mustChangePassword) redirect("/admin/sifre-degistir")
+  const session = await requireAdminPage()
 
   const [alerts, cookieStore] = await Promise.all([loadAlerts(), cookies()])
   const collapsed = cookieStore.get("kabia_admin_sidebar")?.value === "1"
