@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -30,6 +31,7 @@ import {
   textWipeEdge,
 } from "@/lib/intro-choreography";
 import { AlmondFigure } from "@/components/home/almond-figure";
+import almondPoster from "@/components/home/assets/almond-poster.png";
 import {
   KabiaTransition,
   type VeilPhase,
@@ -511,34 +513,51 @@ function ScrollIntro() {
             role="img"
             aria-label={intro.sceneDescription}
           >
-            {/* The static almond holds the frame until the sculpture is drawn.
+            {/* The poster holds the frame until the sculpture is drawn.
                 It is a sibling of the canvas rather than `dynamic`'s loading
                 slot, because a loading slot is unmounted the moment the chunk
                 arrives — a beat before WebGL has painted anything — which left
                 the hero empty. Here the two cross-fade, so nothing pops in.
 
-                Its transform parks it where the sculpture actually rests in act
-                one (DESKTOP xFrac 0.47 / yFrac -0.08, COMPACT 0.30 / -0.62 in
-                lib/intro-choreography.ts, expressed there as fractions of the
-                half-viewport, hence the halved percentages here). Centred, as
-                it used to be, the swap jumped the almond most of the way across
-                the stage. */}
+                The image is the sculpture's own first frame, captured off the
+                canvas at act one with a transparent background, so the swap is
+                between two versions of the same picture rather than between a
+                drawing and a render. A hand-drawn stand-in never matched: its
+                silhouette, shading and speckle were all visibly different, and
+                the eye caught the change however well it was positioned.
+
+                Sizing follows from the choreography rather than from taste. The
+                camera's field of view is vertical, so the almond's projected
+                height is a fixed share of the viewport height — 65.8% at
+                DESKTOP scale 0.94 / camZ 5.6, and 28.2% at COMPACT 0.46 / 6.4,
+                which is the same object roughly 43% as large. Centres likewise:
+                xFrac and yFrac are fractions of the *half* viewport, so 0.47
+                lands at 50% + 23.5%. All four numbers were then checked against
+                the rendered frame. */}
             <div
               aria-hidden="true"
-              className={`absolute inset-0 flex items-center justify-center transition-opacity duration-700 ease-out motion-reduce:transition-none ${
+              className={`absolute inset-0 transition-opacity duration-700 ease-out motion-reduce:transition-none ${
                 sceneReady ? "opacity-0" : "opacity-100"
               }`}
             >
-              {/* The offsets are on this full-bleed wrapper, not on the figure:
-                  a percentage translate resolves against the element's own box,
-                  so putting them on the SVG scaled them by the almond's width
-                  and landed it barely right of centre. On the wrapper they
-                  resolve against the stage, which is what the choreography's
-                  fractions-of-half-viewport actually mean — 0.47 of a half is
-                  0.235 of the whole. */}
-              <div className="flex h-full w-full translate-x-[15%] translate-y-[31%] items-center justify-center md:translate-x-[23.5%] md:translate-y-[4%]">
-                <AlmondFigure className="h-[46%] w-auto md:h-[62%]" />
-              </div>
+              <Image
+                src={almondPoster}
+                alt=""
+                aria-hidden="true"
+                // The hero's first paint depends on this, so it is preloaded
+                // rather than lazily discovered. Next serves AVIF/WebP from the
+                // PNG source, which is why the wire cost is a fraction of it.
+                priority
+                // Statically imported so Next can derive the intrinsic size and
+                // inline a blurred thumbnail. That thumbnail is what fills the
+                // hero on a slow connection: measured on throttled 3G the full
+                // poster lands ~850ms after first paint, and without this the
+                // frame sat empty for that whole window — worse than the flat
+                // SVG this replaced, which cost nothing because it was inline.
+                placeholder="blur"
+                sizes="(max-width: 767px) 30vh, 66vh"
+                className="absolute left-[65%] top-[81%] h-[28.2vh] w-auto -translate-x-1/2 -translate-y-1/2 md:left-[73.7%] md:top-[48.6%] md:h-[65.8vh]"
+              />
             </div>
 
             <div
