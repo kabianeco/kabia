@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="731.75"
+     height="247.75"
+     viewBox="0 0 731.75 247.75"
+     role="img"
+     aria-labelledby="kabia-logo-title"
+     shape-rendering="geometricPrecision">
+  <title id="kabia-logo-title">Kabia</title>
+
+  <!-- The counters of a, b and a are knocked out rather than filled, so
+       the wordmark carries no background of its own and sits on ivory,
+       paper or forest alike. -->
+  <defs>
+    <mask id="kabia-counters" maskUnits="userSpaceOnUse"
+          x="0" y="0" width="731.75" height="247.75">
+      <rect width="731.75" height="247.75" fill="#ffffff"/>
+      <ellipse cx="225.375" cy="161.375" rx="49.625" ry="50.625" fill="#000000"/>
+      <ellipse cx="412.875" cy="161.375" rx="49.125" ry="50.625" fill="#000000"/>
+      <ellipse cx="645.375" cy="161.375" rx="49.625" ry="50.625" fill="#000000"/>
+    </mask>
+  </defs>
+
+  <g mask="url(#kabia-counters)">
+    <g transform="translate(-529 -261)" fill="#009445">
+      <!-- k -->
+      <path d="M529 261H565V405L626 341H674L609 410.5L676 506H632L583.5 435.75L565 454.25V506H529Z"/>
+
+      <!-- a -->
+      <ellipse cx="754.375" cy="422.375" rx="86.375" ry="86.375"/>
+      <rect x="804" y="340" width="36.75" height="166"/>
+
+      <!-- b -->
+      <ellipse cx="941.875" cy="422.375" rx="85.875" ry="86.375"/>
+      <rect x="857" y="261" width="36.75" height="245"/>
+
+      <!-- i -->
+      <rect x="1041" y="340" width="36.75" height="166"/>
+      <circle cx="1059.875" cy="298.875" r="23.875"/>
+
+      <!-- a -->
+      <ellipse cx="1174.375" cy="422.375" rx="86.375" ry="86.375"/>
+      <rect x="1224" y="340" width="36.75" height="166"/>
+    </g>
+  </g>
+</svg>

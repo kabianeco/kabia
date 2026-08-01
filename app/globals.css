@@ -1,0 +1,199 @@
+@import "tailwindcss";
+
+@theme {
+  /* ------------------------------------------------------------------ *
+   * Fixed brand palette. These hues identify Kabia and read the same on
+   * either surface, so they never flip with the theme.
+   * ------------------------------------------------------------------ */
+  --color-forest: #0b3f2c;
+  --color-cream: #e8d5aa;
+  /* Text and icons sitting on brand or forest fills. Always the light one. */
+  --color-on-brand: #f4f1e8;
+
+  /* ------------------------------------------------------------------ *
+   * Themed tokens. Every one of these is redefined for the dark surface
+   * further down, so `bg-ivory`, `text-ink`, `border-ink/10` and friends
+   * follow the theme without a single `dark:` variant in the markup.
+   * ------------------------------------------------------------------ */
+  --color-ivory: var(--surface);
+  --color-paper: var(--surface-raised);
+  --color-ink: var(--text);
+  --color-olive: var(--text-muted);
+  --color-brand: var(--brand);
+  --color-shell: var(--accent);
+  /* Warm rust for validation and destructive states — the palette's only
+     alarm colour, chosen to sit inside the agricultural range rather than
+     break it with a pure red. */
+  --color-clay: var(--alarm);
+
+  /* Every photographic surface — product shots, editorial plates, cart
+     thumbnails — is softened by the same hairline radius via `rounded-media`.
+     Kept as a token so the whole site can be re-cornered from one line. */
+  --radius-media: 5px;
+
+  --font-sans: var(--font-instrument-sans), system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), Georgia, serif;
+
+  /* Motion tokens — mirrored in lib/motion.ts for Framer Motion */
+  --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 300ms;
+  --duration-base: 600ms;
+  --duration-slow: 900ms;
+}
+
+/* The light surface: warm paper, as the brand has always been. */
+:root {
+  color-scheme: light;
+  --surface: #f4f1e8;
+  --surface-raised: #eae5d8;
+  --text: #1c201b;
+  --text-muted: #77806f;
+  --brand: #147b4b;
+  --accent: #c29a63;
+  --alarm: #a4442f;
+  --grain-opacity: 0.04;
+}
+
+/* The dark surface: the same orchard at dusk rather than a neutral grey.
+   Green-cast near-black, warm off-white text, and the greens and rust
+   lifted so they still clear contrast on a dark ground. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface: #12150f;
+    --surface-raised: #1c2019;
+    --text: #ece7d9;
+    --text-muted: #9ba393;
+    --brand: #35a76f;
+    --accent: #d0a870;
+    --alarm: #e0705a;
+    --grain-opacity: 0.03;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #12150f;
+  --surface-raised: #1c2019;
+  --text: #ece7d9;
+  --text-muted: #9ba393;
+  --brand: #35a76f;
+  --accent: #d0a870;
+  --alarm: #e0705a;
+  --grain-opacity: 0.03;
+}
+
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background-color: var(--color-ivory);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Subtle paper grain over every surface; static data-URI, costs nothing at runtime */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background-color: var(--color-brand);
+  color: var(--color-on-brand);
+}
+
+/* The intro plays full bleed. While its stage owns the viewport the
+   header steps out of the frame, and it comes back the moment the page
+   proper begins. Driven by an attribute on the root so the header does
+   not have to know anything about the intro. */
+.site-header {
+  transition:
+    transform 500ms var(--ease-editorial),
+    opacity 400ms var(--ease-editorial),
+    background-color 300ms,
+    border-color 300ms;
+}
+
+[data-intro-stage="on"] .site-header {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header {
+    transition: none;
+  }
+}
+
+/* Small tracked uppercase metadata label — used sparingly */
+.label {
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Shared focus treatment: visible, warm, consistent on light and dark surfaces */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 3px;
+}
+
+.on-dark :focus-visible {
+  outline-color: var(--color-cream);
+}
+
+/* The one page container. Every route sits on this measure so the store and
+   account screens line up with the homepage. */
+.wrap {
+  margin-inline: auto;
+  max-width: 1200px;
+  padding-inline: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .wrap {
+    padding-inline: 2.5rem;
+  }
+}
+
+/* Fixed header clearance for every route that does not open with the intro. */
+.page-top {
+  padding-top: calc(var(--header-offset, 4rem) + 3rem);
+}
+
+@media (min-width: 768px) {
+  .page-top {
+    padding-top: calc(var(--header-offset-desktop, 5rem) + 4rem);
+  }
+}
+
+/* Prices and figures are set in the serif so numerals read as editorial
+   material rather than UI chrome. */
+.figure {
+  font-family: var(--font-serif);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sonner toasts, dressed in the site's own palette. */
+[data-sonner-toast] {
+  font-family: var(--font-sans) !important;
+  border-radius: 0 !important;
+}
