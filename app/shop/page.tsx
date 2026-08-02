@@ -8,6 +8,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fetchProducts } from "@/lib/catalog";
 import { CATEGORIES, type Product, type ProductCategory } from "@/lib/products";
 import { routes } from "@/lib/site";
+import { getPublicSettings } from "@/lib/settings";
+import { shopBannerVisible, type ShopBannerSettings } from "@/lib/shop-banner";
+import { ShopHeroBanner } from "@/components/shop/shop-hero-banner";
 
 export const metadata: Metadata = {
   title: "Mağaza",
@@ -130,6 +133,16 @@ export default async function ShopPage({
   searchParams: Promise<{ kategori?: string; sirala?: string }>;
 }) {
   const { kategori, sirala } = await searchParams;
+  const settings = await getPublicSettings();
+  const banner: ShopBannerSettings = {
+    enabled: settings.shopBannerEnabled,
+    headline: settings.shopBannerHeadline,
+    subtext: settings.shopBannerSubtext,
+    imageUrl: settings.shopBannerImageUrl,
+    ctaLabel: settings.shopBannerCtaLabel,
+    ctaHref: settings.shopBannerCtaHref,
+  };
+  const showBanner = shopBannerVisible(banner);
   const sort: SortOption = isSort(sirala) ? sirala : "onerilen";
   const activeCategory =
     kategori && CATEGORIES.some((c) => c.id === kategori)
@@ -138,8 +151,17 @@ export default async function ShopPage({
 
   return (
     <PageShell>
+      {showBanner && (
+        <ShopHeroBanner
+          headline={banner.headline}
+          subtext={banner.subtext}
+          imageUrl={banner.imageUrl}
+          ctaLabel={banner.ctaLabel}
+          ctaHref={banner.ctaHref}
+        />
+      )}
       <section aria-labelledby="shop-heading">
-        <div className="wrap page-top">
+        <div className={showBanner ? "wrap mt-14 md:mt-20" : "wrap page-top"}>
           <p className="label text-olive">Mağaza</p>
           <h1
             id="shop-heading"
