@@ -103,10 +103,10 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
   return (
     <header
       className={cn(
-        "site-header fixed inset-x-0 z-40 w-full",
+        "site-header fixed inset-x-0 z-40",
         bannerOffset ? "top-10" : "top-0",
         surfaced
-          ? "border-b border-[var(--theme-header-divider-opacity)] bg-ivory/95 backdrop-blur-sm"
+          ? "border-b border-ink/10 bg-ivory/95 backdrop-blur-sm"
           : "border-b border-transparent bg-transparent",
       )}
     >
