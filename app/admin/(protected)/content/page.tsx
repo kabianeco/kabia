@@ -69,6 +69,15 @@ export default async function ContentPage() {
           longFields={["announcement_text"]}
         />
 
+        <SettingsGroupForm
+          group="shop_banner"
+          title="Mağaza banner'ı"
+          description="Mağaza sayfasının en üstünde gösterilen kampanya banner'ı. Görseli önce Medya kütüphanesine yükleyip URL'sini buraya yapıştırın."
+          settings={groups.shop_banner ?? []}
+          canEditSensitive={canEditSensitive}
+          longFields={["shop_banner_subtext"]}
+        />
+
         <Panel
           title="Anasayfa seçkisi"
           description={`Öne çıkan olarak işaretlenen ürünler anasayfada gösterilir. Şu anda ${featuredCount} ürün seçili.`}

@@ -97,7 +97,10 @@ export async function updateSettingsAction(
     }
 
     const audited = await logAdminAction(supabase, {
-      action: group === "content" ? "content.update" : "settings.update",
+      action:
+        group === "content" || group === "shop_banner"
+          ? "content.update"
+          : "settings.update",
       entityType: "setting",
       entityId: group,
       before: Object.fromEntries(updates.map((u) => [u.key, u.before])),
