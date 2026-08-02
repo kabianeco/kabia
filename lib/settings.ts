@@ -44,6 +44,12 @@ export interface PublicSettings {
   seoDefaultTitle: string
   seoDefaultDescription: string
   seoSocialImage: string
+  shopBannerEnabled: boolean
+  shopBannerHeadline: string
+  shopBannerSubtext: string
+  shopBannerImageUrl: string
+  shopBannerCtaLabel: string
+  shopBannerCtaHref: string
 }
 
 export const SETTINGS_FALLBACK: PublicSettings = {
@@ -69,6 +75,12 @@ export const SETTINGS_FALLBACK: PublicSettings = {
   seoDefaultDescription:
     "Sakarya Geyve'de, kimyasal gübre ve ilaç kullanılmadan yetiştirilen badem. Katkısız ürünler, tek kaynaktan.",
   seoSocialImage: "/images/almonds-drying.jpg",
+  shopBannerEnabled: false,
+  shopBannerHeadline: "",
+  shopBannerSubtext: "",
+  shopBannerImageUrl: "",
+  shopBannerCtaLabel: "",
+  shopBannerCtaHref: "",
 }
 
 /** setting key → the PublicSettings field it populates. */
@@ -94,6 +106,12 @@ const KEY_MAP: Record<string, keyof PublicSettings> = {
   seo_default_title: "seoDefaultTitle",
   seo_default_description: "seoDefaultDescription",
   seo_social_image: "seoSocialImage",
+  shop_banner_enabled: "shopBannerEnabled",
+  shop_banner_headline: "shopBannerHeadline",
+  shop_banner_subtext: "shopBannerSubtext",
+  shop_banner_image_url: "shopBannerImageUrl",
+  shop_banner_cta_label: "shopBannerCtaLabel",
+  shop_banner_cta_href: "shopBannerCtaHref",
 }
 
 async function readPublicSettings(): Promise<PublicSettings> {
