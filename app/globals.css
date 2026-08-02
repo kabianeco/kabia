@@ -185,6 +185,19 @@ body::before {
   }
 }
 
+/* Same header clearance as .page-top, without the extra breathing room —
+   for full-bleed sections (like the shop hero banner) that want to start
+   right at the header's edge instead of leaving a gap under it. */
+.banner-top {
+  padding-top: var(--header-offset, 4rem);
+}
+
+@media (min-width: 768px) {
+  .banner-top {
+    padding-top: var(--header-offset-desktop, 5rem);
+  }
+}
+
 /* Prices and figures are set in the serif so numerals read as editorial
    material rather than UI chrome. */
 .figure {
