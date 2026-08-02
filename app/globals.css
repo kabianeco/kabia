@@ -34,6 +34,13 @@
   --font-sans: var(--font-instrument-sans), system-ui, sans-serif;
   --font-serif: var(--font-instrument-serif), Georgia, serif;
 
+  /* Theme-driven equivalents: the value is a plain :root custom property
+     (baseline below) so the theme engine can override it at runtime by
+     re-declaring --font-body/--font-display in its own :root block — see
+     components/theme/theme-vars.tsx. */
+  --font-theme-body: var(--font-body), system-ui, sans-serif;
+  --font-theme-display: var(--font-display), Georgia, serif;
+
   /* Motion tokens — mirrored in lib/motion.ts for Framer Motion */
   --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
   --duration-fast: 300ms;
@@ -52,6 +59,13 @@
   --accent: #c29a63;
   --alarm: #a4442f;
   --grain-opacity: 0.04;
+
+  /* Baseline for --font-theme-body/--font-theme-display above: the Kabia
+     Original pair, byte-for-byte what resolveDefaultTheme() resolves to.
+     ThemeVars overrides these two after this stylesheet, once a published
+     theme picks a different typography profile. */
+  --font-body: var(--font-instrument-sans);
+  --font-display: var(--font-instrument-serif);
 }
 
 /* The dark surface: the same orchard at dusk rather than a neutral grey.
