@@ -57,6 +57,7 @@ export async function adjustStockAction(
     revalidatePath("/admin/products")
     revalidatePath("/admin")
     revalidatePath("/shop")
+    revalidatePath("/magaza")
 
     return {
       ok: true,

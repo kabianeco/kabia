@@ -32,6 +32,13 @@ export function Providers({ children }: { children: ReactNode }) {
   // storefront's cart, checkout, orders, favorites or cards contexts. Mounting
   // them there would fire a handful of client queries on every admin page for
   // no consumer. The theme still applies — the dashboard uses the same tokens.
+  //
+  // The appearance full-site preview (/admin/appearance/preview) reuses real
+  // storefront components (SiteHeader, ProductEntry, SiteFooter) that depend on
+  // the auth/cart contexts, so it mounts a *scoped* storefront provider shell
+  // inside its own page rather than swapping the whole root provider tree.
+  // This keeps MotionConfig and ThemeProvider mounted consistently across the
+  // /admin/appearance ↔ /admin/appearance/preview transition — no remount.
   if (pathname.startsWith("/admin")) {
     return (
       <MotionConfig reducedMotion="user">

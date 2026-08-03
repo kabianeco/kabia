@@ -19,9 +19,9 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // The concept build shipped the store at /magaza before the real shop
-      // existed. Keep the URL alive.
-      { source: "/magaza", destination: "/shop", permanent: true },
+      // Preserve the historical typo with one directed edge. Nothing ever
+      // points back to it, so the redirect graph cannot form a cycle.
+      { source: "/admin/apperance", destination: "/admin/appearance", permanent: true },
       // The farm and contact pages are now sections of the homepage.
       { source: "/farm", destination: "/#ciftlik", permanent: true },
       { source: "/contact", destination: "/#iletisim", permanent: true },

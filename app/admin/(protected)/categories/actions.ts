@@ -27,6 +27,7 @@ function revalidateCategoryRoutes() {
   revalidatePath("/admin/products")
   revalidatePath("/admin/products/new")
   revalidatePath("/shop")
+  revalidatePath("/magaza")
   revalidatePath("/")
 }
 

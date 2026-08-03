@@ -54,7 +54,8 @@ export function ShopHeroBanner({
             {showCta && (
               <Link
                 href={ctaHref}
-                className="mt-7 inline-block w-fit rounded-full bg-cream px-8 py-4 text-sm font-medium text-forest transition-colors duration-300 hover:bg-ivory"
+                prefetch={false}
+                className="mt-7 inline-block w-fit rounded-theme-button bg-cream px-8 py-4 text-sm font-medium text-forest transition-colors duration-300 hover:bg-ivory"
               >
                 {ctaLabel}
               </Link>

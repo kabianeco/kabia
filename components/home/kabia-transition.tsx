@@ -48,7 +48,7 @@ export function KabiaTransition({
     >
       <p
         aria-hidden="true"
-        className="flex overflow-hidden pb-[0.12em] font-serif text-[17vw] italic leading-none tracking-tight md:text-[9rem]"
+        className="flex overflow-hidden pb-[0.12em] font-theme-display text-[17vw] italic leading-none tracking-tight md:text-[9rem]"
       >
         {word.split("").map((ch, i) => (
           <motion.span

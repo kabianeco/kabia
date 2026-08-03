@@ -51,7 +51,7 @@ export function AuthShell({
               className="object-cover"
             />
             <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-forest/85 to-transparent p-8">
-              <p className="max-w-xs font-serif text-xl italic leading-snug text-on-brand">
+              <p className="max-w-xs font-theme-display text-xl italic leading-snug text-on-brand">
                 {imageCaption}
               </p>
             </figcaption>

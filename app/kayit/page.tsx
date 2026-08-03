@@ -17,7 +17,7 @@ export default function RegisterPage() {
         eyebrow="Hesap"
         title={
           <>
-            Bahçeye <em className="font-serif italic text-brand">katılın</em>.
+            Bahçeye <em className="font-theme-display italic text-brand">katılın</em>.
           </>
         }
         lead="Hesabınızla siparişlerinizi takip edin, adreslerinizi bir kez girin."

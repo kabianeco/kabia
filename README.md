@@ -36,6 +36,17 @@ key in this application and none should be added** — every read and write goes
 through the anon key so Row Level Security stays the enforcement boundary.
 `.env.local` is gitignored; `.env.example` holds names only.
 
+### Opening the dev server from another host
+
+`next dev` serves Fast Refresh over a WebSocket at `/_next/webpack-hmr` and, by
+default, only accepts that upgrade from `localhost`/`*.localhost`. `localhost`
+and `127.0.0.1` work out of the box — `proxy.ts` canonicalises `127.0.0.1` to
+`localhost` for document requests, so the HMR socket connects on the canonical
+origin either way. To open the dev server from a phone or another machine — the
+"Network" URL `next dev` prints on startup — list that host in Next's own
+`allowedDevOrigins` config (see the [Next.js docs](https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins))
+if you need it; this project does not configure it.
+
 ## Commands
 
 ```bash
@@ -44,13 +55,29 @@ npm run build      # production build
 npm start          # serve the production build
 npm run lint       # ESLint
 npm run typecheck  # tsc --noEmit
-npm test           # route smoke tests (run `npm run build` first)
+npm test           # route smoke tests + theme-engine unit tests (run `npm run build` first)
+
+npm run test:dev-stability          # boots `next dev` (Turbopack) and asserts it does not loop
+npm run test:dev-stability:webpack  # the same suite against `next dev --webpack`
+npm run test:affected-routes        # /magaza + /admin/appearance against the production build
 
 npm run test:role-revocation   # needs .env.local + a running server
+# Theme-engine DB-backed tests (auth/publish/revisions):
+node --test --conditions=react-server --import ./tests/alias-hook.mjs --env-file=.env.local tests/theme-engine-auth.test.ts
 ```
 
 `npm test` boots the production server on port 3399 and asserts real responses;
 override with `SMOKE_PORT`.
+
+`npm run test:dev-stability` starts its own `next dev`, so stop any running
+`npm run dev` first — Next allows one dev server per project directory. It
+drives the server over `127.0.0.1` on purpose: that is the origin the reload
+loop reproduced on, and `localhost` alone would never have caught it. It asserts
+the HMR socket connects, that the dev server logs no blocked cross-origin
+request, that `/magaza` and `/admin/appearance` each answer one document on
+direct entry and on hard refresh, that both tabs sit still for longer than a
+full reload cycle, and that editing a rendered component is one Fast Refresh
+rather than a document reload.
 
 `npm run test:role-revocation` is separate because it needs Supabase credentials
 and a live server. It creates two throwaway accounts, has a super admin revoke
@@ -90,6 +117,18 @@ themed tokens (`ivory`, `paper`, `ink`, `olive`, `brand`, `shell`, `clay`)
 that flip for dark mode — so `bg-ivory` and `text-ink` follow the theme with no
 `dark:` variants in markup. Type is Instrument Sans with Instrument Serif for
 emphasis and figures. Photographic surfaces use `rounded-media` (5px).
+
+**Controlled appearance engine** — authorized administrators can reshape the
+public design from `/admin/appearance` (nav: **Görünüm**): three shape presets
+(Keskin / Dengeli / Yumuşak), an approved font allowlist (4 body + 4
+editorial, loaded statically via `next/font`), typography profiles, and
+constrained fine-tuning of radii, borders, shadows, icons and density.
+Changes save as a draft and publish atomically; the storefront reads the
+published theme during SSR (no flash). Colors stay fixed in this phase.
+Three.js, full-bleed sections, circular avatars/dots and the admin shell are
+intentionally not reshaped. Docs:
+`docs/theme-engine-architecture.md`, `docs/theme-engine-database-changes.md`,
+`docs/theme-engine-operations.md`.
 
 Dark mode follows the system by default and can be overridden from the header;
 the choice persists in `localStorage` and is applied before first paint.
@@ -139,8 +178,8 @@ seeded catalogue still uses — remove that entry once real photography is in.
 
 `proxy.ts` guards `/admin/*` for session presence only; roles are re-read from
 the database on every request by `lib/admin/auth.ts`, never taken from a JWT
-claim. Media lives in the public-read `product-media` Storage bucket, catalogued
-in `public.media_assets`.
+claim. In development it also canonicalises `127.0.0.1` to `localhost` so the
+HMR WebSocket is never refused on a non-canonical origin. Media lives in the
 
 - `docs/admin-media-architecture.md` — media library and the authorization model
 - `docs/admin-media-database-changes.md` — schema, RLS and Storage policies

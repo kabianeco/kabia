@@ -1,8 +1,7 @@
 import type { Metadata } from "next"
 import Image from "next/image"
 import { redirect } from "next/navigation"
-import { getAdminSession } from "@/lib/admin/auth"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { AdminAuthUnavailableError, resolveAdminAccess } from "@/lib/admin/auth"
 import { InlineAlert } from "@/components/admin/ui/surfaces"
 import { adminSignOutAction } from "../login/actions"
 import { AdminPasswordForm } from "./password-form"
@@ -19,19 +18,24 @@ export const dynamic = "force-dynamic"
  *
  * The protected layout sends anyone with `must_change_password` here, so this
  * screen cannot live under that layout without a redirect loop. It carries its
- * own guard instead — same checks, no shell, and no way to reach the rest of
+ * own guard instead — same verdict, no shell, and no way to reach the rest of
  * the dashboard until the password has actually been changed.
+ *
+ * It reads `resolveAdminAccess()` directly rather than going through
+ * `requireAdminPage()`, because that helper's answer for an administrator who
+ * owes a password change is "redirect to this very page". A guard must never be
+ * able to name the route it is guarding.
  */
 export default async function AdminPasswordChangePage() {
-  const session = await getAdminSession()
+  const access = await resolveAdminAccess()
 
-  if (!session) {
-    const supabase = await createSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    redirect(user ? "/admin/unauthorized" : "/admin/login")
-  }
+  // Indeterminate is not "signed out". Surface it as an error state; moving the
+  // browser on a failed lookup is what produced the old redirect loops.
+  if (access.status === "unavailable") throw new AdminAuthUnavailableError(access.reason)
+  if (access.status === "unauthenticated") redirect("/admin/login")
+  if (access.status === "unauthorized") redirect("/admin/unauthorized")
+
+  const { session } = access
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-16">

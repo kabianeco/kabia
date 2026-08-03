@@ -113,6 +113,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
       <div className="wrap flex h-16 items-center justify-between md:h-20">
         <Link
           href={routes.home}
+          prefetch={false}
           aria-label="Kabia Ekolojik — anasayfa"
           onClick={() => close(false)}
         >
@@ -129,12 +130,23 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
         <nav aria-label="Ana menü" className="hidden items-center gap-8 md:flex">
           <Link
             href={routes.store}
+            prefetch={false}
             aria-current={pathname.startsWith(routes.store) ? "page" : undefined}
             className={`text-sm transition-colors duration-300 hover:text-ink ${
               pathname.startsWith(routes.store) ? "text-ink" : "text-ink/70"
             }`}
           >
             Mağaza
+          </Link>
+          <Link
+            href={routes.blog}
+            prefetch={false}
+            aria-current={pathname.startsWith(routes.blog) ? "page" : undefined}
+            className={`text-sm transition-colors duration-300 hover:text-ink ${
+              pathname.startsWith(routes.blog) ? "text-ink" : "text-ink/70"
+            }`}
+          >
+            Blog
           </Link>
           {sectionItems.map((item) => (
             <a
@@ -151,6 +163,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
 
             <Link
               href={routes.cart}
+              prefetch={false}
               aria-label={cartLabel}
               aria-current={pathname === routes.cart ? "page" : undefined}
               className="relative flex h-11 w-11 items-center justify-center text-ink/70 transition-colors duration-300 hover:text-ink"
@@ -161,6 +174,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
 
             <Link
               href={accountHref}
+              prefetch={false}
               aria-label={accountLabel}
               aria-current={pathname.startsWith(routes.account) ? "page" : undefined}
               className="flex h-11 w-11 items-center justify-center text-ink/70 transition-colors duration-300 hover:text-ink"
@@ -175,6 +189,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
 
           <Link
             href={routes.cart}
+            prefetch={false}
             aria-label={cartLabel}
             onClick={() => close(false)}
             className="relative flex h-11 w-11 items-center justify-center text-ink"
@@ -206,10 +221,19 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
           <nav aria-label="Mobil menü" className="flex flex-col">
             <Link
               href={routes.store}
+              prefetch={false}
               onClick={() => close(false)}
               className="flex items-baseline justify-between border-b border-ink/10 py-4 font-serif text-2xl"
             >
               Mağaza
+            </Link>
+            <Link
+              href={routes.blog}
+              prefetch={false}
+              onClick={() => close(false)}
+              className="flex items-baseline justify-between border-b border-ink/10 py-4 font-serif text-2xl"
+            >
+              Blog
             </Link>
             {sectionItems.map((item) => (
               <a
@@ -223,6 +247,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
             ))}
             <Link
               href={routes.cart}
+              prefetch={false}
               onClick={() => close(false)}
               className="flex items-baseline justify-between border-b border-ink/10 py-4 font-serif text-2xl"
             >
@@ -233,6 +258,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
             </Link>
             <Link
               href={accountHref}
+              prefetch={false}
               onClick={() => close(false)}
               className="flex items-baseline justify-between border-b border-ink/10 py-4 font-serif text-2xl"
             >

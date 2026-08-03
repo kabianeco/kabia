@@ -28,7 +28,7 @@ export function Principles() {
               >
                 0{index + 1}
               </span>
-              <h3 className="font-serif text-3xl italic tracking-tight md:col-span-5 md:text-4xl">
+              <h3 className="font-theme-display text-3xl italic tracking-tight md:col-span-5 md:text-4xl">
                 {item.name}
               </h3>
               <p className="max-w-md text-sm leading-relaxed text-ink/60 md:col-span-5 md:col-start-8 md:text-base">

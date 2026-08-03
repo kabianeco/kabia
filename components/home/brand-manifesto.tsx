@@ -16,7 +16,7 @@ export function BrandManifesto() {
             >
               {manifesto.statementA}
               <br />
-              <em className="font-serif italic text-ink/80">
+              <em className="font-theme-display italic text-ink/80">
                 {manifesto.statementB}
               </em>
             </h2>

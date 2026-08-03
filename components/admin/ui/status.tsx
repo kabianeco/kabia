@@ -8,6 +8,7 @@ import {
   type OrderStatusValue,
   type StockLevel,
 } from "@/lib/admin/orders"
+import { BLOG_STATUS_LABELS, type BlogPostStatus } from "@/lib/blog/types"
 
 // The rules live in lib/admin/orders.ts (pure, no JSX, unit-testable). They are
 // re-exported here so UI code keeps a single import site.
@@ -99,6 +100,23 @@ export function RoleTag({ role, active = true }: { role: AppRole; active?: boole
         )}
       />
       <span className="label whitespace-nowrap">{ROLE_LABELS[role]}</span>
+    </span>
+  )
+}
+
+const BLOG_STATUS: Record<BlogPostStatus, { tone: string; marker: string }> = {
+  draft: { tone: "text-ink/50", marker: "bg-ink/30" },
+  scheduled: { tone: "text-olive", marker: "bg-olive" },
+  published: { tone: "text-brand", marker: "rounded-full bg-brand" },
+  archived: { tone: "text-clay", marker: "rotate-45 bg-clay" },
+}
+
+export function BlogStatusTag({ status, className }: { status: BlogPostStatus; className?: string }) {
+  const config = BLOG_STATUS[status]
+  return (
+    <span className={cn("inline-flex items-center gap-2", config.tone, className)}>
+      <span aria-hidden="true" className={cn("h-1.5 w-1.5 shrink-0", config.marker)} />
+      <span className="label whitespace-nowrap">{BLOG_STATUS_LABELS[status]}</span>
     </span>
   )
 }

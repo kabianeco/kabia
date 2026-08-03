@@ -28,10 +28,17 @@
 
   /* Every photographic surface — product shots, editorial plates, cart
      thumbnails — is softened by the same hairline radius via `rounded-media`.
-     Kept as a token so the whole site can be re-cornered from one line. */
-  --radius-media: 5px;
+     Kept as a token so the whole site can be re-cornered from one line.
+     Redirected through the theme engine's image radius so a published
+     preset reshapes every `rounded-media` site; 5px is the pre-engine
+     default when no theme row is available. */
+  --radius-media: var(--theme-radius-image, 5px);
 
-  --font-sans: var(--font-instrument-sans), system-ui, sans-serif;
+  /* Redirected through the theme engine's body font so `font-sans` (and
+     therefore `body`, which sets font-family: var(--font-sans)) follows the
+     published typography profile; Instrument Sans is the pre-engine
+     default. */
+  --font-sans: var(--font-body, var(--font-instrument-sans)), system-ui, sans-serif;
   --font-serif: var(--font-instrument-serif), Georgia, serif;
 
   /* Theme-driven equivalents: the value is a plain :root custom property
@@ -46,6 +53,53 @@
   --duration-fast: 300ms;
   --duration-base: 600ms;
   --duration-slow: 900ms;
+}
+
+/* Theme engine radius/shadow utilities. Each reads the matching --theme-*
+   custom property that <ThemeVars> (components/theme/theme-vars.tsx) stamps
+   on :root from the published configuration. A component opts in by name
+   (e.g. `rounded-theme-button`); nothing here applies itself automatically,
+   so `rounded-full` avatars/dots/badges that must stay circular are
+   untouched. Falls back to today's premium defaults when no theme row is
+   available (--theme-* unset). */
+@utility rounded-theme-button {
+  border-radius: var(--theme-radius-button, 999px);
+}
+@utility rounded-theme-image {
+  border-radius: var(--theme-radius-image, 5px);
+}
+@utility rounded-theme-product-image {
+  border-radius: var(--theme-radius-product-image, 5px);
+}
+@utility rounded-theme-card {
+  border-radius: var(--theme-radius-card, 10px);
+}
+@utility rounded-theme-input {
+  border-radius: var(--theme-radius-input, 6px);
+}
+@utility rounded-theme-dialog {
+  border-radius: var(--theme-radius-dialog, 14px);
+}
+@utility rounded-theme-badge {
+  border-radius: var(--theme-radius-badge, 999px);
+}
+@utility rounded-theme-navigation {
+  border-radius: var(--theme-radius-navigation, 6px);
+}
+@utility rounded-theme-icon-container {
+  border-radius: var(--theme-radius-icon-container, 6px);
+}
+@utility shadow-theme-card {
+  box-shadow: var(--theme-shadow-card, none);
+}
+@utility shadow-theme-image {
+  box-shadow: var(--theme-shadow-image, none);
+}
+@utility shadow-theme-dialog {
+  box-shadow: var(--theme-shadow-dialog, none);
+}
+@utility shadow-theme-floating-navigation {
+  box-shadow: var(--theme-shadow-floating-navigation, none);
 }
 
 /* The light surface: warm paper, as the brand has always been. */
@@ -172,6 +226,12 @@ body::before {
 
 .on-dark :focus-visible {
   outline-color: var(--color-cream);
+}
+
+/* Auth form fields already show focus via the bottom-rule colour change;
+   the boxed outline on top of that reads as a second, heavier border. */
+.auth-field:focus-visible {
+  outline: none;
 }
 
 /* The one page container. Every route sits on this measure so the store and

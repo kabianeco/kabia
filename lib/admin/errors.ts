@@ -17,6 +17,28 @@ export class AdminAuthError extends Error {
 }
 
 /**
+ * Authorization could not be *determined* — Supabase Auth or the `user_roles`
+ * read failed.
+ *
+ * Deliberately not an `AdminAuthError`. "You are not allowed" and "we could not
+ * find out whether you are allowed" must produce different behaviour: the first
+ * is a decision the operator should see and act on, the second is a temporary
+ * fault that must leave the browser exactly where it is. Collapsing the two is
+ * what turned brief Supabase failures into infinite admin redirect loops.
+ *
+ * Lives here rather than in the `server-only` auth module so client-side error
+ * mapping can name it.
+ */
+export class AdminAuthUnavailableError extends Error {
+  readonly reason: string
+  constructor(reason: string) {
+    super("Yetki bilgisi şu anda doğrulanamıyor. Lütfen tekrar deneyin.")
+    this.name = "AdminAuthUnavailableError"
+    this.reason = reason
+  }
+}
+
+/**
  * Turns anything a mutation can throw into a safe, Turkish, user-facing
  * message.
  *
@@ -68,7 +90,7 @@ function isCuratedDatabaseMessage(message: string): boolean {
 }
 
 export function toActionState(error: unknown, context: string): ActionState {
-  if (error instanceof AdminAuthError) {
+  if (error instanceof AdminAuthError || error instanceof AdminAuthUnavailableError) {
     return { ok: false, message: error.message }
   }
 

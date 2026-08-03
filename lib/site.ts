@@ -36,8 +36,10 @@ export const anchors = {
  */
 export const routes = {
   home: "/",
-  store: "/shop",
+  store: "/magaza",
   product: (slug: string) => `/shop/${slug}`,
+  blog: "/blog",
+  blogPost: (slug: string) => `/blog/${slug}`,
   cart: "/sepet",
   checkout: "/odeme",
   login: "/giris",

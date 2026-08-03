@@ -65,6 +65,7 @@ export async function toggleFeaturedAction(formData: FormData): Promise<void> {
 
     revalidatePath("/")
     revalidatePath("/shop")
+    revalidatePath("/magaza")
     revalidatePath("/admin/content")
   } catch (error) {
     // Void-returning form action: surface through logs, never through a thrown

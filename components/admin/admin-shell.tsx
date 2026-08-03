@@ -7,6 +7,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -14,6 +15,7 @@ import {
   Image as ImageIcon,
   LayoutDashboard,
   Menu,
+  Palette,
   Package,
   ScrollText,
   Search,
@@ -72,6 +74,8 @@ const NAV_ICONS: Record<AdminNavIcon, LucideIcon> = {
   customers: Users,
   media: ImageIcon,
   content: FileText,
+  blog: BookOpen,
+  appearance: Palette,
   settings: Settings,
   administrators: ShieldCheck,
   audit: ScrollText,
@@ -259,6 +263,7 @@ function DesktopSidebar({
       <div className={cn("border-t border-ink/10 py-3", collapsed ? "px-2" : "px-3")}>
         <Link
           href="/"
+          prefetch={false}
           className={cn(
             "flex min-h-11 items-center gap-2.5 rounded-[3px] text-sm text-ink/55 transition-colors duration-200 hover:text-ink",
             collapsed ? "justify-center px-0" : "px-4",
@@ -483,6 +488,7 @@ function MobileNav({
           <p className="label text-olive">{ROLE_LABELS[session.role]}</p>
           <Link
             href="/"
+            prefetch={false}
             onClick={() => dialogRef.current?.close()}
             className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm text-ink/55 transition-colors duration-200 hover:text-ink"
           >

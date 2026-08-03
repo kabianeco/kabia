@@ -32,7 +32,7 @@ async function waitForServer(timeoutMs = 60_000) {
 before(async () => {
   server = spawn("npx", ["next", "start", "-p", PORT], {
     stdio: "ignore",
-    env: process.env,
+    env: { ...process.env, NODE_ENV: "production" },
   });
   await waitForServer();
 });
@@ -51,6 +51,7 @@ describe("public routes render", () => {
   const routes = [
     ["/", "homepage"],
     ["/shop", "shop index"],
+    ["/magaza", "Turkish shop index"],
     ["/sepet", "cart"],
     ["/giris", "sign in"],
     ["/kayit", "sign up"],
@@ -106,7 +107,6 @@ describe("shop is backed by real data", () => {
 
 describe("legacy URLs keep working", () => {
   const redirects = [
-    ["/magaza", "/shop"],
     ["/farm", "/#ciftlik"],
     ["/contact", "/#iletisim"],
   ];

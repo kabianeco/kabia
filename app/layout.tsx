@@ -1,23 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Instrument_Sans, Instrument_Serif } from "next/font/google";
 import { site } from "@/lib/site";
 import { getPublicSettings } from "@/lib/settings";
+import { getPublishedTheme } from "@/lib/theme-settings";
+import { ALL_FONT_VARIABLES } from "@/lib/fonts";
+import { ThemeVars } from "@/components/theme/theme-vars";
 import { Providers } from "@/components/providers";
 import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
-
-const instrumentSans = Instrument_Sans({
-  variable: "--font-instrument-sans",
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600"],
-});
-
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
-  subsets: ["latin", "latin-ext"],
-  weight: "400",
-  style: ["normal", "italic"],
-});
 
 /**
  * Site metadata, with the default title, description and social image read from
@@ -86,15 +75,21 @@ const organizationJsonLd = {
   sameAs: [site.social.instagram, site.social.facebook, site.social.x],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Load the published theme once at the shell boundary. The result is
+  // tag-cached and validated; on any failure it degrades to the default
+  // balanced + Kabia Original theme. Rendered into <head> below so the first
+  // paint already matches — no theme flash.
+  const theme = await getPublishedTheme();
+
   return (
     <html
       lang="tr"
-      className={`${instrumentSans.variable} ${instrumentSerif.variable} h-full`}
+      className={`${ALL_FONT_VARIABLES} h-full`}
       /*
        * The theme script below stamps `data-theme` on this element before
        * React hydrates, so the visitor's stored choice is painted with the
@@ -107,8 +102,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* Applies the stored theme before first paint. */}
+        {/* Applies the stored light/dark choice before first paint. */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {/* Applies the published theme variables before first paint. */}
+        <ThemeVars theme={theme} />
       </head>
       <body className="min-h-full flex flex-col">
         <script

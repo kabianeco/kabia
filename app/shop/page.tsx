@@ -5,7 +5,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { ProductEntry } from "@/components/shop/product-entry";
 import { ArrowLink } from "@/components/ui/button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { fetchProducts } from "@/lib/catalog";
+import { fetchPublicProducts } from "@/lib/catalog";
 import { CATEGORIES, type Product, type ProductCategory } from "@/lib/products";
 import { routes } from "@/lib/site";
 import { getPublicSettings } from "@/lib/settings";
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "Mağaza",
   description:
     "Geyve'deki bahçelerimizden çiğ badem, kavrulmuş badem, badem unu ve badem ezmesi. Katkısız, tek kaynaktan.",
-  alternates: { canonical: "/shop" },
+  alternates: { canonical: "/magaza" },
 };
 
 type SortOption = "onerilen" | "fiyat-artan" | "fiyat-azalan" | "en-yeni";
@@ -62,7 +62,7 @@ function GridSkeleton() {
       <ul className="grid grid-cols-1 gap-x-8 gap-y-14 pt-14 pb-24 sm:grid-cols-2 md:pb-32 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <li key={i}>
-            <div className="aspect-[4/5] animate-pulse rounded-media bg-paper" />
+            <div className="aspect-[4/5] animate-pulse rounded-theme-product-image bg-paper" />
             <div className="mt-5 border-t border-ink/10 pt-4">
               <div className="h-3 w-16 animate-pulse bg-paper" />
               <div className="mt-3 h-5 w-3/4 animate-pulse bg-paper" />
@@ -89,7 +89,20 @@ async function ProductGrid({
   sort: SortOption;
 }) {
   const supabase = await createSupabaseServerClient();
-  const all = await fetchProducts(supabase);
+  const result = await fetchPublicProducts(supabase);
+  if (result.status === "error") {
+    return (
+      <div role="alert" className="py-24 text-center">
+        <p className="font-theme-display text-2xl italic text-clay">
+          Ürünler şu anda yüklenemiyor.
+        </p>
+        <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-ink/55">
+          Mağaza sayfası açık kalacak. Lütfen daha sonra yeniden deneyin.
+        </p>
+      </div>
+    );
+  }
+  const all = result.products;
   const filtered = all.filter(
     (p) => activeCategory === "tumu" || p.category === activeCategory,
   );
@@ -98,7 +111,7 @@ async function ProductGrid({
   if (products.length === 0) {
     return (
       <div className="py-24 text-center">
-        <p className="font-serif text-2xl italic text-ink/70">
+        <p className="font-theme-display text-2xl italic text-ink/70">
           {all.length === 0 ? "Mağaza şu an boş." : "Bu kategoride ürün yok."}
         </p>
         <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-ink/55">
@@ -108,7 +121,7 @@ async function ProductGrid({
         </p>
         {all.length > 0 && (
           <div className="mt-8">
-            <ArrowLink href={routes.store}>Tüm ürünler</ArrowLink>
+            <ArrowLink href={routes.store} prefetch={false}>Tüm ürünler</ArrowLink>
           </div>
         )}
       </div>
@@ -167,7 +180,7 @@ export default async function ShopPage({
             id="shop-heading"
             className="mt-6 max-w-3xl text-4xl leading-[1.08] tracking-tight md:text-6xl"
           >
-            Bahçeden <em className="font-serif italic text-brand">sofraya</em>.
+            Bahçeden <em className="font-theme-display italic text-brand">sofraya</em>.
           </h1>
           <p className="mt-7 max-w-md text-base leading-relaxed text-ink/65">
             Geyve&apos;deki bahçelerimizde kimyasal gübre ve ilaç kullanmadan
@@ -184,6 +197,7 @@ export default async function ShopPage({
                   <li key={cat.id}>
                     <Link
                       href={shopHref(cat.id, sort)}
+                      prefetch={false}
                       aria-current={active ? "true" : undefined}
                       className={`inline-flex min-h-11 items-center text-sm transition-colors duration-300 ${
                         active
@@ -208,6 +222,7 @@ export default async function ShopPage({
                     <li key={opt.id}>
                       <Link
                         href={shopHref(activeCategory, opt.id)}
+                        prefetch={false}
                         aria-current={active ? "true" : undefined}
                         className={`inline-flex min-h-11 items-center text-sm transition-colors duration-300 ${
                           active ? "text-brand" : "text-ink/50 hover:text-ink"

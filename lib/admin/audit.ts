@@ -32,6 +32,25 @@ export type AuditAction =
   | "media.delete"
   | "settings.update"
   | "content.update"
+  | "theme.draft_save"
+  | "theme.publish"
+  | "theme.reset"
+  | "theme.preset_change"
+  | "theme.font_change"
+  | "theme.revision_restore"
+  | "blog.post_create"
+  | "blog.post_update"
+  | "blog.post_publish"
+  | "blog.post_unpublish"
+  | "blog.post_schedule"
+  | "blog.post_archive"
+  | "blog.post_delete"
+  | "blog.post_duplicate"
+  | "blog.category_create"
+  | "blog.category_update"
+  | "blog.category_delete"
+  | "blog.tag_create"
+  | "blog.tag_delete"
   | "order.note"
   | "order.tracking"
   | "administrator.create"
@@ -100,6 +119,25 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "order.tracking": "Kargo bilgisi güncellendi",
   "settings.update": "Ayar güncellendi",
   "content.update": "İçerik güncellendi",
+  "theme.draft_save": "Tema taslağı kaydedildi",
+  "theme.publish": "Tema yayınlandı",
+  "theme.reset": "Tema sıfırlandı",
+  "theme.preset_change": "Tema preset değişti",
+  "theme.font_change": "Tema font değişti",
+  "theme.revision_restore": "Tema sürümü geri yüklendi",
+  "blog.post_create": "Blog yazısı oluşturuldu",
+  "blog.post_update": "Blog yazısı güncellendi",
+  "blog.post_publish": "Blog yazısı yayınlandı",
+  "blog.post_unpublish": "Blog yazısı yayından kaldırıldı",
+  "blog.post_schedule": "Blog yazısı zamanlandı",
+  "blog.post_archive": "Blog yazısı arşivlendi",
+  "blog.post_delete": "Blog yazısı silindi",
+  "blog.post_duplicate": "Blog yazısı çoğaltıldı",
+  "blog.category_create": "Blog kategorisi oluşturuldu",
+  "blog.category_update": "Blog kategorisi güncellendi",
+  "blog.category_delete": "Blog kategorisi silindi",
+  "blog.tag_create": "Blog etiketi oluşturuldu",
+  "blog.tag_delete": "Blog etiketi silindi",
   "administrator.create": "Yönetici oluşturuldu",
   "administrator.role_change": "Yönetici rolü değişti",
   "administrator.deactivate": "Yönetici yetkisi kaldırıldı",
@@ -116,7 +154,11 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   order: "Sipariş",
   media: "Medya",
   setting: "Ayar",
+  theme: "Tema",
   administrator: "Yönetici",
+  blog_post: "Blog yazısı",
+  blog_category: "Blog kategorisi",
+  blog_tag: "Blog etiketi",
 }
 
 export function describeAuditAction(action: string): string {

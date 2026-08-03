@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { adminContext } from "@/lib/admin/auth"
-import { AdminAuthError } from "@/lib/admin/errors"
+import { AdminAuthError, AdminAuthUnavailableError } from "@/lib/admin/errors"
 import { loadMediaPage, type MediaSort } from "@/lib/admin/queries/media"
 import { MEDIA_MIME_LABELS, MEDIA_PAGE_SIZE } from "@/lib/admin/media"
 
@@ -54,6 +54,15 @@ export async function GET(request: NextRequest) {
       { headers: { "cache-control": "no-store" } },
     )
   } catch (error) {
+    // Indeterminate authorization is a 503, not a 401. A 401 would tell the
+    // client it has been signed out and invite it to navigate to the login
+    // page; the session is in fact untouched and the caller should retry.
+    if (error instanceof AdminAuthUnavailableError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 503, headers: { "cache-control": "no-store" } },
+      )
+    }
     if (error instanceof AdminAuthError) {
       return NextResponse.json(
         { error: error.message },

@@ -82,6 +82,7 @@ export function RegisterForm() {
           onChange={(e) => setName(e.target.value)}
           autoComplete="name"
           error={errors.name}
+          className="auth-field"
           required
         />
         <TextField
@@ -92,6 +93,7 @@ export function RegisterForm() {
           placeholder="ornek@eposta.com"
           autoComplete="email"
           error={errors.email}
+          className="auth-field"
           required
         />
         <TextField
@@ -102,6 +104,7 @@ export function RegisterForm() {
           placeholder="05XX XXX XX XX"
           autoComplete="tel"
           error={errors.phone}
+          className="auth-field"
           required
         />
         <TextField
@@ -112,6 +115,7 @@ export function RegisterForm() {
           hint="En az 6 karakter"
           autoComplete="new-password"
           error={errors.password}
+          className="auth-field"
           required
         />
         <TextField
@@ -121,6 +125,7 @@ export function RegisterForm() {
           onChange={(e) => setPasswordRepeat(e.target.value)}
           autoComplete="new-password"
           error={errors.passwordRepeat}
+          className="auth-field"
           required
         />
 

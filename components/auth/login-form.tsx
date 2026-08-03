@@ -94,6 +94,7 @@ export function LoginForm() {
           placeholder="ornek@eposta.com"
           autoComplete="email"
           error={errors.email}
+          className="auth-field"
           required
         />
         <TextField
@@ -104,6 +105,7 @@ export function LoginForm() {
           placeholder="••••••••"
           autoComplete="current-password"
           error={errors.password}
+          className="auth-field"
           required
         />
 

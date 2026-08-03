@@ -34,7 +34,7 @@ application actually talks to. No secret values are reproduced in this repositor
   - `lib/supabase/client.ts` — browser singleton, anon key only.
   - `lib/supabase/server.ts` — `createServerClient` bound to `next/headers` cookies, anon key.
   - No service-role client existed before this work.
-- **No middleware/proxy file existed.** No route was protected on the server; `/hesabim`
+- **No middleware/proxy file existed (this predates the middleware→proxy rename).** No route was protected on the server; `/hesabim`
   guards on the client only.
 - **Data access**: `lib/catalog.ts` maps `products` rows (with nested variants, images,
   nutrition, reviews) to the frontend `Product` shape. Row shapes are hand-written in
@@ -264,13 +264,40 @@ itself.
 
 | Layer | Mechanism |
 |---|---|
-| 1 — Session | `proxy.ts` scoped to `/admin/:path*`; no session → `/admin/login` |
-| 2 — Role | `app/admin/(protected)/layout.tsx` server component; no admin role → `/admin/unauthorized` |
+| 1 — Session | `proxy.ts` scoped to `/admin/:path*`; *confirmed* absence of a session → `/admin/login` |
+| 2 — Role | `app/admin/(protected)/layout.tsx` + every page, via `requireAdminPage()`; no admin role → `/admin/unauthorized` |
 | 3 — Action | `requireAdmin()` / `requireSuperAdmin()` at the top of every server action |
 | 4 — Database | RLS policies + `SECURITY DEFINER` functions that re-check the caller |
 
 Layer 4 is the real boundary. Layers 1–3 exist so that unauthorised users get a correct
 experience, not so that they get security.
+
+### One verdict per request
+
+Layers 1–3 do not each decide for themselves. `lib/admin/access.ts` turns one request's
+evidence into a single verdict — `admin`, `unauthenticated`, `unauthorized` or
+`unavailable` — and `lib/admin/auth.ts` resolves it once per request through React
+`cache`. Every guard derives its behaviour from that same value.
+
+`unavailable` is the one that matters. A lookup that *failed* — Supabase unreachable, a
+429, a 5xx, a `user_roles` read that errored — is not evidence that the caller is signed
+out or de-roled, and it never produces a navigation. It renders a stable "cannot verify"
+screen instead. When failure was collapsed into "not signed in", the layout redirected
+`/admin` → `/admin/login` while the proxy redirected `/admin/login` → `/admin`, and a
+browser given both answers in turn alternated between them forever. That was the admin
+refresh loop.
+
+### The redirect graph is acyclic
+
+Every automatic redirect points *outward*, at a screen that renders on its own:
+`/admin/login`, `/admin/unauthorized`, `/admin/sifre-degistir`. Nothing redirects back
+into the protected group. In particular the proxy no longer sends a signed-in visitor
+from `/admin/login` to `/admin` — the login page offers a link instead, so entering the
+dashboard is always a person's action and never a lookup's side effect.
+
+`tests/admin-access.test.ts` asserts both properties directly, and
+`tests/admin-direct-entry.test.js` walks every protected route in every authorization
+state with bounded hop counts.
 
 Storage: the `product-media` bucket is publicly readable (product photos are public by
 nature) and writable only where `public.has_admin_role()` is true.

@@ -18,7 +18,7 @@ export default function LoginPage() {
         eyebrow="Hesap"
         title={
           <>
-            Tekrar <em className="font-serif italic text-brand">hoş geldiniz</em>.
+            Tekrar <em className="font-theme-display italic text-brand">hoş geldiniz</em>.
           </>
         }
         lead="Siparişlerinizi takip etmek ve adreslerinizi saklamak için giriş yapın."

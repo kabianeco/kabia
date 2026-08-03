@@ -30,7 +30,13 @@ export function OrderSummary({
   const progress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
 
   return (
-    <div className="bg-paper px-6 py-7 md:px-7">
+    <div
+      className="bg-paper px-6 py-7 md:px-7"
+      style={{
+        borderRadius: "var(--theme-radius-card)",
+        boxShadow: "var(--theme-shadow-card)",
+      }}
+    >
       <h2 className="label text-olive">Özet</h2>
 
       <div className="mt-6">

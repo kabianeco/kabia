@@ -154,9 +154,9 @@ export const principles = {
 
 export const editorialImage = {
   src: "/images/almonds-drying.jpg",
-  width: 1536,
-  height: 2040,
-  alt: "Kurumaya serilmiş kabuklu bademler, yakın çekim",
+  width: 2200,
+  height: 1466,
+  alt: "Hasat edilmiş kabuklu bademler, sepetin yanında yığın halinde kuruyor",
   caption: "Hasat sonrası. Bademler kabuğunda, kendi halinde kurur.",
 } as const;
 

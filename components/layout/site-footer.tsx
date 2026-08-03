@@ -64,7 +64,12 @@ export async function SiteFooter() {
       <div className="mx-auto max-w-[1200px] px-6 md:px-10 py-14 md:py-20">
         <div className="grid gap-12 md:grid-cols-12">
           <div className="md:col-span-4">
-            <Link href="/" aria-label="Kabia Ekolojik — anasayfa" className="inline-block">
+            <Link
+              href="/"
+              prefetch={false}
+              aria-label="Kabia Ekolojik — anasayfa"
+              className="inline-block"
+            >
               <Image
                 src="/images/logo.svg"
                 alt="Kabia Ekolojik"
@@ -102,6 +107,7 @@ export async function SiteFooter() {
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    prefetch={false}
                     className="text-sm text-ink/70 hover:text-ink transition-colors duration-300"
                   >
                     {item.label}
@@ -143,7 +149,7 @@ export async function SiteFooter() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={label}
-                    className="flex h-11 w-11 items-center justify-center rounded-full border border-ink/15 text-ink/70 hover:border-brand hover:text-brand transition-colors duration-300"
+                    className="flex h-11 w-11 items-center justify-center rounded-theme-icon-container border border-ink/15 text-ink/70 hover:border-brand hover:text-brand transition-colors duration-300"
                   >
                     <Icon className="h-4 w-4" aria-hidden="true" />
                   </a>

@@ -20,14 +20,14 @@ export function FinalCta() {
             >
               {finalCta.titleA}
               <br />
-              <em className="font-serif italic text-shell">{finalCta.titleB}</em>
+              <em className="font-theme-display italic text-shell">{finalCta.titleB}</em>
             </h2>
             <p className="mt-6 max-w-md text-sm leading-relaxed text-cream/65 md:text-base">
               {finalCta.body}
             </p>
             <a
               href={finalCta.cta.href}
-              className="mt-9 inline-block rounded-full bg-cream px-8 py-4 text-sm font-medium text-forest transition-colors duration-300 hover:bg-ivory"
+              className="mt-9 inline-block rounded-theme-button bg-cream px-8 py-4 text-sm font-medium text-forest transition-colors duration-300 hover:bg-ivory"
             >
               {finalCta.cta.label}
             </a>

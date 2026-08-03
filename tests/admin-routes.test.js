@@ -39,7 +39,7 @@ async function waitForServer(timeoutMs = 60_000) {
 before(async () => {
   server = spawn("npx", ["next", "start", "-p", PORT], {
     stdio: "ignore",
-    env: process.env,
+    env: { ...process.env, NODE_ENV: "production" },
   })
   await waitForServer()
 })
@@ -69,6 +69,9 @@ const PROTECTED_ROUTES = [
   "/admin/customers",
   "/admin/media",
   "/admin/content",
+  "/admin/blog",
+  "/admin/blog/new",
+  "/admin/blog/categories",
   "/admin/settings",
   "/admin/administrators",
   "/admin/audit-logs",
@@ -155,7 +158,7 @@ describe("the unauthorized screen", () => {
 })
 
 describe("the public store is unaffected by the admin work", () => {
-  const routes = ["/", "/shop", "/sepet", "/giris", "/kayit", "/blog", "/odeme"]
+  const routes = ["/", "/shop", "/magaza", "/sepet", "/giris", "/kayit", "/blog", "/odeme"]
 
   for (const route of routes) {
     it(`${route} still responds 200`, async () => {

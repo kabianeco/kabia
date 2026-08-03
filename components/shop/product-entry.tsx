@@ -21,8 +21,8 @@ export function ProductEntry({
 
   return (
     <li className="group">
-      <Link href={routes.product(product.slug)} className="block">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-media bg-paper">
+      <Link href={routes.product(product.slug)} prefetch={false} className="block">
+        <div className="relative aspect-[4/5] overflow-hidden rounded-theme-product-image bg-paper">
           {product.mainImageUrl ? (
             <Image
               src={product.mainImageUrl}

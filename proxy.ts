@@ -1,30 +1,76 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import { classifyAuthError, isPublicAdminPath } from "@/lib/admin/access"
 
 /**
- * Layer 1 of admin route protection: the session check.
+ * The single Next.js proxy (formerly "middleware" — Next 16 renamed the file
+ * convention from middleware.{ts,js} to proxy.{ts,js} and deprecated the old
+ * name; the exported function and its behaviour are unchanged).
  *
- * Scoped by `config.matcher` to /admin only — the public storefront never runs
- * through here, so nothing about the store's behaviour or caching changes.
+ * Two responsibilities, deliberately kept separate so neither can form a cycle
+ * with the protected layout or pages below:
  *
- * This layer answers exactly one question: is there a session at all? It
- * deliberately does not look at roles. Role checks belong in the protected
- * layout and in every server action, where a fresh database read decides, and
- * ultimately in RLS. Treating an edge check as authorization would mean
- * trusting a token that could have been revoked a second ago.
- *
- * The response header exists so route protection can be verified from outside
- * the app rather than inferred.
+ *   1. Development canonical-origin redirect — see maybeCanonicalDevOrigin.
+ *   2. Admin session synchronisation — scoped to /admin only.
  */
 
-const PUBLIC_ADMIN_PATHS = ["/admin/login", "/admin/unauthorized"]
+// ---------------------------------------------------------------------------
+// Development canonical-origin redirect
+// ---------------------------------------------------------------------------
 
-export default async function proxy(request: NextRequest) {
+/** The host `npm run dev` binds to; the HMR client expects this origin. */
+const CANONICAL_DEV_HOST = "localhost"
+
+/**
+ * True when the request is a browser navigation that may be canonicalised —
+ * a top-level HTML document request, not an RSC/Flight fetch, not a WebSocket
+ * upgrade, not a static asset, and not a server action.
+ */
+function isBrowserDocumentRequest(request: NextRequest): boolean {
+  if (request.method !== "GET") return false
+  if (request.headers.get("upgrade")) return false // WebSocket (HMR)
+  if (request.headers.get("rsc")) return false // RSC / Flight fetch
+  if (request.headers.get("next-action")) return false // server action
+  const accept = request.headers.get("accept") ?? ""
+  if (!accept.includes("text/html")) return false
+  const { pathname } = request.nextUrl
+  if (pathname.startsWith("/_next/")) return false
+  if (pathname.startsWith("/favicon")) return false
+  return true
+}
+
+/**
+ * In development, redirect 127.0.0.1 document requests to localhost once,
+ * preserving pathname and query. Returns the redirect, or null to pass through.
+ */
+function maybeCanonicalDevOrigin(request: NextRequest): NextResponse | null {
+  if (process.env.NODE_ENV !== "development") return null
+  if (!isBrowserDocumentRequest(request)) return null
+
+  const host = request.headers.get("host")
+  if (!host) return null
+  const hostname = host.split(":")[0]
+  // Only the IPv4 loopback is canonicalised. LAN addresses and ::1 are left
+  // alone; this project does not configure Next's allowedDevOrigins for them.
+  if (hostname !== "127.0.0.1") return null
+
+  const url = request.nextUrl
+  const canonical = new URL(url.pathname + url.search, request.url)
+  canonical.hostname = CANONICAL_DEV_HOST
+  canonical.port = url.port
+  canonical.protocol = url.protocol
+  return NextResponse.redirect(canonical, 307)
+}
+
+// ---------------------------------------------------------------------------
+// Admin session synchronisation (formerly proxy.ts)
+// ---------------------------------------------------------------------------
+
+async function adminSessionSync(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
 
   // The guard header marks every admin response — redirects included — so
-  // route protection stays verifiable from outside the app. Applied at the
-  // return points because `setAll` below may replace the response object.
+  // route protection stays verifiable from outside the app.
   const guard = (response: NextResponse): NextResponse => {
     response.headers.set("x-kabia-admin-guard", "1")
     return response
@@ -42,18 +88,11 @@ export default async function proxy(request: NextRequest) {
         return request.cookies.getAll()
       },
       setAll(cookiesToSet) {
-        // Write the refreshed tokens back onto the *request* first, so the
-        // server components rendered below this layer read the same session
-        // the proxy just saw. Without this, the layout keeps the expired
-        // cookie and burns the just-rotated refresh token a second time —
-        // which either double-refreshes within the reuse window (rotating the
-        // token again, unpersisted) or fails outright and redirects to the
-        // login page while this layer insists the user is signed in. That
-        // disagreement is a redirect loop.
+        // Write refreshed tokens onto the request first, so server components
+        // below read the same session this layer just saw.
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
         response = NextResponse.next({ request })
-        // …and onto the outgoing response, or the session silently expires
-        // mid-visit.
+        // …and onto the outgoing response, or the session silently expires.
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options),
         )
@@ -63,11 +102,10 @@ export default async function proxy(request: NextRequest) {
 
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser()
 
-  // A bare NextResponse.redirect would drop every cookie the session check
-  // just wrote — a rotated token, or the clearing of a dead session — leaving
-  // the browser to act on its stale session again on the very next request.
+  // A bare redirect would drop every cookie the session check just wrote.
   const redirectWithSession = (target: URL): NextResponse => {
     const redirectResponse = NextResponse.redirect(target)
     response.cookies.getAll().forEach((cookie) => {
@@ -76,25 +114,43 @@ export default async function proxy(request: NextRequest) {
     return guard(redirectResponse)
   }
 
-  const isPublicAdminPath = PUBLIC_ADMIN_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
-  )
+  // "Supabase could not be reached" is not "this visitor is anonymous".
+  const determined = !error || classifyAuthError(error) === "unauthenticated"
 
-  if (!user && !isPublicAdminPath) {
+  if (!user && determined && !isPublicAdminPath(pathname)) {
     const loginUrl = new URL("/admin/login", request.url)
-    // Come back to whatever was being asked for after signing in.
     if (pathname !== "/admin") loginUrl.searchParams.set("next", pathname)
     return redirectWithSession(loginUrl)
-  }
-
-  // An administrator who is already signed in has no use for the login screen.
-  if (user && pathname === "/admin/login") {
-    return redirectWithSession(new URL("/admin", request.url))
   }
 
   return guard(response)
 }
 
+// ---------------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------------
+
+export default async function proxy(request: NextRequest) {
+  // 1. Development canonical-origin redirect — must run first so the HMR
+  //    client initialises on the canonical origin.
+  const canonical = maybeCanonicalDevOrigin(request)
+  if (canonical) return canonical
+
+  // 2. Admin session synchronisation (/admin only).
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    return adminSessionSync(request)
+  }
+
+  return NextResponse.next()
+}
+
+/**
+ * Runs on everything except static assets, the image optimizer, and the HMR
+ * WebSocket endpoint. The canonical-origin redirect needs document requests on
+ * every route; the admin session sync only acts on /admin.
+ */
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: [
+    "/((?!_next/static|_next/image|_next/webpack-hmr|favicon\\.ico).*)",
+  ],
 }

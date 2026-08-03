@@ -36,6 +36,7 @@ import { countOrderReferences, loadProductDetail } from "@/lib/admin/queries/pro
 function revalidateStorefront(slug?: string | null) {
   revalidatePath("/")
   revalidatePath("/shop")
+  revalidatePath("/magaza")
   if (slug) revalidatePath(`/shop/${slug}`)
   revalidatePath("/admin/products")
   revalidatePath("/admin/inventory")

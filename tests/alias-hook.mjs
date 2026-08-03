@@ -36,6 +36,11 @@ function withExtension(absolutePath) {
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
+    // Next's package exposes this entrypoint to bundlers without a file
+    // extension, while Node's native ESM resolver requires the concrete file.
+    if (specifier === "next/cache") {
+      return nextResolve("next/cache.js", context)
+    }
     if (specifier.startsWith("@/")) {
       const resolved = withExtension(path.join(root, specifier.slice(2)))
       return nextResolve(pathToFileURL(resolved).href, context)

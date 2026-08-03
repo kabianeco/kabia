@@ -6,7 +6,7 @@ export type ButtonVariant = "primary" | "outline" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors duration-300 disabled:cursor-not-allowed disabled:opacity-55";
+  "inline-flex items-center justify-center gap-2 rounded-theme-button font-medium transition-colors duration-300 disabled:cursor-not-allowed disabled:opacity-55";
 
 const variants: Record<ButtonVariant, string> = {
   // The store's one filled action. Matches the premium homepage CTA exactly.
@@ -16,9 +16,9 @@ const variants: Record<ButtonVariant, string> = {
 };
 
 const sizes: Record<ButtonSize, string> = {
-  sm: "min-h-11 px-5 text-sm",
-  md: "min-h-12 px-7 text-sm",
-  lg: "min-h-14 px-9 text-base",
+  sm: "min-h-[var(--theme-control-height-sm)] px-5 text-sm",
+  md: "min-h-[var(--theme-control-height-md)] px-7 text-sm",
+  lg: "min-h-[calc(var(--theme-control-height-md)+8px)] px-9 text-base",
 };
 
 function classes(variant: ButtonVariant, size: ButtonSize, className?: string) {

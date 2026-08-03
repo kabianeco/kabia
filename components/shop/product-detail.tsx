@@ -153,7 +153,7 @@ export function ProductDetail({
       <div className="mt-10 grid gap-12 lg:grid-cols-12 lg:gap-16">
         {/* Gallery */}
         <div className="lg:col-span-6">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-media bg-paper">
+          <div className="relative aspect-[4/5] overflow-hidden rounded-theme-product-image bg-paper">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeImage}
@@ -189,7 +189,7 @@ export function ProductDetail({
                     onClick={() => setActiveImage(i)}
                     aria-label={`${product.name} — görsel ${i + 1}`}
                     aria-current={activeImage === i ? "true" : undefined}
-                    className={`relative block aspect-square w-full overflow-hidden rounded-media border transition-colors duration-300 ${
+                    className={`relative block aspect-square w-full overflow-hidden rounded-theme-product-image border transition-colors duration-300 ${
                       activeImage === i
                         ? "border-brand"
                         : "border-ink/10 hover:border-ink/30"
@@ -259,7 +259,7 @@ export function ProductDetail({
                       disabled={sold}
                       onClick={() => setSelectedVariant(v.weight)}
                       aria-pressed={active}
-                      className={`min-h-11 rounded-full border px-5 text-sm transition-colors duration-300 ${
+                      className={`min-h-11 rounded-theme-button border px-5 text-sm transition-colors duration-300 ${
                         active
                           ? "border-brand bg-brand text-on-brand"
                           : "border-ink/20 text-ink hover:border-brand hover:text-brand"
@@ -624,7 +624,7 @@ function ReviewsPanel({ product }: { product: Product }) {
       </div>
 
       {product.reviews.length === 0 ? (
-        <p className="font-serif text-xl italic text-ink/55">
+        <p className="font-theme-display text-xl italic text-ink/55">
           Bu ürünün ilk değerlendirmesini siz yazın.
         </p>
       ) : (

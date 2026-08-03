@@ -121,14 +121,34 @@ const PRODUCT_SELECT = `
 
 // ---- async fetch functions (accept a server or browser client) ----
 
-export async function fetchProducts(client: SupabaseClient): Promise<Product[]> {
+export type PublicProductsResult =
+  | { status: "ok"; products: Product[] }
+  | { status: "error" }
+
+/**
+ * Storefront read that preserves the difference between an empty catalogue and
+ * a failed query. Route components use this result to render an honest stable
+ * error instead of disguising an outage as "no products".
+ */
+export async function fetchPublicProducts(
+  client: SupabaseClient,
+): Promise<PublicProductsResult> {
   const { data, error } = await client
     .from("products")
     .select(PRODUCT_SELECT)
     .eq("is_active", true)
     .order("created_at", { ascending: true })
-  if (error || !data) return []
-  return data.map((row) => mapProduct(row as unknown as ProductRow, false))
+  if (error || !data) return { status: "error" }
+  return {
+    status: "ok",
+    products: data.map((row) => mapProduct(row as unknown as ProductRow, false)),
+  }
+}
+
+/** Existing callers that intentionally degrade to an empty list. */
+export async function fetchProducts(client: SupabaseClient): Promise<Product[]> {
+  const result = await fetchPublicProducts(client)
+  return result.status === "ok" ? result.products : []
 }
 
 export async function fetchFeaturedProducts(client: SupabaseClient): Promise<Product[]> {

@@ -92,7 +92,7 @@ function Act1Copy({ hot }: { hot: boolean }) {
       >
         {act1.headlineA}
         <br />
-        <em className="font-serif italic text-brand">{act1.headlineB}</em>
+        <em className="font-theme-display italic text-brand">{act1.headlineB}</em>
       </h1>
       <p className="mt-8 max-w-lg text-base leading-relaxed text-ink/65 md:text-xl">
         {act1.supporting}
@@ -101,7 +101,7 @@ function Act1Copy({ hot }: { hot: boolean }) {
         <a
           href={act1.primaryCta.href}
           tabIndex={hot ? 0 : -1}
-          className="rounded-full bg-brand px-8 py-4 text-sm font-medium text-on-brand transition-colors duration-300 hover:bg-forest"
+          className="rounded-theme-button bg-brand px-8 py-4 text-sm font-medium text-on-brand transition-colors duration-300 hover:bg-forest"
         >
           {act1.primaryCta.label}
         </a>
@@ -185,7 +185,7 @@ function EditorialBeat({ kicker, text }: { kicker: string; text: string }) {
   return (
     <div className="max-w-xl">
       <p className="label text-olive">{kicker}</p>
-      <p className="mt-6 font-serif text-[1.7rem] italic leading-[1.2] md:text-[2.3rem] md:leading-[1.16] lg:text-[2.7rem]">
+      <p className="mt-6 font-theme-display text-[1.7rem] italic leading-[1.2] md:text-[2.3rem] md:leading-[1.16] lg:text-[2.7rem]">
         {text}
       </p>
     </div>
@@ -224,7 +224,7 @@ function QuietIntro() {
       </div>
       <div className="on-dark bg-forest">
         <div className="mx-auto max-w-[1200px] px-6 py-24 text-center md:px-10 md:py-32">
-          <p className="font-serif text-[13vw] italic leading-none tracking-tight text-on-brand md:text-[7rem] lg:text-[9rem]">
+          <p className="font-theme-display text-[13vw] italic leading-none tracking-tight text-on-brand md:text-[7rem] lg:text-[9rem]">
             {intro.final.statementA}
             <br />
             {intro.final.statementB}
@@ -232,7 +232,7 @@ function QuietIntro() {
           <div className="mt-10 md:mt-14">
             <Link
               href={routes.store}
-              className="inline-block rounded-full bg-on-brand px-10 py-4 text-sm font-medium text-forest transition-colors duration-300 hover:bg-cream"
+              className="inline-block rounded-theme-button bg-on-brand px-10 py-4 text-sm font-medium text-forest transition-colors duration-300 hover:bg-cream"
             >
               {intro.final.ctaLabel}
             </Link>
@@ -732,7 +732,7 @@ function ScrollIntro() {
             className="on-dark pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center px-6"
             style={{ visibility: dVisibility }}
           >
-            <p className="text-center font-serif text-[13vw] italic leading-none tracking-tight text-on-brand md:text-[7rem] lg:text-[9rem]">
+            <p className="text-center font-theme-display text-[13vw] italic leading-none tracking-tight text-on-brand md:text-[7rem] lg:text-[9rem]">
               <RisingLine
                 text={intro.final.statementA}
                 progress={scrollYProgress}
@@ -758,7 +758,7 @@ function ScrollIntro() {
                 href={routes.store}
                 onClick={onKesfet}
                 tabIndex={ctaHot ? 0 : -1}
-                className={`inline-block rounded-full bg-on-brand px-10 py-4 text-sm font-medium text-forest transition-colors duration-300 hover:bg-cream ${
+                className={`inline-block rounded-theme-button bg-on-brand px-10 py-4 text-sm font-medium text-forest transition-colors duration-300 hover:bg-cream ${
                   ctaHot ? "pointer-events-auto" : "pointer-events-none"
                 }`}
               >
