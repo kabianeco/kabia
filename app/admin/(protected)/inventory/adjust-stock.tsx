@@ -27,6 +27,7 @@ import {
 
 const REASONS = [
   "Sayım düzeltmesi",
+  "Stokta yok",
   "Yeni sevkiyat",
   "Hasarlı ürün",
   "İade girişi",
@@ -113,6 +114,19 @@ export function AdjustStockButton({
             </p>
 
             <div className="mt-5 space-y-4">
+              <AdminButton
+                variant="danger"
+                className="w-full justify-center"
+                disabled={currentStock <= 0}
+                onClick={() => {
+                  setDirection("decrease")
+                  setQuantity(String(currentStock))
+                  setReason("Stokta yok")
+                }}
+              >
+                Stokta yok olarak işaretle
+              </AdminButton>
+
               <fieldset>
                 <legend className="label mb-2 text-olive">Yön</legend>
                 <div className="flex gap-2">
