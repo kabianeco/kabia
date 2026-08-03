@@ -38,8 +38,22 @@ export function ProductEntry({
             </div>
           )}
           {!available && (
-            <span className="absolute left-0 top-0 bg-ivory/95 px-3 py-1.5">
-              <span className="label text-clay">Stokta yok</span>
+            <span
+              className="absolute px-3 py-1.5"
+              style={{
+                display: "var(--theme-stock-badge-display)",
+                top: "var(--theme-stock-badge-top)",
+                right: "var(--theme-stock-badge-right)",
+                bottom: "var(--theme-stock-badge-bottom)",
+                left: "var(--theme-stock-badge-left)",
+                backgroundColor: "var(--theme-stock-badge-bg)",
+                border: "var(--theme-stock-badge-border)",
+                borderRadius: "var(--theme-stock-badge-radius)",
+              }}
+            >
+              <span className="label" style={{ color: "var(--theme-stock-badge-color)" }}>
+                Stokta yok
+              </span>
             </span>
           )}
         </div>
