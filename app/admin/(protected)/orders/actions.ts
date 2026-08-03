@@ -1,10 +1,10 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { adminContext } from "@/lib/admin/auth"
+import { adminContext, requireSuperAdmin } from "@/lib/admin/auth"
 import { logAdminAction, AUDIT_WARNING } from "@/lib/admin/audit"
 import { toActionState, type ActionState } from "@/lib/admin/errors"
-import { fieldErrorsFrom, orderNoteSchema, orderStatusSchema, orderTrackingSchema } from "@/lib/admin/schemas"
+import { fieldErrorsFrom, orderNoteSchema, orderStatusSchema, orderTrackingSchema, overrideOrderStatusSchema } from "@/lib/admin/schemas"
 
 /**
  * Order operations.
@@ -170,5 +170,44 @@ export async function updateTrackingAction(
     }
   } catch (error) {
     return toActionState(error, "updateTracking")
+  }
+}
+
+export async function overrideOrderStatusAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    await requireSuperAdmin()
+    const { createSupabaseServerClient } = await import("@/lib/supabase/server")
+    const supabase = await createSupabaseServerClient()
+
+    const parsed = overrideOrderStatusSchema.safeParse({
+      order_id: formData.get("order_id"),
+      status: formData.get("status"),
+      reason: formData.get("reason"),
+    })
+
+    if (!parsed.success) {
+      return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error), message: "Geçersiz istek." }
+    }
+
+    const { data, error } = await supabase.rpc("admin_override_order_status", {
+      p_order_id: parsed.data.order_id,
+      p_status: parsed.data.status,
+      p_reason: parsed.data.reason,
+    })
+
+    if (error) return toActionState(error, "overrideOrderStatus")
+
+    const result = (data ?? {}) as { order_number?: string }
+    revalidateOrder(parsed.data.order_id)
+
+    return {
+      ok: true,
+      message: `${result.order_number ?? "Sipariş"} durumu geçersiz kılındı. Denetim kaydına işlendi.`,
+    }
+  } catch (error) {
+    return toActionState(error, "overrideOrderStatus")
   }
 }

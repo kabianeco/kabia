@@ -29,7 +29,7 @@ export default async function OrderDetailPage({
 }: {
   params: Promise<{ orderId: string }>
 }) {
-  const { supabase } = await adminPageContext("manageOrders")
+  const { session, supabase } = await adminPageContext("manageOrders")
   const { orderId } = await params
 
   const { data, error } = await supabase
@@ -202,6 +202,7 @@ export default async function OrderDetailPage({
               orderId={order.id}
               orderNumber={order.order_number}
               status={order.status}
+              isSuperAdmin={session.role === "super_admin"}
             />
           </Panel>
 

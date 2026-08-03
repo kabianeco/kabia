@@ -1,15 +1,16 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox, TextField } from "@/components/ui/field";
-import { useAuth } from "@/lib/auth-context";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { routes } from "@/lib/site";
+import { ACTION_IDLE, type ActionState } from "@/lib/admin/errors";
+import { customerLoginAction, customerResetPasswordAction } from "@/app/auth/actions";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,39 +25,29 @@ function safeNext(next: string | null): string {
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login } = useAuth();
   const next = safeNext(searchParams.get("next"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const nextErrors: typeof errors = {};
-    if (!EMAIL_RE.test(email.trim()))
-      nextErrors.email = "Geçerli bir e-posta adresi girin.";
-    if (password.length < 6)
-      nextErrors.password = "Şifre en az 6 karakter olmalı.";
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+  // SEC-05: password-based login now goes through a server action with
+  // distributed rate limiting. OAuth stays on the browser client.
+  const [loginState, loginAction] = useActionState(customerLoginAction, ACTION_IDLE);
+  const [, resetAction] = useActionState(customerResetPasswordAction, ACTION_IDLE);
 
-    setSubmitting(true);
-    const { error, needsEmailConfirm } = await login(email.trim(), password);
-    setSubmitting(false);
-
-    if (needsEmailConfirm) {
+  useEffect(() => {
+    if (!loginState || loginState === ACTION_IDLE) return;
+    const state = loginState as ActionState & { needsEmailConfirm?: boolean; redirectTo?: string };
+    if (state.ok && state.redirectTo) {
+      router.push(state.redirectTo);
+    } else if (state.needsEmailConfirm) {
       toast.success("Devam etmek için e-postanızı onaylayın.");
-      return;
+    } else if (!state.ok && state.message) {
+      toast.error(state.message);
     }
-    if (error) {
-      toast.error("E-posta veya şifre hatalı.");
-      return;
-    }
-    router.push(next);
-  };
+  }, [loginState, router]);
 
   const handleSocialLogin = async (provider: "google" | "apple") => {
     const supabase = createSupabaseBrowserClient();
@@ -75,20 +66,21 @@ export function LoginForm() {
       }));
       return;
     }
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}${routes.accountProfile}`,
-    });
-    if (error) toast.error("Sıfırlama bağlantısı gönderilemedi.");
-    else toast.success("Şifre sıfırlama bağlantısını e-postanıza gönderdik.");
+    // SEC-05: password reset goes through the rate-limited server action.
+    const formData = new FormData();
+    formData.set("email", email.trim());
+    await resetAction(formData);
+    toast.success("Şifre sıfırlama bağlantısını e-postanıza gönderdik (eğer hesap bulunduysa).");
   };
 
   return (
     <>
-      <form onSubmit={handleSubmit} noValidate className="space-y-7">
+      <form action={loginAction} noValidate className="space-y-7">
+        <input type="hidden" name="next" value={next} />
         <TextField
           label="E-posta"
           type="email"
+          name="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="ornek@eposta.com"
@@ -100,6 +92,7 @@ export function LoginForm() {
         <TextField
           label="Şifre"
           type="password"
+          name="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="••••••••"
@@ -124,8 +117,8 @@ export function LoginForm() {
           </button>
         </div>
 
-        <Button type="submit" size="lg" disabled={submitting} className="w-full">
-          {submitting ? "Giriş yapılıyor…" : "Giriş yap"}
+        <Button type="submit" size="lg" className="w-full">
+          Giriş yap
         </Button>
       </form>
 

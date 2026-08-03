@@ -128,23 +128,26 @@ describe("admin username alias", () => {
 })
 
 describe("order status transitions", () => {
-  it("allows every cross-status move for administrators", () => {
-    const allStatuses: (keyof typeof ORDER_TRANSITIONS)[] = [
-      "hazirlaniyor",
-      "kargoda",
-      "teslim_edildi",
-      "iptal_edildi",
-    ]
-    for (const from of allStatuses) {
-      for (const to of allStatuses) {
-        if (from !== to) {
-          assert.ok(
-            ORDER_TRANSITIONS[from].includes(to),
-            `${from} → ${to} should be allowed`,
-          )
-        }
-      }
-    }
+  it("allows only valid forward and cancellation transitions", () => {
+    // SEC-08: terminal statuses (delivered, cancelled) have no exits.
+    // hazirlaniyor → kargoda, teslim_edildi, iptal_edildi
+    assert.ok(ORDER_TRANSITIONS.hazirlaniyor.includes("kargoda"))
+    assert.ok(ORDER_TRANSITIONS.hazirlaniyor.includes("teslim_edildi"))
+    assert.ok(ORDER_TRANSITIONS.hazirlaniyor.includes("iptal_edildi"))
+    // kargoda → teslim_edildi, iptal_edildi
+    assert.ok(ORDER_TRANSITIONS.kargoda.includes("teslim_edildi"))
+    assert.ok(ORDER_TRANSITIONS.kargoda.includes("iptal_edildi"))
+    // Terminal statuses have no transitions
+    assert.equal(ORDER_TRANSITIONS.teslim_edildi.length, 0)
+    assert.equal(ORDER_TRANSITIONS.iptal_edildi.length, 0)
+  })
+
+  it("rejects backward transitions from terminal statuses", () => {
+    assert.ok(!ORDER_TRANSITIONS.teslim_edildi.includes("hazirlaniyor"))
+    assert.ok(!ORDER_TRANSITIONS.teslim_edildi.includes("kargoda"))
+    assert.ok(!ORDER_TRANSITIONS.iptal_edildi.includes("hazirlaniyor"))
+    assert.ok(!ORDER_TRANSITIONS.iptal_edildi.includes("kargoda"))
+    assert.ok(!ORDER_TRANSITIONS.kargoda.includes("hazirlaniyor"))
   })
 
   it("rejects an unknown status at the schema boundary", () => {

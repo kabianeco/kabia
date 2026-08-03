@@ -1,6 +1,7 @@
 import { cache } from "react"
 import type { Metadata } from "next"
 import { notFound, permanentRedirect } from "next/navigation"
+import { headers } from "next/headers"
 import Link from "next/link"
 import Image from "next/image"
 import { PageShell } from "@/components/layout/page-shell"
@@ -146,14 +147,19 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     ],
   }
 
+// SEC-09: Read the per-request nonce for CSP inline script.
+  const h = await headers()
+  const nonce = h.get("x-nonce") ?? undefined
+
   return (
     <PageShell>
       {/* JSON.stringify does not escape "<", so a title containing "</script>"
-          could otherwise break out of this tag — post titles are admin-authored,
-          but the escape costs nothing and removes the question entirely. */}
+           could otherwise break out of this tag — post titles are admin-authored,
+           but the escape costs nothing and removes the question entirely. */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+        nonce={nonce}
       />
 
       <article className="wrap page-top pb-24 md:pb-32">

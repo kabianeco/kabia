@@ -31,15 +31,15 @@ export const ORDER_STATUS_LABELS: Record<OrderStatusValue, string> = {
  * button that is guaranteed to fail, and so the rule can be unit-tested without
  * a database round trip.
  *
- * Delivered and cancelled are terminal: there is no path out of either, and in
- * particular no "un-cancel", because with no payment provider integrated a
- * cancellation cannot be financially reversed from here.
+ * Delivered and cancelled are terminal: there is no path out of either. A
+ * super-admin override path exists separately via `admin_override_order_status`
+ * for operational recovery, and it requires a mandatory reason + audit event.
  */
 export const ORDER_TRANSITIONS: Record<OrderStatusValue, OrderStatusValue[]> = {
   hazirlaniyor: ["kargoda", "teslim_edildi", "iptal_edildi"],
-  kargoda: ["hazirlaniyor", "teslim_edildi", "iptal_edildi"],
-  teslim_edildi: ["hazirlaniyor", "kargoda", "iptal_edildi"],
-  iptal_edildi: ["hazirlaniyor", "kargoda", "teslim_edildi"],
+  kargoda: ["teslim_edildi", "iptal_edildi"],
+  teslim_edildi: [],
+  iptal_edildi: [],
 }
 
 export function canTransition(from: OrderStatusValue, to: OrderStatusValue): boolean {

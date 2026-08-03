@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import { randomBytes } from "crypto"
 import { classifyAuthError, isPublicAdminPath } from "@/lib/admin/access"
 
 /**
@@ -7,12 +8,132 @@ import { classifyAuthError, isPublicAdminPath } from "@/lib/admin/access"
  * convention from middleware.{ts,js} to proxy.{ts,js} and deprecated the old
  * name; the exported function and its behaviour are unchanged).
  *
- * Two responsibilities, deliberately kept separate so neither can form a cycle
- * with the protected layout or pages below:
+ * Three responsibilities:
  *
  *   1. Development canonical-origin redirect — see maybeCanonicalDevOrigin.
  *   2. Admin session synchronisation — scoped to /admin only.
+ *   3. SEC-09: Per-request nonce generation + security headers (CSP, HSTS,
+ *      X-Content-Type-Options, Referrer-Policy, Permissions-Policy).
  */
+
+// ---------------------------------------------------------------------------
+// SEC-09: Security headers and per-request nonce
+// ---------------------------------------------------------------------------
+
+/** Generates a cryptographically random nonce for CSP. */
+function generateNonce(): string {
+  return randomBytes(16).toString("base64")
+}
+
+/** Derives the Supabase auth origin for OAuth redirect and CSP connect-src. */
+function supabaseAuthOrigin(): string | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!url) return null
+  try {
+    return new URL(url).origin
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Builds the Content-Security-Policy header value for a given nonce.
+ *
+ * Production:
+ *   - script-src uses 'nonce-{random}' + 'strict-dynamic' (no 'unsafe-inline',
+ *     no 'unsafe-eval')
+ *   - style-src allows 'unsafe-inline' because the theme engine produces
+ *     inline CSS variables from a closed, enumerated vocabulary (no
+ *     attacker-controlled CSS string can enter the inline style block)
+ *   - img-src allows Next.js image optimization + Supabase Storage + picsum
+ *   - connect-src allows Supabase Auth/REST/Realtime only
+ *
+ * Development adds ws: and localhost origins for HMR without leaking into
+ * production.
+ */
+function buildCsp(nonce: string, isDev: boolean): string {
+  const sbOrigin = supabaseAuthOrigin()
+
+  const scriptSrc = [
+    `'self'`,
+    `'nonce-${nonce}'`,
+    `'strict-dynamic'`,
+    isDev ? "'unsafe-eval'" : "", // Next.js dev Fast Refresh
+  ].filter(Boolean).join(" ")
+
+  const styleSrc = [
+    "'self'",
+    "'unsafe-inline'", // theme engine CSS variables from closed vocabulary
+  ].join(" ")
+
+  const imgSrc = [
+    "'self'",
+    "data:", // next/image uses data: for placeholder during optimization
+    "https:",
+    "blob:", // next/image sometimes uses blob: during optimization
+  ].filter(Boolean).join(" ")
+
+  const connectSrc = [
+    "'self'",
+    sbOrigin ?? "https://*.supabase.co",
+    isDev ? "ws://localhost:3000 ws://127.0.0.1:3000" : "",
+  ].filter(Boolean).join(" ")
+
+  const fontSrc = [
+    "'self'",
+    "data:", // next/font inlines font data
+  ].join(" ")
+
+  const frameSrc = ["'self'"].join(" ")
+  const workerSrc = ["'self'", "blob:"].join(" ")
+  const manifestSrc = ["'self'"].join(" ")
+
+  const directives = [
+    `default-src 'self'`,
+    `script-src ${scriptSrc}`,
+    `style-src ${styleSrc}`,
+    `img-src ${imgSrc}`,
+    `font-src ${fontSrc}`,
+    `connect-src ${connectSrc}`,
+    `frame-src ${frameSrc}`,
+    `worker-src ${workerSrc}`,
+    `manifest-src ${manifestSrc}`,
+    `object-src 'none'`,
+    `base-uri 'self'`,
+    `form-action 'self'`,
+    `frame-ancestors 'none'`,
+    `upgrade-insecure-requests`,
+  ]
+
+  return directives.join("; ")
+}
+
+/** Applies security headers to any response. */
+function applySecurityHeaders(
+  response: NextResponse,
+  nonce: string,
+  isDev: boolean,
+): void {
+  response.headers.set("Content-Security-Policy", buildCsp(nonce, isDev))
+  response.headers.set("X-Content-Type-Options", "nosniff")
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
+  )
+
+  // HSTS only in production and only when HTTPS is guaranteed.
+  if (!isDev) {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=63072000; includeSubDomains; preload",
+    )
+  }
+
+  // Store the nonce in a custom request header so server components can
+  // read it via headers() and apply it to inline scripts.
+  response.headers.set("x-nonce", nonce)
+}
 
 // ---------------------------------------------------------------------------
 // Development canonical-origin redirect
@@ -146,17 +267,30 @@ async function adminSessionSync(request: NextRequest): Promise<NextResponse> {
 // ---------------------------------------------------------------------------
 
 export default async function proxy(request: NextRequest) {
+  const isDev = process.env.NODE_ENV === "development"
+  const nonce = generateNonce()
+
+  // Helper to apply security headers to any response we produce.
+  const withHeaders = (resp: NextResponse): NextResponse => {
+    applySecurityHeaders(resp, nonce, isDev)
+    return resp
+  }
+
+  // Pass the nonce to server components via the request headers.
+  request.headers.set("x-nonce", nonce)
+
   // 1. Development canonical-origin redirect — must run first so the HMR
   //    client initialises on the canonical origin.
   const canonical = maybeCanonicalDevOrigin(request)
-  if (canonical) return canonical
+  if (canonical) return withHeaders(canonical)
 
   // 2. Admin session synchronisation (/admin only).
   if (request.nextUrl.pathname.startsWith("/admin")) {
-    return adminSessionSync(request)
+    const adminResp = await adminSessionSync(request)
+    return withHeaders(adminResp)
   }
 
-  return NextResponse.next()
+  return withHeaders(NextResponse.next({ request }))
 }
 
 /**

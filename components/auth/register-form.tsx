@@ -1,14 +1,15 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox, TextField } from "@/components/ui/field";
-import { useAuth } from "@/lib/auth-context";
 import { routes } from "@/lib/site";
+import { ACTION_IDLE, type ActionState } from "@/lib/admin/errors";
+import { customerRegisterAction } from "@/app/auth/actions";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[\d\s+()]{10,}$/;
@@ -24,7 +25,6 @@ interface FormErrors {
 
 export function RegisterForm() {
   const router = useRouter();
-  const { register } = useAuth();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -32,11 +32,28 @@ export function RegisterForm() {
   const [password, setPassword] = useState("");
   const [passwordRepeat, setPasswordRepeat] = useState("");
   const [terms, setTerms] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // SEC-05: registration goes through the rate-limited server action.
+  const [registerState, registerAction] = useActionState(customerRegisterAction, ACTION_IDLE);
+
+  useEffect(() => {
+    if (!registerState || registerState === ACTION_IDLE) return;
+    if ((registerState as ActionState & { needsEmailConfirm?: boolean }).needsEmailConfirm) {
+      toast.success("Hesabınızı oluşturduk. Devam etmek için e-postanızı onaylayın.");
+      router.push(routes.login);
+      return;
+    }
+    if (registerState.ok) {
+      router.push(routes.account);
+      return;
+    }
+    if (registerState.message) {
+      toast.error(registerState.message);
+    }
+  }, [registerState, router]);
+
+  const validate = (): boolean => {
     const nextErrors: FormErrors = {};
     if (name.trim().length < 2) nextErrors.name = "Ad soyad girin.";
     if (!EMAIL_RE.test(email.trim()))
@@ -50,34 +67,15 @@ export function RegisterForm() {
     if (!terms)
       nextErrors.terms = "Devam etmek için kullanım şartlarını kabul edin.";
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
-
-    setSubmitting(true);
-    const { error, needsEmailConfirm } = await register({
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      password,
-    });
-    setSubmitting(false);
-
-    if (needsEmailConfirm) {
-      toast.success("Hesabınızı oluşturduk. Devam etmek için e-postanızı onaylayın.");
-      router.push(routes.login);
-      return;
-    }
-    if (error) {
-      toast.error("Hesap oluşturulamadı. Bilgilerinizi kontrol edin.");
-      return;
-    }
-    router.push(routes.account);
+    return Object.keys(nextErrors).length === 0;
   };
 
   return (
     <>
-      <form onSubmit={handleSubmit} noValidate className="space-y-7">
+      <form action={registerAction} onSubmit={(e) => { if (!validate()) e.preventDefault(); }} noValidate className="space-y-7">
         <TextField
           label="Ad soyad"
+          name="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoComplete="name"
@@ -88,6 +86,7 @@ export function RegisterForm() {
         <TextField
           label="E-posta"
           type="email"
+          name="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="ornek@eposta.com"
@@ -99,6 +98,7 @@ export function RegisterForm() {
         <TextField
           label="Telefon"
           type="tel"
+          name="phone"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           placeholder="05XX XXX XX XX"
@@ -110,6 +110,7 @@ export function RegisterForm() {
         <TextField
           label="Şifre"
           type="password"
+          name="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           hint="En az 6 karakter"
@@ -121,6 +122,7 @@ export function RegisterForm() {
         <TextField
           label="Şifre tekrar"
           type="password"
+          name="passwordRepeat"
           value={passwordRepeat}
           onChange={(e) => setPasswordRepeat(e.target.value)}
           autoComplete="new-password"
@@ -144,8 +146,8 @@ export function RegisterForm() {
           )}
         </div>
 
-        <Button type="submit" size="lg" disabled={submitting} className="w-full">
-          {submitting ? "Hesap oluşturuluyor…" : "Hesap oluştur"}
+        <Button type="submit" size="lg" className="w-full">
+          Hesap oluştur
         </Button>
       </form>
 

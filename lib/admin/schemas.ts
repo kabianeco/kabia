@@ -219,6 +219,12 @@ export const orderNoteSchema = z.object({
   note: z.string().trim().min(1, "Not boş olamaz.").max(2000, "Not en fazla 2000 karakter."),
 })
 
+export const overrideOrderStatusSchema = z.object({
+  order_id: uuid,
+  status: z.enum(ORDER_STATUSES, { message: "Geçersiz sipariş durumu." }),
+  reason: z.string().trim().min(3, "Gerekçe en az 3 karakter olmalı.").max(500, "Gerekçe en fazla 500 karakter."),
+})
+
 export const orderTrackingSchema = z.object({
   order_id: uuid,
   tracking_carrier: z
