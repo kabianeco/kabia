@@ -39,7 +39,7 @@ export function ProductEntry({
           )}
           {!available && (
             <span className="absolute left-0 top-0 bg-ivory/95 px-3 py-1.5">
-              <span className="label text-clay">Tükendi</span>
+              <span className="label text-clay">Stokta yok</span>
             </span>
           )}
         </div>
@@ -59,6 +59,7 @@ export function ProductEntry({
               </span>
             )}
           </p>
+          {!available && <p className="mt-2 label text-clay">Stokta yok</p>}
         </div>
       </Link>
     </li>

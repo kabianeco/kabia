@@ -175,7 +175,7 @@ export function ProductDetail({
             </AnimatePresence>
             {!available && (
               <span className="absolute left-0 top-0 bg-ivory/95 px-4 py-2">
-                <span className="label text-clay">Tükendi</span>
+                <span className="label text-clay">Stokta yok</span>
               </span>
             )}
           </div>
@@ -322,7 +322,7 @@ export function ProductDetail({
                   <ShoppingBag className="h-4 w-4" aria-hidden="true" /> Sepete ekle
                 </>
               ) : (
-                "Tükendi"
+                "Stokta yok"
               )}
             </Button>
             <Button
