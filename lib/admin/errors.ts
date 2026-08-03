@@ -44,8 +44,12 @@ export class AdminAuthUnavailableError extends Error {
  *
  * Raw Postgres and Supabase errors never reach the browser: they leak table
  * names, column names, constraint names and sometimes row values. The original
- * is logged server-side so it is still debuggable.
+ * is logged server-side (via `logAdminError`, which uses a constant log
+ * message and serializes the error safely — see `lib/admin/log.ts`) so it is
+ * still debuggable.
  */
+
+import { logAdminError } from "@/lib/admin/log"
 
 export interface ActionState {
   ok: boolean
@@ -94,7 +98,7 @@ export function toActionState(error: unknown, context: string): ActionState {
     return { ok: false, message: error.message }
   }
 
-  console.error(`[admin] ${context}:`, error)
+  logAdminError({ context, error })
 
   if (isPostgrestLike(error)) {
     const raw = (error.message ?? "").replace(/^.*?:\s*/, "").trim()
@@ -114,5 +118,5 @@ export function toActionState(error: unknown, context: string): ActionState {
 
 /** For read paths, where a failure should render an error state, not a message. */
 export function logQueryError(context: string, error: unknown): void {
-  if (error) console.error(`[admin] ${context}:`, error)
+  if (error) logAdminError({ context, error })
 }

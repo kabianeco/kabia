@@ -5,6 +5,7 @@ import { adminContext } from "@/lib/admin/auth"
 import { logAdminAction, AUDIT_WARNING } from "@/lib/admin/audit"
 import { toActionState, type ActionState } from "@/lib/admin/errors"
 import { settingKeySchema, settingValueSchemas } from "@/lib/admin/schemas"
+import { validateSettingUrl } from "@/lib/admin/url-settings"
 import { SETTINGS_TAG } from "@/lib/settings"
 
 /**
@@ -73,6 +74,17 @@ export async function updateSettingsAction(
       if (!parsed.success) {
         fieldErrors[row.key] = parsed.error.issues[0]?.message ?? "Geçersiz değer."
         continue
+      }
+
+      // SEC-06: positive URL-scheme validation for keys rendered as URL
+      // sinks (href, image). The DB-side guard is a negative check; this is
+      // the positive per-key check that knows the intended sink.
+      if (row.value_type === "string" && typeof parsed.data === "string") {
+        const url = validateSettingUrl(parsed.data, row.key)
+        if (!url.ok) {
+          fieldErrors[row.key] = url.reason ?? "Geçersiz URL."
+          continue
+        }
       }
 
       if (JSON.stringify(parsed.data) === JSON.stringify(row.value)) continue

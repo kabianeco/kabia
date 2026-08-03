@@ -89,8 +89,23 @@ async function adminSessionSync(request: NextRequest): Promise<NextResponse> {
       },
       setAll(cookiesToSet) {
         // Write refreshed tokens onto the request first, so server components
-        // below read the same session this layer just saw.
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        // below read the same session this layer just saw. This is a
+        // request-local synchronization: no `Set-Cookie` is emitted from this
+        // call. The browser-visible response boundary is the
+        // `response.cookies.set(name, value, options)` call below, which
+        // forwards the SameSite/Secure/HttpOnly/Path/Expiry attributes from
+        // @supabase/ssr's `cookieOptions` (defaults: sameSite=Lax, secure in
+        // production, httpOnly=true, path=/). The Semgrep
+        // `cookies-default-koa` rule fires on this line because it sees the
+        // bare two-arg form; that is by design here because request-local
+        // cookies do not produce a `Set-Cookie` response header, so response
+        // options on the request-cookie container would be a no-op. Suppressed
+        // narrowly at this exact statement only — the rule is NOT disabled
+        // globally.
+        cookiesToSet.forEach(({ name, value }) =>
+          // nosemgrep: javascript.koa.web.cookies-default-koa.cookies-default-koa -- request-local synchronization, browser-visible Set-Cookie emitted with options at response.cookies.set() below
+          request.cookies.set(name, value),
+        )
         response = NextResponse.next({ request })
         // …and onto the outgoing response, or the session silently expires.
         cookiesToSet.forEach(({ name, value, options }) =>
