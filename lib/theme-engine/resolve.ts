@@ -1,7 +1,15 @@
 import { getPreset, type ShapePresetTokens } from "@/lib/theme-engine/presets";
 import { resolveBodyFontVar, resolveDisplayFontVar } from "@/lib/theme-engine/fonts";
 import { parseThemeConfig } from "@/lib/theme-engine/schema";
-import { DEFAULT_THEME_CONFIG, type DensityLevel, type ShadowStrength, type ThemeConfiguration } from "@/lib/theme-engine/types";
+import {
+  DEFAULT_THEME_CONFIG,
+  type DensityLevel,
+  type ShadowStrength,
+  type StockBadgeFill,
+  type StockBadgePosition,
+  type StockBadgeTone,
+  type ThemeConfiguration,
+} from "@/lib/theme-engine/types";
 
 /**
  * The resolver. Combines:
@@ -74,6 +82,48 @@ const SHADOW_VALUE: Record<ShadowStrength, string> = {
   strong: "0 12px 32px -6px color-mix(in srgb, var(--color-ink) 16%, transparent)",
 };
 
+/** The badge has no preset variation — one fixed default set, purely override-driven. */
+const STOCK_BADGE_DEFAULTS = {
+  visible: true,
+  tone: "clay" as StockBadgeTone,
+  fill: "solid" as StockBadgeFill,
+  position: "top-left" as StockBadgePosition,
+  inset: 8,
+  radius: 0,
+};
+
+const STOCK_BADGE_TONE_VAR: Record<StockBadgeTone, string> = {
+  clay: "var(--color-clay)",
+  ink: "var(--color-ink)",
+  brand: "var(--color-brand)",
+  olive: "var(--color-olive)",
+  shell: "var(--color-shell)",
+};
+
+const STOCK_BADGE_FILL_STYLE: Record<StockBadgeFill, { bg: string; border: string }> = {
+  solid: { bg: "color-mix(in srgb, var(--color-ivory) 95%, transparent)", border: "none" },
+  outline: { bg: "transparent", border: "1px solid currentColor" },
+  text: { bg: "transparent", border: "none" },
+};
+
+/** Which two sides carry the inset for a given corner; the other two are "auto". */
+function stockBadgeSides(
+  position: StockBadgePosition,
+  inset: number,
+): { top: string; right: string; bottom: string; left: string } {
+  const px = `${inset}px`;
+  switch (position) {
+    case "top-left":
+      return { top: px, left: px, right: "auto", bottom: "auto" };
+    case "top-right":
+      return { top: px, right: px, left: "auto", bottom: "auto" };
+    case "bottom-left":
+      return { bottom: px, left: px, top: "auto", right: "auto" };
+    case "bottom-right":
+      return { bottom: px, right: px, top: "auto", left: "auto" };
+  }
+}
+
 /** Border opacity (0–1) → CSS `border-color` using the ink color. */
 function borderCol(opacity: number): string {
   return `color-mix(in srgb, var(--color-ink) ${Math.round(opacity * 100)}%, transparent)`;
@@ -127,6 +177,17 @@ export function resolveTheme(config: ThemeConfiguration): ResolvedTheme {
   const heights = DENSITY_HEIGHTS[density.interface];
   const icons = ICON_SIZE[icon.sizeScale];
 
+  const stockBadge = {
+    visible: ov.stockBadge?.visible ?? STOCK_BADGE_DEFAULTS.visible,
+    tone: ov.stockBadge?.tone ?? STOCK_BADGE_DEFAULTS.tone,
+    fill: ov.stockBadge?.fill ?? STOCK_BADGE_DEFAULTS.fill,
+    position: ov.stockBadge?.position ?? STOCK_BADGE_DEFAULTS.position,
+    inset: ov.stockBadge?.inset ?? STOCK_BADGE_DEFAULTS.inset,
+    radius: ov.stockBadge?.radius ?? STOCK_BADGE_DEFAULTS.radius,
+  };
+  const stockBadgeSidesResolved = stockBadgeSides(stockBadge.position, stockBadge.inset);
+  const stockBadgeFillResolved = STOCK_BADGE_FILL_STYLE[stockBadge.fill];
+
   const vars: Record<string, string> = {
     // Component radii
     "--theme-radius-button": `${radius.button}px`,
@@ -169,6 +230,17 @@ export function resolveTheme(config: ThemeConfiguration): ResolvedTheme {
     // Fonts (map selected ids → approved CSS variables, fallback-safe)
     "--font-body": resolveBodyFontVar(config.fonts.body),
     "--font-display": resolveDisplayFontVar(config.fonts.display),
+
+    // Out-of-stock badge
+    "--theme-stock-badge-display": stockBadge.visible ? "inline-block" : "none",
+    "--theme-stock-badge-color": STOCK_BADGE_TONE_VAR[stockBadge.tone],
+    "--theme-stock-badge-bg": stockBadgeFillResolved.bg,
+    "--theme-stock-badge-border": stockBadgeFillResolved.border,
+    "--theme-stock-badge-radius": `${stockBadge.radius}px`,
+    "--theme-stock-badge-top": stockBadgeSidesResolved.top,
+    "--theme-stock-badge-right": stockBadgeSidesResolved.right,
+    "--theme-stock-badge-bottom": stockBadgeSidesResolved.bottom,
+    "--theme-stock-badge-left": stockBadgeSidesResolved.left,
   };
 
   return { config, vars, preset };

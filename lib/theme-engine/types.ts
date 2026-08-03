@@ -41,6 +41,10 @@ export type IconSizeScale = "compact" | "balanced" | "large";
 
 export type ShadowStrength = "none" | "subtle" | "medium" | "strong";
 
+export type StockBadgeTone = "clay" | "ink" | "brand" | "olive" | "shell";
+export type StockBadgeFill = "solid" | "outline" | "text";
+export type StockBadgePosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
 /** A draft override is always optional; `undefined` means "use the preset". */
 export interface ThemeOverrides {
   radius?: {
@@ -73,6 +77,14 @@ export interface ThemeOverrides {
     interface?: DensityLevel;
     sectionSpacing?: DensityLevel;
     pageGutter?: PageSizeGutter;
+  };
+  stockBadge?: {
+    visible?: boolean;
+    tone?: StockBadgeTone;
+    fill?: StockBadgeFill;
+    position?: StockBadgePosition;
+    inset?: number;
+    radius?: number;
   };
 }
 

@@ -25,6 +25,11 @@ const shadowStrengths = ["none", "subtle", "medium", "strong"] as const;
 const densityLevels = ["compact", "balanced", "spacious"] as const;
 const gutters = ["compact", "balanced", "wide"] as const;
 const iconScales = ["compact", "balanced", "large"] as const;
+const stockBadgeTones = ["clay", "ink", "brand", "olive", "shell"] as const;
+const stockBadgeFills = ["solid", "outline", "text"] as const;
+const stockBadgePositions = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
+const stockBadgeInsets = [0, 2, 4, 8, 12, 16] as const;
+const stockBadgeInsetHas = (v: number) => (stockBadgeInsets as readonly number[]).includes(v);
 
 const radiusHas = (v: number) => (radiusValues as readonly number[]).includes(v);
 const borderWidthHas = (v: number) => (borderWidths as readonly number[]).includes(v);
@@ -89,6 +94,17 @@ export const themeOverridesSchema = z
         interface: optionalEnum(densityLevels),
         sectionSpacing: optionalEnum(densityLevels),
         pageGutter: optionalEnum(gutters),
+      })
+      .strict()
+      .optional(),
+    stockBadge: z
+      .object({
+        visible: z.boolean().optional(),
+        tone: optionalEnum(stockBadgeTones),
+        fill: optionalEnum(stockBadgeFills),
+        position: optionalEnum(stockBadgePositions),
+        inset: numField("kenar boşluğu", stockBadgeInsetHas),
+        radius: numField("yarıçap", radiusHas),
       })
       .strict()
       .optional(),

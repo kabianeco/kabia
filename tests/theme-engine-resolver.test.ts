@@ -207,3 +207,80 @@ describe("preset source of truth", () => {
     assert.equal(getPreset("nope").id, "balanced")
   })
 })
+
+describe("stockBadge overrides", () => {
+  it("resolves the default stock badge (visible, clay, solid, top-left, 8px inset, 0 radius)", () => {
+    const r = resolveDefaultTheme()
+    assert.equal(r.vars["--theme-stock-badge-display"], "inline-block")
+    assert.equal(r.vars["--theme-stock-badge-color"], "var(--color-clay)")
+    assert.equal(r.vars["--theme-stock-badge-bg"], "color-mix(in srgb, var(--color-ivory) 95%, transparent)")
+    assert.equal(r.vars["--theme-stock-badge-border"], "none")
+    assert.equal(r.vars["--theme-stock-badge-radius"], "0px")
+    assert.equal(r.vars["--theme-stock-badge-top"], "8px")
+    assert.equal(r.vars["--theme-stock-badge-left"], "8px")
+    assert.equal(r.vars["--theme-stock-badge-right"], "auto")
+    assert.equal(r.vars["--theme-stock-badge-bottom"], "auto")
+  })
+
+  it("applies a stockBadge override and leaves unrelated groups untouched", () => {
+    const r = resolveTheme({
+      ...DEFAULT_THEME_CONFIG,
+      overrides: {
+        stockBadge: { position: "bottom-right", inset: 4, tone: "ink", fill: "outline", visible: false },
+        radius: { button: 2 },
+      },
+    })
+    assert.equal(r.vars["--theme-stock-badge-display"], "none")
+    assert.equal(r.vars["--theme-stock-badge-color"], "var(--color-ink)")
+    assert.equal(r.vars["--theme-stock-badge-bg"], "transparent")
+    assert.equal(r.vars["--theme-stock-badge-border"], "1px solid currentColor")
+    assert.equal(r.vars["--theme-stock-badge-bottom"], "4px")
+    assert.equal(r.vars["--theme-stock-badge-right"], "4px")
+    assert.equal(r.vars["--theme-stock-badge-top"], "auto")
+    assert.equal(r.vars["--theme-stock-badge-left"], "auto")
+    assert.equal(r.vars["--theme-radius-button"], "2px")
+  })
+
+  it("resolves the text fill variant with a transparent background and no border", () => {
+    const r = resolveTheme({
+      ...DEFAULT_THEME_CONFIG,
+      overrides: { stockBadge: { fill: "text", radius: 12 } },
+    })
+    assert.equal(r.vars["--theme-stock-badge-bg"], "transparent")
+    assert.equal(r.vars["--theme-stock-badge-border"], "none")
+    assert.equal(r.vars["--theme-stock-badge-radius"], "12px")
+  })
+
+  it("rejects an out-of-allowlist stockBadge inset", () => {
+    const cfg = parseThemeConfig({
+      schemaVersion: 1,
+      shapePreset: "balanced",
+      typographyProfile: "kabia_original",
+      fonts: { body: "instrument_sans", display: "instrument_serif" },
+      overrides: { stockBadge: { inset: 5 } },
+    })
+    assert.equal(cfg, null)
+  })
+
+  it("rejects an unknown stockBadge tone", () => {
+    const cfg = parseThemeConfig({
+      schemaVersion: 1,
+      shapePreset: "balanced",
+      typographyProfile: "kabia_original",
+      fonts: { body: "instrument_sans", display: "instrument_serif" },
+      overrides: { stockBadge: { tone: "purple" } },
+    })
+    assert.equal(cfg, null)
+  })
+
+  it("rejects an out-of-allowlist stockBadge radius", () => {
+    const cfg = parseThemeConfig({
+      schemaVersion: 1,
+      shapePreset: "balanced",
+      typographyProfile: "kabia_original",
+      fonts: { body: "instrument_sans", display: "instrument_serif" },
+      overrides: { stockBadge: { radius: 7 } },
+    })
+    assert.equal(cfg, null)
+  })
+})
