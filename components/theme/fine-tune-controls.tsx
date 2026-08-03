@@ -8,6 +8,9 @@ import type {
   IconSizeScale,
   PageSizeGutter,
   ShadowStrength,
+  StockBadgeFill,
+  StockBadgePosition,
+  StockBadgeTone,
   ThemeConfiguration,
   ThemeOverrides,
 } from "@/lib/theme-engine/types"
@@ -45,6 +48,33 @@ const ICON_SCALE_LABELS: Record<IconSizeScale, string> = {
   balanced: "Dengeli",
   large: "Geniş",
 }
+const STOCK_BADGE_VISIBILITY_VALUES = ["true", "false"] as const
+const STOCK_BADGE_VISIBILITY_LABELS: Record<"true" | "false", string> = {
+  true: "Göster",
+  false: "Gizle",
+}
+const STOCK_BADGE_TONE_VALUES: StockBadgeTone[] = ["clay", "ink", "brand", "olive", "shell"]
+const STOCK_BADGE_TONE_LABELS: Record<StockBadgeTone, string> = {
+  clay: "Kil",
+  ink: "İnk",
+  brand: "Marka",
+  olive: "Zeytin",
+  shell: "Kabuk",
+}
+const STOCK_BADGE_FILL_VALUES: StockBadgeFill[] = ["solid", "outline", "text"]
+const STOCK_BADGE_FILL_LABELS: Record<StockBadgeFill, string> = {
+  solid: "Dolu",
+  outline: "Anahat",
+  text: "Sade metin",
+}
+const STOCK_BADGE_POSITION_VALUES: StockBadgePosition[] = ["top-left", "top-right", "bottom-left", "bottom-right"]
+const STOCK_BADGE_POSITION_LABELS: Record<StockBadgePosition, string> = {
+  "top-left": "Sol üst",
+  "top-right": "Sağ üst",
+  "bottom-left": "Sol alt",
+  "bottom-right": "Sağ alt",
+}
+const STOCK_BADGE_INSET_VALUES = [0, 2, 4, 8, 12, 16]
 
 interface GroupProps {
   legend: string
@@ -182,6 +212,59 @@ export function FineTuneControls({
         <Segmented label="Arayüz yoğunluğu" value={ov.density?.interface as DensityLevel | undefined} values={["compact", "balanced", "spacious"]} labels={DENSITY_LABELS} defaultValue={preset.density.interface} onChange={(v) => onOverride({ group: "density", key: "interface", value: v })} />
         <Segmented label="Bölüm aralığı" value={ov.density?.sectionSpacing as DensityLevel | undefined} values={["compact", "balanced", "spacious"]} labels={DENSITY_LABELS} defaultValue={preset.density.sectionSpacing} onChange={(v) => onOverride({ group: "density", key: "sectionSpacing", value: v })} />
         <Segmented label="Sayfa kenar boşluğu" value={ov.density?.pageGutter as PageSizeGutter | undefined} values={["compact", "balanced", "wide"]} labels={GUTTER_LABELS} defaultValue={preset.density.pageGutter} onChange={(v) => onOverride({ group: "density", key: "pageGutter", value: v })} />
+      </Group>
+
+      <Group
+        legend="Stok rozeti"
+        description="Ürün görseli üzerindeki 'Stokta yok' rozetinin görünümü. Kartın altındaki metin satırı bundan etkilenmez, her zaman görünür."
+        onReset={() => onResetGroup("stockBadge")}
+      >
+        <Segmented
+          label="Görünürlük"
+          value={ov.stockBadge?.visible === undefined ? undefined : ov.stockBadge.visible ? "true" : "false"}
+          values={STOCK_BADGE_VISIBILITY_VALUES}
+          labels={STOCK_BADGE_VISIBILITY_LABELS}
+          defaultValue="true"
+          onChange={(v) => onOverride({ group: "stockBadge", key: "visible", value: v === "true" })}
+        />
+        <Segmented
+          label="Renk"
+          value={ov.stockBadge?.tone}
+          values={STOCK_BADGE_TONE_VALUES}
+          labels={STOCK_BADGE_TONE_LABELS}
+          defaultValue="clay"
+          onChange={(v) => onOverride({ group: "stockBadge", key: "tone", value: v })}
+        />
+        <Segmented
+          label="Dolgu"
+          value={ov.stockBadge?.fill}
+          values={STOCK_BADGE_FILL_VALUES}
+          labels={STOCK_BADGE_FILL_LABELS}
+          defaultValue="solid"
+          onChange={(v) => onOverride({ group: "stockBadge", key: "fill", value: v })}
+        />
+        <Segmented
+          label="Konum"
+          value={ov.stockBadge?.position}
+          values={STOCK_BADGE_POSITION_VALUES}
+          labels={STOCK_BADGE_POSITION_LABELS}
+          defaultValue="top-left"
+          onChange={(v) => onOverride({ group: "stockBadge", key: "position", value: v })}
+        />
+        <Segmented
+          label="Kenar boşluğu"
+          value={ov.stockBadge?.inset}
+          values={STOCK_BADGE_INSET_VALUES}
+          defaultValue={8}
+          onChange={(v) => onOverride({ group: "stockBadge", key: "inset", value: v })}
+        />
+        <Segmented
+          label="Köşe yuvarlaklığı"
+          value={ov.stockBadge?.radius}
+          values={RADIUS_VALUES}
+          defaultValue={0}
+          onChange={(v) => onOverride({ group: "stockBadge", key: "radius", value: v })}
+        />
       </Group>
     </div>
   )
