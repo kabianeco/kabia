@@ -16,6 +16,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { routes } from "@/lib/site";
 import { recordProductView } from "@/lib/recently-viewed";
 import { EASE } from "@/lib/motion";
+import { STOCK_BADGE_STYLE } from "@/lib/theme-engine/stock-badge-style";
 
 const GUARANTEES = [
   { label: "Ücretsiz kargo", detail: "500₺ üzeri siparişlerde" },
@@ -174,22 +175,8 @@ export function ProductDetail({
               </motion.div>
             </AnimatePresence>
             {!available && (
-              <span
-                className="absolute px-4 py-2"
-                style={{
-                  display: "var(--theme-stock-badge-display)",
-                  top: "var(--theme-stock-badge-top)",
-                  right: "var(--theme-stock-badge-right)",
-                  bottom: "var(--theme-stock-badge-bottom)",
-                  left: "var(--theme-stock-badge-left)",
-                  backgroundColor: "var(--theme-stock-badge-bg)",
-                  border: "var(--theme-stock-badge-border)",
-                  borderRadius: "var(--theme-stock-badge-radius)",
-                }}
-              >
-                <span className="label" style={{ color: "var(--theme-stock-badge-color)" }}>
-                  Stokta yok
-                </span>
+              <span className="absolute px-4 py-2" style={STOCK_BADGE_STYLE}>
+                <span className="label">Stokta yok</span>
               </span>
             )}
           </div>

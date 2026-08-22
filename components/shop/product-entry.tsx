@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { categoryLabel, formatTL, inStock, type Product } from "@/lib/products";
 import { routes } from "@/lib/site";
+import { STOCK_BADGE_STYLE } from "@/lib/theme-engine/stock-badge-style";
 
 /**
  * One entry in the shop index. Deliberately not a card: no shadow, no radius,
@@ -38,22 +39,8 @@ export function ProductEntry({
             </div>
           )}
           {!available && (
-            <span
-              className="absolute px-3 py-1.5"
-              style={{
-                display: "var(--theme-stock-badge-display)",
-                top: "var(--theme-stock-badge-top)",
-                right: "var(--theme-stock-badge-right)",
-                bottom: "var(--theme-stock-badge-bottom)",
-                left: "var(--theme-stock-badge-left)",
-                backgroundColor: "var(--theme-stock-badge-bg)",
-                border: "var(--theme-stock-badge-border)",
-                borderRadius: "var(--theme-stock-badge-radius)",
-              }}
-            >
-              <span className="label" style={{ color: "var(--theme-stock-badge-color)" }}>
-                Stokta yok
-              </span>
+            <span className="absolute px-3 py-1.5" style={STOCK_BADGE_STYLE}>
+              <span className="label">Stokta yok</span>
             </span>
           )}
         </div>
