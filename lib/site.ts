@@ -47,7 +47,28 @@ export const routes = {
   account: "/hesabim",
   accountOrders: "/hesabim/siparislerim",
   accountProfile: "/hesabim/bilgilerim",
+  // Yasal / sözleşme sayfaları
+  distanceSalesAgreement: "/mesafeli-satis-sozlesmesi",
+  preliminaryInfo: "/on-bilgilendirme-formu",
+  privacyPolicy: "/gizlilik-politikasi",
+  kvkkDisclosure: "/kvkk-aydinlatma-metni",
+  explicitConsent: "/acik-riza-metni",
+  cookiePolicy: "/cerez-politikasi",
+  deliveryAndReturn: "/teslimat-ve-iade",
+  termsOfUse: "/kullanim-kosullari",
 } as const;
+
+/** Footer'da ve form onay kutularında kullanılan yasal linkler. */
+export const legalLinks = [
+  { label: "Mesafeli Satış Sözleşmesi", href: "/mesafeli-satis-sozlesmesi" },
+  { label: "Ön Bilgilendirme Formu", href: "/on-bilgilendirme-formu" },
+  { label: "Gizlilik Politikası", href: "/gizlilik-politikasi" },
+  { label: "KVKK Aydınlatma Metni", href: "/kvkk-aydinlatma-metni" },
+  { label: "Açık Rıza Metni", href: "/acik-riza-metni" },
+  { label: "Çerez Politikası", href: "/cerez-politikasi" },
+  { label: "Teslimat ve İade", href: "/teslimat-ve-iade" },
+  { label: "Kullanım Koşulları", href: "/kullanim-kosullari" },
+] as const;
 
 /** A homepage anchor that also works when linked from another route. */
 export const homeAnchor = (anchor: string) => `/${anchor}`;

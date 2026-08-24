@@ -30,6 +30,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: site.url, changeFrequency: "weekly", priority: 1 },
     { url: `${site.url}${routes.store}`, changeFrequency: "daily", priority: 0.9 },
     { url: `${site.url}${routes.blog}`, changeFrequency: "daily", priority: 0.8 },
+    { url: `${site.url}${routes.distanceSalesAgreement}`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${site.url}${routes.preliminaryInfo}`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${site.url}${routes.privacyPolicy}`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${site.url}${routes.kvkkDisclosure}`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${site.url}${routes.explicitConsent}`, changeFrequency: "monthly", priority: 0.4 },
+    { url: `${site.url}${routes.cookiePolicy}`, changeFrequency: "monthly", priority: 0.4 },
+    { url: `${site.url}${routes.deliveryAndReturn}`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${site.url}${routes.termsOfUse}`, changeFrequency: "monthly", priority: 0.5 },
   ]
 
   const productEntries: MetadataRoute.Sitemap =

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { anchors, homeAnchor, routes } from "@/lib/site";
+import { anchors, homeAnchor, legalLinks, routes } from "@/lib/site";
 import { getPublicSettings } from "@/lib/settings";
 
 /* Lucide dropped brand icons; these are minimal inline equivalents. */
@@ -45,6 +45,8 @@ const storeItems = [
   { label: "Hesabım", href: routes.account },
 ];
 
+const legalItems = legalLinks;
+
 export async function SiteFooter() {
   // Contact details and social links are editable from the admin content screen.
   // getPublicSettings is tag-cached and falls back to lib/site.ts, so the footer
@@ -62,8 +64,8 @@ export async function SiteFooter() {
   return (
     <footer className="bg-paper border-t border-ink/10">
       <div className="mx-auto max-w-[1200px] px-6 md:px-10 py-14 md:py-20">
-        <div className="grid gap-12 md:grid-cols-12">
-          <div className="md:col-span-4">
+        <div className="grid gap-10 md:grid-cols-12">
+          <div className="md:col-span-3">
             <Link
               href="/"
               prefetch={false}
@@ -82,6 +84,10 @@ export async function SiteFooter() {
               Sakarya Geyve&apos;de, kimyasal gübre ve ilaç kullanmadan
               yetiştirilen badem.
             </p>
+            <p className="mt-4 max-w-xs text-xs leading-relaxed text-ink/45">
+              ETBİS kayıtlı satıcıyız. Güvenli ödeme altyapısı ve 3D Secure ile
+              korunursunuz.
+            </p>
           </div>
 
           <nav aria-label="Alt menü" className="md:col-span-2">
@@ -97,13 +103,48 @@ export async function SiteFooter() {
                   </a>
                 </li>
               ))}
+              <li>
+                <Link
+                  href="/blog"
+                  prefetch={false}
+                  className="text-sm text-ink/70 hover:text-ink transition-colors duration-300"
+                >
+                  Blog
+                </Link>
+              </li>
             </ul>
           </nav>
 
-          <nav aria-label="Mağaza menüsü" className="md:col-span-3">
+          <nav aria-label="Mağaza menüsü" className="md:col-span-2">
             <h2 className="label text-olive">Alışveriş</h2>
             <ul className="mt-5 space-y-3">
               {storeItems.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    prefetch={false}
+                    className="text-sm text-ink/70 hover:text-ink transition-colors duration-300"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <Link
+                  href={routes.deliveryAndReturn}
+                  prefetch={false}
+                  className="text-sm text-ink/70 hover:text-ink transition-colors duration-300"
+                >
+                  Teslimat ve İade
+                </Link>
+              </li>
+            </ul>
+          </nav>
+
+          <nav aria-label="Yasal menü" className="md:col-span-2">
+            <h2 className="label text-olive">Yasal</h2>
+            <ul className="mt-5 space-y-3">
+              {legalItems.map((item) => (
                 <li key={item.href}>
                   <Link
                     href={item.href}
@@ -159,9 +200,34 @@ export async function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-14 flex flex-col gap-2 border-t border-ink/10 pt-6 text-xs text-ink/50 md:flex-row md:items-center md:justify-between">
+        {/* Güven / ödeme bandı */}
+        <div className="mt-12 flex flex-wrap items-center gap-3 border-t border-ink/10 pt-6 text-xs text-ink/50">
+          <span className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-ivory px-3 py-1.5">
+            <span className="h-2 w-2 rounded-full bg-brand" aria-hidden="true" />
+            256-bit SSL · 3D Secure
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-ivory px-3 py-1.5">
+            ETBİS Kayıtlı
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-ivory px-3 py-1.5">
+            14 gün cayma hakkı
+          </span>
+          <span className="ml-auto hidden text-ink/40 md:inline">
+            Ödeme altyapısı PCI-DSS uyumlu kuruluşlar üzerinden yürütülür; kart bilgileriniz bizde saklanmaz.
+          </span>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 border-t border-ink/10 pt-6 text-xs text-ink/50 md:flex-row md:items-center md:justify-between">
           <p>© {new Date().getFullYear()} Kabia Ekolojik. Tüm hakları saklıdır.</p>
-          <p>Sabırlar Köyü, Geyve — badem üreticisi</p>
+          <div className="flex flex-wrap gap-4">
+            <Link href={routes.kvkkDisclosure} className="hover:text-ink transition-colors">
+              KVKK
+            </Link>
+            <Link href={routes.cookiePolicy} className="hover:text-ink transition-colors">
+              Çerezler
+            </Link>
+            <span className="text-ink/35">Sabırlar Köyü, Geyve — badem üreticisi</span>
+          </div>
         </div>
       </div>
     </footer>

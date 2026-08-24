@@ -32,6 +32,8 @@ export function RegisterForm() {
   const [password, setPassword] = useState("");
   const [passwordRepeat, setPasswordRepeat] = useState("");
   const [terms, setTerms] = useState(false);
+  const [kvkk, setKvkk] = useState(false);
+  const [marketing, setMarketing] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
   // SEC-05: registration goes through the rate-limited server action.
@@ -64,8 +66,8 @@ export function RegisterForm() {
       nextErrors.password = "Şifre en az 6 karakter olmalı.";
     if (passwordRepeat !== password)
       nextErrors.passwordRepeat = "Şifreler eşleşmiyor.";
-    if (!terms)
-      nextErrors.terms = "Devam etmek için kullanım şartlarını kabul edin.";
+    if (!terms || !kvkk)
+      nextErrors.terms = "Üyelik sözleşmesi ve KVKK metinlerini onaylamanız gerekiyor.";
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -131,19 +133,70 @@ export function RegisterForm() {
           required
         />
 
-        <div>
-          <Checkbox
-            label="Kullanım şartlarını ve gizlilik politikasını kabul ediyorum."
-            checked={terms}
-            onChange={(e) => setTerms(e.target.checked)}
-            aria-invalid={!!errors.terms || undefined}
-            aria-describedby={errors.terms ? "terms-error" : undefined}
-          />
+        {/* Yasal onaylar — gerçek e-ticaret siteleriyle uyumlu */}
+        <div className="space-y-4 rounded-theme-card border border-ink/10 bg-paper p-5">
+          <p className="label text-olive">Yasal onaylar</p>
+          <div>
+            <Checkbox
+              label={
+                <span className="leading-relaxed">
+                  <Link href={routes.termsOfUse} target="_blank" className="text-brand hover:text-forest underline underline-offset-4">
+                    Üyelik Sözleşmesi ve Kullanım Koşulları
+                  </Link>
+                  ’nı okudum, onaylıyorum. <span className="text-clay">*</span>
+                </span>
+              }
+              checked={terms}
+              onChange={(e) => setTerms(e.target.checked)}
+              aria-invalid={!!errors.terms || undefined}
+              aria-describedby={errors.terms ? "terms-error" : undefined}
+            />
+          </div>
+          <div>
+            <Checkbox
+              label={
+                <span className="leading-relaxed">
+                  <Link href={routes.kvkkDisclosure} target="_blank" className="text-brand hover:text-forest underline underline-offset-4">
+                    KVKK Aydınlatma Metni
+                  </Link>{" "}
+                  ve{" "}
+                  <Link href={routes.privacyPolicy} target="_blank" className="text-brand hover:text-forest underline underline-offset-4">
+                    Gizlilik Politikası
+                  </Link>
+                  ’nı okudum, kişisel verilerimin işlenmesini onaylıyorum. <span className="text-clay">*</span>
+                </span>
+              }
+              checked={kvkk}
+              onChange={(e) => setKvkk(e.target.checked)}
+              aria-invalid={!!errors.terms || undefined}
+              aria-describedby={errors.terms ? "terms-error" : undefined}
+            />
+          </div>
           {errors.terms && (
-            <p id="terms-error" role="alert" className="mt-2 text-xs text-clay">
+            <p id="terms-error" role="alert" className="text-xs text-clay">
               {errors.terms}
             </p>
           )}
+          <div className="border-t border-ink/10 pt-4">
+            <Checkbox
+              label={
+                <span className="leading-relaxed text-ink/60">
+                  Kampanya, indirim ve yeniliklerden haberdar olmak için{" "}
+                  <Link href={routes.explicitConsent} target="_blank" className="text-brand hover:text-forest underline underline-offset-4">
+                    Açık Rıza Metni
+                  </Link>{" "}
+                  kapsamında ticari elektronik ileti almak istiyorum. (İsteğe bağlı)
+                </span>
+              }
+              checked={marketing}
+              onChange={(e) => setMarketing(e.target.checked)}
+            />
+            <input type="hidden" name="marketing_consent" value={marketing ? "1" : "0"} />
+          </div>
+          <p className="text-xs leading-relaxed text-ink/45">
+            <span className="text-clay">*</span> işaretli alanların onayı üyelik için zorunludur. Verileriniz KVKK’ya uygun işlenir; dilediğiniz zaman
+            hesabınızdan veya <Link href={routes.kvkkDisclosure} className="underline underline-offset-4">başvuru</Link> ile haklarınızı kullanabilirsiniz.
+          </p>
         </div>
 
         <Button type="submit" size="lg" className="w-full">

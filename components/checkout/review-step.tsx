@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/field";
 import { formatTL } from "@/lib/products";
+import { routes } from "@/lib/site";
 import type { CartItem } from "@/lib/cart-context";
 import type { SavedAddress } from "@/lib/checkout-context";
 import { maskedCardNumber } from "./validation";
@@ -50,6 +54,10 @@ export function ReviewStep({
   onBack,
   onConfirm,
   submitting,
+  agreedSales,
+  agreedKvkk,
+  onAgreedSalesChange,
+  onAgreedKvkkChange,
 }: {
   items: CartItem[];
   subtotal: number;
@@ -64,7 +72,13 @@ export function ReviewStep({
   onBack: () => void;
   onConfirm: () => void;
   submitting: boolean;
+  agreedSales: boolean;
+  agreedKvkk: boolean;
+  onAgreedSalesChange: (v: boolean) => void;
+  onAgreedKvkkChange: (v: boolean) => void;
 }) {
+  const [touched, setTouched] = useState(false);
+  const showError = touched && (!agreedSales || !agreedKvkk);
   return (
     <section aria-labelledby="review-heading">
       <h1 id="review-heading" className="text-3xl tracking-tight md:text-4xl">
@@ -142,8 +156,76 @@ export function ReviewStep({
         </div>
       </dl>
 
+      {/* Yasal onay kutuları — sipariş için zorunlu (Trendyol/Hepsiburada benzeri) */}
+      <div className="mt-8 rounded-theme-card border border-ink/10 bg-paper p-5">
+        <h2 className="label text-olive">Onaylar</h2>
+        <div className="mt-4 space-y-4">
+          <Checkbox
+            label={
+              <span className="text-sm leading-relaxed">
+                <Link href={routes.distanceSalesAgreement} target="_blank" className="font-medium text-brand hover:text-forest underline underline-offset-4">
+                  Mesafeli Satış Sözleşmesi
+                </Link>
+                ,{" "}
+                <Link href={routes.preliminaryInfo} target="_blank" className="font-medium text-brand hover:text-forest underline underline-offset-4">
+                  Ön Bilgilendirme Formu
+                </Link>{" "}
+                ve{" "}
+                <Link href={routes.deliveryAndReturn} target="_blank" className="font-medium text-brand hover:text-forest underline underline-offset-4">
+                  Teslimat ve İade Koşulları
+                </Link>
+                ’nı okudum, onaylıyorum. <span className="text-clay">*</span>
+              </span>
+            }
+            checked={agreedSales}
+            onChange={(e) => onAgreedSalesChange(e.target.checked)}
+            aria-invalid={showError && !agreedSales ? true : undefined}
+          />
+          <Checkbox
+            label={
+              <span className="text-sm leading-relaxed">
+                <Link href={routes.kvkkDisclosure} target="_blank" className="font-medium text-brand hover:text-forest underline underline-offset-4">
+                  KVKK Aydınlatma Metni
+                </Link>{" "}
+                ve{" "}
+                <Link href={routes.privacyPolicy} target="_blank" className="font-medium text-brand hover:text-forest underline underline-offset-4">
+                  Gizlilik Politikası
+                </Link>
+                ’nı okudum, kişisel verilerimin siparişin yerine getirilmesi amacıyla işlenmesini onaylıyorum.{" "}
+                <span className="text-clay">*</span>
+              </span>
+            }
+            checked={agreedKvkk}
+            onChange={(e) => onAgreedKvkkChange(e.target.checked)}
+            aria-invalid={showError && !agreedKvkk ? true : undefined}
+          />
+          {showError && (
+            <p role="alert" className="text-xs text-clay">
+              Siparişi onaylamak için sözleşmeleri onaylamanız gerekiyor.
+            </p>
+          )}
+          <p className="text-xs leading-relaxed text-ink/45">
+            Siparişi onayladığınızda 14 gün cayma hakkınızın istisnalarını (ambalajı açılmış gıda) kabul etmiş sayılırsınız. Detaylar{" "}
+            <Link href={routes.deliveryAndReturn} target="_blank" className="underline underline-offset-4">
+              Teslimat ve İade
+            </Link>{" "}
+            sayfasında.
+          </p>
+        </div>
+      </div>
+
       <div className="mt-6 flex flex-wrap items-center gap-7">
-        <Button size="lg" onClick={onConfirm} disabled={submitting}>
+        <Button
+          size="lg"
+          onClick={() => {
+            if (!agreedSales || !agreedKvkk) {
+              setTouched(true);
+              return;
+            }
+            onConfirm();
+          }}
+          disabled={submitting}
+        >
           {submitting ? "Sipariş oluşturuluyor…" : "Siparişi onayla"}
         </Button>
         <button

@@ -55,6 +55,8 @@ export function CheckoutFlow() {
   const [payment, setPayment] = useState<PaymentData>(EMPTY_PAYMENT);
   const [orderSnapshot, setOrderSnapshot] = useState<OrderSnapshot | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [agreedSales, setAgreedSales] = useState(false);
+  const [agreedKvkk, setAgreedKvkk] = useState(false);
 
   const shippingCost =
     subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : SHIPPING_COST;
@@ -86,6 +88,10 @@ export function CheckoutFlow() {
 
   const handleConfirmOrder = async () => {
     if (submitting || !selectedAddress) return;
+    if (!agreedSales || !agreedKvkk) {
+      toast.error("Lütfen mesafeli satış sözleşmesi ve KVKK metnini onaylayın.");
+      return;
+    }
     setSubmitting(true);
     const supabase = createSupabaseBrowserClient();
     const addressSnapshot = {
@@ -136,6 +142,8 @@ export function CheckoutFlow() {
     setFurthestIndex(STEP_ORDER.indexOf("confirmation"));
     setStep("confirmation");
     setPayment(EMPTY_PAYMENT);
+    setAgreedSales(false);
+    setAgreedKvkk(false);
     clearCart();
     await refresh();
   };
@@ -196,6 +204,10 @@ export function CheckoutFlow() {
                 onBack={() => setStep("payment")}
                 onConfirm={handleConfirmOrder}
                 submitting={submitting}
+                agreedSales={agreedSales}
+                agreedKvkk={agreedKvkk}
+                onAgreedSalesChange={setAgreedSales}
+                onAgreedKvkkChange={setAgreedKvkk}
               />
             )}
             {step === "confirmation" && orderSnapshot && (
