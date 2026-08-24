@@ -194,20 +194,20 @@ function getAnonClient(): SupabaseClient | null {
 
 async function fetchFeaturedUncached(): Promise<Product[]> {
   const client = getAnonClient()
-  if (!client) return []
+  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
   return fetchFeaturedProducts(client)
 }
 async function fetchProductsUncached(): Promise<Product[]> {
   const client = getAnonClient()
-  if (!client) return []
+  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
   return fetchLeanProducts(client, 4)
 }
 
-export const getCachedFeaturedProducts = unstable_cache(fetchFeaturedUncached, ["kabia-featured-products"], {
+export const getCachedFeaturedProducts = unstable_cache(fetchFeaturedUncached, ["kabia-featured-products-v2"], {
   revalidate: 300,
   tags: ["catalog-featured"],
 })
-export const getCachedHomepageProducts = unstable_cache(fetchProductsUncached, ["kabia-homepage-products"], {
+export const getCachedHomepageProducts = unstable_cache(fetchProductsUncached, ["kabia-homepage-products-v2"], {
   revalidate: 300,
   tags: ["catalog-homepage"],
 })
