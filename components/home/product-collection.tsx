@@ -47,10 +47,12 @@ function ProductPlaceholder({ name }: { name: string }) {
  */
 export async function ProductCollection() {
   const supabase = await createSupabaseServerClient();
-  const featured = await fetchFeaturedProducts(supabase);
-  const items: Product[] = (
-    featured.length > 0 ? featured : await fetchProducts(supabase)
-  ).slice(0, 4);
+  // Paralel fetch + limit(4) sayesinde tek round-trip: featured boşsa fallback kullan
+  const [featured, fallback] = await Promise.all([
+    fetchFeaturedProducts(supabase),
+    fetchProducts(supabase).then((all) => all.slice(0, 4)),
+  ]);
+  const items: Product[] = featured.length > 0 ? featured : fallback;
 
   return (
     <section

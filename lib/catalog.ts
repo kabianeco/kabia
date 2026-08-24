@@ -138,6 +138,7 @@ export async function fetchPublicProducts(
     .select(PRODUCT_SELECT)
     .eq("is_active", true)
     .order("created_at", { ascending: true })
+    .limit(50)
   if (error || !data) return { status: "error" }
   return {
     status: "ok",
@@ -158,6 +159,7 @@ export async function fetchFeaturedProducts(client: SupabaseClient): Promise<Pro
     .eq("is_active", true)
     .eq("is_featured", true)
     .order("created_at", { ascending: true })
+    .limit(4)
   if (error || !data) return []
   return data.map((row) => mapProduct(row as unknown as ProductRow, false))
 }
