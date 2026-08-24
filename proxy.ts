@@ -1,6 +1,5 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
-import { randomBytes } from "crypto"
 import { classifyAuthError, isPublicAdminPath } from "@/lib/admin/access"
 
 /**
@@ -20,9 +19,16 @@ import { classifyAuthError, isPublicAdminPath } from "@/lib/admin/access"
 // SEC-09: Security headers and per-request nonce
 // ---------------------------------------------------------------------------
 
-/** Generates a cryptographically random nonce for CSP. */
+/** Generates a cryptographically random nonce for CSP. Edge uyumlu: Node crypto yerine Web Crypto kullanır. */
 function generateNonce(): string {
-  return randomBytes(16).toString("base64")
+  // Edge runtime'da Node 'crypto' modülü yoktur, Web Crypto (globalThis.crypto) her yerde vardır.
+  // 16 byte = 128 bit nonce, base64 olarak CSP 'nonce-...' ile uyumlu.
+  const bytes = new Uint8Array(16)
+  // globalThis.crypto Edge ve Node 18+ üzerinde mevcut
+  globalThis.crypto.getRandomValues(bytes)
+  let binary = ""
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+  return btoa(binary)
 }
 
 /** Derives the Supabase auth origin for OAuth redirect and CSP connect-src. */

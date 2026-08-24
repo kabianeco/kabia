@@ -13,9 +13,14 @@ let browserClient: SupabaseClient | null = null
 
 export function createSupabaseBrowserClient(): SupabaseClient {
   if (browserClient) return browserClient
-  browserClient = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) {
+    console.error("[supabase] NEXT_PUBLIC_SUPABASE_URL / ANON_KEY eksik (browser) — Vercel env kontrol edin.")
+    // Build-time inline env boşsa placeholder ile devam et, runtime hatası yerine sessiz kal
+    browserClient = createBrowserClient("https://placeholder.supabase.co", "placeholder-anon-key")
+    return browserClient
+  }
+  browserClient = createBrowserClient(url, key)
   return browserClient
 }
