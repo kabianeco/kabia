@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache"
+import { createClient } from "@supabase/supabase-js"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import {
   CATEGORIES,
@@ -163,6 +165,34 @@ export async function fetchFeaturedProducts(client: SupabaseClient): Promise<Pro
   if (error || !data) return []
   return data.map((row) => mapProduct(row as unknown as ProductRow, false))
 }
+
+function getAnonClient(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  return createClient(url, key, { auth: { persistSession: false } })
+}
+
+async function fetchFeaturedUncached(): Promise<Product[]> {
+  const client = getAnonClient()
+  if (!client) return []
+  return fetchFeaturedProducts(client)
+}
+async function fetchProductsUncached(): Promise<Product[]> {
+  const client = getAnonClient()
+  if (!client) return []
+  const result = await fetchPublicProducts(client)
+  return result.status === "ok" ? result.products.slice(0, 4) : []
+}
+
+export const getCachedFeaturedProducts = unstable_cache(fetchFeaturedUncached, ["kabia-featured-products"], {
+  revalidate: 300,
+  tags: ["catalog-featured"],
+})
+export const getCachedHomepageProducts = unstable_cache(fetchProductsUncached, ["kabia-homepage-products"], {
+  revalidate: 300,
+  tags: ["catalog-homepage"],
+})
 
 export async function fetchProductBySlug(
   client: SupabaseClient,

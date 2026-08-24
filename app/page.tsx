@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { IntroSequence } from "@/components/home/intro-sequence";
@@ -24,7 +25,17 @@ export default function HomePage() {
       <main>
         <IntroSequence />
         <BrandManifesto />
-        <ProductCollection />
+        <Suspense
+          fallback={
+            <section className="border-y border-ink/10 bg-paper">
+              <div className="wrap py-24 md:py-32">
+                <div className="h-64 animate-pulse bg-paper" aria-hidden="true" />
+              </div>
+            </section>
+          }
+        >
+          <ProductCollection />
+        </Suspense>
         <OriginStory />
         <ProcessStory />
         <Principles />

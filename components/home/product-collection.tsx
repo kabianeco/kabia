@@ -2,8 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { products as copy } from "@/content/homepage";
 import { Reveal } from "@/components/motion/reveal";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { fetchFeaturedProducts, fetchProducts } from "@/lib/catalog";
+import { getCachedFeaturedProducts, getCachedHomepageProducts } from "@/lib/catalog";
 import { categoryLabel, formatTL, type Product } from "@/lib/products";
 import { routes } from "@/lib/site";
 import { ArrowLink } from "@/components/ui/button";
@@ -46,12 +45,9 @@ function ProductPlaceholder({ name }: { name: string }) {
  * never empty while the shop has stock.
  */
 export async function ProductCollection() {
-  const supabase = await createSupabaseServerClient();
-  // Paralel fetch + limit(4) sayesinde tek round-trip: featured boşsa fallback kullan
-  const [featured, fallback] = await Promise.all([
-    fetchFeaturedProducts(supabase),
-    fetchProducts(supabase).then((all) => all.slice(0, 4)),
-  ]);
+  // Cache'li okuma: her istek Supabase'e gitmez, 60sn boyunca edge cache'ten gelir.
+  // Ayrica paralel, tek round-trip etkisi.
+  const [featured, fallback] = await Promise.all([getCachedFeaturedProducts(), getCachedHomepageProducts()]);
   const items: Product[] = featured.length > 0 ? featured : fallback;
 
   return (
