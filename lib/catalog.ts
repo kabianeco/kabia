@@ -121,6 +121,14 @@ const PRODUCT_SELECT = `
   nutrition_facts(calories, protein, carbohydrates, fat, fiber, sodium)
 `
 
+// Lean select for listing pages (anasayfa, magaza): sadece kartta görünen alanlar + rating
+const PRODUCT_LEAN_SELECT = `
+  id, slug, name, base_price, main_image_url,
+  short_description, is_active, is_featured, created_at,
+  rating_avg, rating_count,
+  category:categories(slug)
+`
+
 // ---- async fetch functions (accept a server or browser client) ----
 
 export type PublicProductsResult =
@@ -157,11 +165,22 @@ export async function fetchProducts(client: SupabaseClient): Promise<Product[]> 
 export async function fetchFeaturedProducts(client: SupabaseClient): Promise<Product[]> {
   const { data, error } = await client
     .from("products")
-    .select(PRODUCT_SELECT)
+    .select(PRODUCT_LEAN_SELECT)
     .eq("is_active", true)
     .eq("is_featured", true)
     .order("created_at", { ascending: true })
     .limit(4)
+  if (error || !data) return []
+  return data.map((row) => mapProduct(row as unknown as ProductRow, false))
+}
+
+export async function fetchLeanProducts(client: SupabaseClient, limit = 4): Promise<Product[]> {
+  const { data, error } = await client
+    .from("products")
+    .select(PRODUCT_LEAN_SELECT)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .limit(limit)
   if (error || !data) return []
   return data.map((row) => mapProduct(row as unknown as ProductRow, false))
 }
@@ -181,8 +200,7 @@ async function fetchFeaturedUncached(): Promise<Product[]> {
 async function fetchProductsUncached(): Promise<Product[]> {
   const client = getAnonClient()
   if (!client) return []
-  const result = await fetchPublicProducts(client)
-  return result.status === "ok" ? result.products.slice(0, 4) : []
+  return fetchLeanProducts(client, 4)
 }
 
 export const getCachedFeaturedProducts = unstable_cache(fetchFeaturedUncached, ["kabia-featured-products"], {
@@ -216,20 +234,15 @@ export async function fetchRelatedProducts(
   product: Product,
   count = 4,
 ): Promise<Product[]> {
-  // same category first, then the rest
-  const { data: same } = await client
-    .from("products")
-    .select(PRODUCT_SELECT)
-    .eq("is_active", true)
-    .eq("category_id", await categoryIdBySlug(client, product.category))
-    .neq("slug", product.slug)
-    .order("created_at", { ascending: true })
-  const { data: rest } = await client
-    .from("products")
-    .select(PRODUCT_SELECT)
-    .eq("is_active", true)
-    .neq("slug", product.slug)
-    .order("created_at", { ascending: true })
+  const categoryId = await categoryIdBySlug(client, product.category)
+  const [sameRes, restRes] = await Promise.all([
+    categoryId
+      ? client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).eq("category_id", categoryId).neq("slug", product.slug).order("created_at", { ascending: true }).limit(count)
+      : Promise.resolve({ data: [] as unknown[] }),
+    client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).neq("slug", product.slug).order("created_at", { ascending: true }).limit(count),
+  ])
+  const same = (sameRes as { data: unknown[] | null }).data
+  const rest = (restRes as { data: unknown[] | null }).data
   const combined = [
     ...(same ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),
     ...(rest ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),

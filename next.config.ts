@@ -10,7 +10,10 @@ try {
 }
 
 const nextConfig: NextConfig = {
+  compress: true,
+  poweredByHeader: false,
   images: {
+    formats: ["image/avif", "image/webp"],
     // Product imagery is served from Supabase Storage; the seeded catalogue
     // still points at picsum placeholders. Both are allow-listed so next/image
     // can optimise them instead of falling back to unoptimised delivery.
@@ -21,6 +24,9 @@ const nextConfig: NextConfig = {
         ? [{ protocol: "https" as const, hostname: supabaseHost }]
         : []),
     ],
+  },
+  experimental: {
+    optimizePackageImports: ["lucide-react", "framer-motion", "recharts", "@react-three/fiber", "@react-three/drei", "sonner"],
   },
   async redirects() {
     return [
