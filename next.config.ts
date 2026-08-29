@@ -33,7 +33,6 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion", "recharts", "@react-three/fiber", "@react-three/drei", "sonner"],
-    optimizeCss: true,
   },
   async redirects() {
     return [
