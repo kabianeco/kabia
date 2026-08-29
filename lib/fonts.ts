@@ -37,6 +37,7 @@ export const instrumentSans = Instrument_Sans({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600"],
   display: "swap",
+  preload: true,
 });
 
 export const instrumentSerif = Instrument_Serif({
@@ -45,6 +46,7 @@ export const instrumentSerif = Instrument_Serif({
   weight: "400",
   style: ["normal", "italic"],
   display: "swap",
+  preload: true,
 });
 
 export const manrope = Manrope({
@@ -52,6 +54,7 @@ export const manrope = Manrope({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600"],
   display: "swap",
+  preload: false,
 });
 
 export const dmSans = DM_Sans({
@@ -59,6 +62,7 @@ export const dmSans = DM_Sans({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600"],
   display: "swap",
+  preload: false,
 });
 
 export const sourceSans3 = Source_Sans_3({
@@ -66,6 +70,7 @@ export const sourceSans3 = Source_Sans_3({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600"],
   display: "swap",
+  preload: false,
 });
 
 export const fraunces = Fraunces({
@@ -74,6 +79,7 @@ export const fraunces = Fraunces({
   weight: ["400"],
   style: ["normal", "italic"],
   display: "swap",
+  preload: false,
 });
 
 export const cormorantGaramond = Cormorant_Garamond({
@@ -82,6 +88,7 @@ export const cormorantGaramond = Cormorant_Garamond({
   weight: ["400", "500"],
   style: ["normal", "italic"],
   display: "swap",
+  preload: false,
 });
 
 export const lora = Lora({
@@ -90,6 +97,7 @@ export const lora = Lora({
   weight: ["400", "500"],
   style: ["normal", "italic"],
   display: "swap",
+  preload: false,
 });
 
 /**

@@ -50,6 +50,8 @@ export function OriginStory() {
                     alt={image.alt}
                     fill
                     sizes="(min-width: 768px) 45vw, 100vw"
+                    loading="lazy"
+                    decoding="async"
                     className="object-cover"
                   />
                 </div>

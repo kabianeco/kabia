@@ -12,8 +12,14 @@ try {
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
+  },
   images: {
     formats: ["image/avif", "image/webp"],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
     // Product imagery is served from Supabase Storage; the seeded catalogue
     // still points at picsum placeholders. Both are allow-listed so next/image
     // can optimise them instead of falling back to unoptimised delivery.
@@ -27,6 +33,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion", "recharts", "@react-three/fiber", "@react-three/drei", "sonner"],
+    optimizeCss: true,
   },
   async redirects() {
     return [

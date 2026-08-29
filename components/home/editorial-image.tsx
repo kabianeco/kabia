@@ -19,17 +19,19 @@ export function EditorialImage() {
   const y = useTransform(scrollYProgress, [0, 1], ["-6%", "6%"]);
 
   return (
-    <figure ref={ref} className="relative">
+    <figure ref={ref} className="relative" style={{ contentVisibility: "auto" } as React.CSSProperties}>
       <div className="relative h-[64vh] overflow-hidden rounded-media md:h-[82vh]">
         <motion.div
           className="absolute inset-x-0 -inset-y-[8%]"
-          style={reducedMotion ? undefined : { y }}
+          style={reducedMotion ? undefined : { y, willChange: "transform" } as never}
         >
           <Image
             src={editorialImage.src}
             alt={editorialImage.alt}
             fill
             sizes="100vw"
+            loading="lazy"
+            decoding="async"
             className="object-cover"
           />
         </motion.div>
