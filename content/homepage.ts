@@ -37,7 +37,7 @@ export const intro = {
   },
   final: {
     /* Broken into two lines for the controlled full-screen setting. */
-    statementA: "Badem aceleye",
+    statementA: "Badem",
     statementB: "gelmez.",
     ctaLabel: "Keşfet",
   },
@@ -50,7 +50,7 @@ export const intro = {
 } as const;
 
 export const manifesto = {
-  statementA: "Badem aceleye gelmez;",
+  statementA: "Badem gelmez;",
   statementB: "biz de acele etmiyoruz.",
   body: "Kabia Ekolojik, Geyve'nin dağ köyü Sabırlar'da badem yetiştirir. Bahçeye kimyasal gübre ve ilaç girmez; ürüne katkı maddesi eklenmez. Az ama iyi üretmeyi tercih ediyoruz.",
 } as const;
