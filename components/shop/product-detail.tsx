@@ -19,10 +19,10 @@ import { EASE } from "@/lib/motion";
 import { STOCK_BADGE_STYLE } from "@/lib/theme-engine/stock-badge-style";
 
 const GUARANTEES = [
- { label: "Ücretsiz kargo", detail: "500₺ üzeri siparişlerde" },
- { label: "15 gün iade", detail: "Açılmamış ürünlerde" },
- { label: "Tek kaynak", detail: "Geyve, Sabırlar" },
- { label: "Katkısız", detail: "Yalnızca badem" },
+  { label: "Ücretsiz kargo", detail: "500₺ üzeri siparişlerde" },
+  { label: "15 gün iade", detail: "Açılmamış ürünlerde" },
+  { label: "Tek kaynak", detail: "Kabia Ekolojik" },
+  { label: "Katkısız", detail: "Koruyucu ve katkı maddesi içermez" },
 ];
 
 const TABS = [
@@ -205,10 +205,12 @@ export function ProductDetail({
  <div className="lg:col-span-5 lg:col-start-8">
           <p className="label text-olive" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {product.slug === "kabuklu-badem" ? (
- <span style={{ fontSize: 10, letterSpacing: "0.08em", background: "var(--primary-accent)", color: "white", padding: "3px 8px", borderRadius: 999, fontWeight: 600 }}>ORGANİK SERTİFİKALI</span>
- ) : (
- <span style={{ fontSize: 10, letterSpacing: "0.08em", background: "var(--bg-accent-wash)", color: "var(--text-muted)", border: "1px solid var(--border-color)", padding: "3px 8px", borderRadius: 999, fontWeight: 500 }}>DOĞAL · Sertifikasız</span>
- )}
+  <span style={{ fontSize: 10, letterSpacing: "0.08em", background: "var(--primary-accent)", color: "white", padding: "3px 8px", borderRadius: 999, fontWeight: 600 }}>ORGANİK SERTİFİKALI</span>
+  ) : ["eriste", "tarhana", "domates-salcasi"].includes(product.slug) ? (
+  <span style={{ fontSize: 10, letterSpacing: "0.08em", background: "var(--bg-accent-wash)", color: "var(--text-muted)", border: "1px solid var(--border-color)", padding: "3px 8px", borderRadius: 999, fontWeight: 500 }}>GELENEKSEL · Sertifikasız</span>
+  ) : (
+  <span style={{ fontSize: 10, letterSpacing: "0.08em", background: "var(--bg-accent-wash)", color: "var(--text-muted)", border: "1px solid var(--border-color)", padding: "3px 8px", borderRadius: 999, fontWeight: 500 }}>DOĞAL · Sertifikasız</span>
+  )}
  </p>
   <h1 className="mt-4 text-3xl leading-[1.1] tracking-tight md:text-4xl">
   {product.name}
@@ -392,9 +394,14 @@ export function ProductDetail({
  <dd className="text-sm text-ink/70">{value}</dd>
  </div>
  ))}
- </dl>
- </div>
- )}
+  </dl>
+  {product.slug === "kabuklu-badem" && (
+  <a href="/images/sertifika.jpeg" target="_blank" rel="noopener noreferrer" style={{ display: "block", marginTop: 16, border: "1px solid var(--border-color)", borderRadius: 12, overflow: "hidden" }}>
+  <Image src="/images/sertifika.jpeg" alt="Organik Tarım Sertifikası" width={800} height={1100} style={{ width: "100%", height: "auto", display: "block" }} />
+  </a>
+  )}
+  </div>
+  )}
 
 
  </div>

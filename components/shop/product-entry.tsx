@@ -49,6 +49,8 @@ export function ProductEntry({
           <p className="label text-olive" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
             {product.slug === "kabuklu-badem" ? (
               <span style={{ fontSize: 9, letterSpacing: "0.06em", background: "var(--primary-accent)", color: "white", padding: "2px 6px", borderRadius: 999, fontWeight: 600 }}>ORGANİK</span>
+            ) : ["eriste", "tarhana", "domates-salcasi"].includes(product.slug) ? (
+              <span style={{ fontSize: 9, letterSpacing: "0.06em", background: "var(--bg-accent-wash)", color: "var(--text-muted)", border: "1px solid var(--border-color)", padding: "2px 6px", borderRadius: 999 }}>GELENEKSEL</span>
             ) : (
               <span style={{ fontSize: 9, letterSpacing: "0.06em", background: "var(--bg-accent-wash)", color: "var(--text-muted)", border: "1px solid var(--border-color)", padding: "2px 6px", borderRadius: 999 }}>DOĞAL</span>
             )}
