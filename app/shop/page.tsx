@@ -1,252 +1,150 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import Link from "next/link";
-import { PageShell } from "@/components/layout/page-shell";
-import { ProductEntry } from "@/components/shop/product-entry";
-import { ArrowLink } from "@/components/ui/button";
+import Image from "next/image";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fetchPublicProducts } from "@/lib/catalog";
-import { CATEGORIES, type Product, type ProductCategory } from "@/lib/products";
-import { routes } from "@/lib/site";
-import { getPublicSettings } from "@/lib/settings";
-import { shopBannerVisible, type ShopBannerSettings } from "@/lib/shop-banner";
-import { ShopHeroBanner } from "@/components/shop/shop-hero-banner";
+import { CORRIDORS, type Product } from "@/lib/products";
+import "../documentary.css";
 
 export const metadata: Metadata = {
-  title: "Mağaza",
-  description:
-    "Geyve'deki bahçelerimizden çiğ badem, kavrulmuş badem, badem unu ve badem ezmesi. Katkısız, tek kaynaktan.",
-  alternates: { canonical: "/magaza" },
+  title: "Hasat Listesi — Kabia Ekolojik",
+  description: "Hasat — Kabuklu badem (organik, sadece kabuklu), ceviz, fındık, bal, salça, sirke, erişte, tarhana. Doğal, izlenebilir, hikâyesiyle.",
 };
 
-type SortOption = "onerilen" | "fiyat-artan" | "fiyat-azalan" | "en-yeni";
-
-const SORT_OPTIONS: { id: SortOption; label: string }[] = [
-  { id: "onerilen", label: "Önerilen" },
-  { id: "fiyat-artan", label: "Artan fiyat" },
-  { id: "fiyat-azalan", label: "Azalan fiyat" },
-  { id: "en-yeni", label: "En yeni" },
-];
-
-const isSort = (v: string | undefined): v is SortOption =>
-  SORT_OPTIONS.some((o) => o.id === v);
-
-/** Filters are links, not client state: the view stays server-rendered and
- *  every combination is a shareable URL. */
-function shopHref(category: string, sort: SortOption) {
-  const params = new URLSearchParams();
-  if (category !== "tumu") params.set("kategori", category);
-  if (sort !== "onerilen") params.set("sirala", sort);
-  const qs = params.toString();
-  return qs ? `${routes.store}?${qs}` : routes.store;
+function LedgerRow({ product }: { product: Product }) {
+ const isOrganic = product.slug === "kabuklu-badem";
+ return (
+ <Link
+ href={`/shop/${product.slug}`}
+ prefetch={false}
+ style={{
+ display: "grid",
+ gridTemplateColumns: "88px 1fr auto",
+ gap: 16,
+ padding: "16px 0",
+ borderBottom: "1px solid var(--border-color)",
+ textDecoration: "none",
+ alignItems: "center",
+ }}
+ >
+ <span style={{ position: "relative", width: 88, height: 88, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border-color)", background: "var(--bg-card)", display: "block" }}>
+ {product.mainImageUrl ? (
+ <Image src={product.mainImageUrl} alt={product.name} fill style={{ objectFit: "cover" }} sizes="88px" />
+ ) : null}
+ </span>
+ <span style={{ minWidth: 0 }}>
+ <span style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+ <strong style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--text-heading)", fontWeight: 600 }}>{product.name}</strong>
+ {isOrganic ? (
+  <span style={{ fontSize: 10, letterSpacing: "0.07em", background: "white", color: "var(--primary-accent)", border: "1px solid var(--primary-accent)", padding: "3px 8px", borderRadius: 999, fontWeight: 700 }}>ORGANİK</span>
+ ) : (
+ <span style={{ fontSize: 9, letterSpacing: "0.06em", background: "var(--bg-accent-wash)", color: "var(--text-muted)", border: "1px solid var(--border-color)", padding: "3px 7px", borderRadius: 999 }}>DOĞAL</span>
+ )}
+ </span>
+ <span style={{ display: "block", fontFamily: "var(--font-label)", fontSize: 11, letterSpacing: "0.06em", color: "var(--text-muted)", marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+ {product.origin || "Geyve"} · {product.shortDescription?.slice(0, 48) ?? "Hikâyesiyle"}
+ </span>
+ <span style={{ fontSize: 12, color: "var(--text-body)", marginTop: 4, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" as any }}>{product.shortDescription}</span>
+ </span>
+ <span style={{ textAlign: "right", minWidth: 90 }}>
+ <span style={{ display: "block", fontFamily: "var(--font-heading)", fontSize: 15, fontWeight: 600, color: "var(--text-heading)" }}>₺{product.price.toFixed(2).replace(".", ",")}</span>
+ <span style={{ display: "block", fontFamily: "var(--font-label)", fontSize: 10, letterSpacing: "0.08em", color: "var(--primary-accent)", marginTop: 6 }}>Gör →</span>
+ </span>
+ </Link>
+ );
 }
 
-function sortProducts(list: Product[], sort: SortOption): Product[] {
-  switch (sort) {
-    case "fiyat-artan":
-      return [...list].sort((a, b) => a.price - b.price);
-    case "fiyat-azalan":
-      return [...list].sort((a, b) => b.price - a.price);
-    case "en-yeni":
-      // fetchProducts returns oldest-first, so newest is the reverse.
-      return [...list].reverse();
-    default:
-      return list;
-  }
-}
+export default async function ShopPage() {
+ const supabase = await createSupabaseServerClient();
+ const result = await fetchPublicProducts(supabase);
+ const all: Product[] = result.status === "ok" ? result.products : [];
 
-function GridSkeleton() {
-  return (
-    <div aria-busy="true">
-      <span className="sr-only">Ürünler yükleniyor</span>
-      <ul className="grid grid-cols-1 gap-x-8 gap-y-14 pt-14 pb-24 sm:grid-cols-2 md:pb-32 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <li key={i}>
-            <div className="aspect-[4/5] animate-pulse rounded-theme-product-image bg-paper" />
-            <div className="mt-5 border-t border-ink/10 pt-4">
-              <div className="h-3 w-16 animate-pulse bg-paper" />
-              <div className="mt-3 h-5 w-3/4 animate-pulse bg-paper" />
-              <div className="mt-3 h-5 w-20 animate-pulse bg-paper" />
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+ const ciftlik = all.filter((p) => p.slug === "kabuklu-badem");
+ const secki = all.filter((p) => (CORRIDORS.secki.categories as string[]).includes(p.category));
+ const mutfak = all.filter((p) => (CORRIDORS.mutfak.categories as string[]).includes(p.category));
 
-/**
- * The catalogue read is isolated in its own async component so only the grid
- * streams. Keeping the Suspense boundary here — rather than in a segment-level
- * loading.tsx — means `/shop/[slug]` is not wrapped in one, which is what lets
- * an unknown product still answer with a real 404 instead of a streamed 200.
- */
-async function ProductGrid({
-  activeCategory,
-  sort,
-}: {
-  activeCategory: ProductCategory | "tumu";
-  sort: SortOption;
-}) {
-  const supabase = await createSupabaseServerClient();
-  const result = await fetchPublicProducts(supabase);
-  if (result.status === "error") {
-    return (
-      <div role="alert" className="py-24 text-center">
-        <p className="font-theme-display text-2xl italic text-clay">
-          Ürünler şu anda yüklenemiyor.
-        </p>
-        <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-ink/55">
-          Mağaza sayfası açık kalacak. Lütfen daha sonra yeniden deneyin.
-        </p>
-      </div>
-    );
-  }
-  const all = result.products;
-  const filtered = all.filter(
-    (p) => activeCategory === "tumu" || p.category === activeCategory,
-  );
-  const products = sortProducts(filtered, sort);
+ return (
+ <div className="doc-body">
+ <header className="doc-header">
+ <div className="doc-wrap doc-header__inner">
+ <Link href="/" className="doc-logo" aria-label="Kabia Ekolojik — anasayfa">
+ 
+ <span className="doc-logo__word">KABİA <span>EKOLOJİK</span></span>
+ </Link>
+ <nav className="doc-nav" aria-label="Ana menü">
+ <Link href="/ciftlik" className="doc-nav__link">ÇİFTLİK</Link>
+ <Link href="/secki" className="doc-nav__link">SEÇKİ</Link>
+ <Link href="/mutfak" className="doc-nav__link">MUTFAK</Link>
+ <Link href="/emanet" className="doc-nav__link">EMANET</Link>
+ <Link href="/ciftlikten" className="doc-nav__link">ÇİFTLİKTEN</Link>
+ <Link href="/magaza" className="doc-nav__link" style={{ opacity: 0.6 }}>Liste</Link>
+ </nav>
+ <a href="#liste" className="doc-mobile-btn" aria-label="Menü">
+ <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+ </a>
+ </div>
+ </header>
 
-  if (products.length === 0) {
-    return (
-      <div className="py-24 text-center">
-        <p className="font-theme-display text-2xl italic text-ink/70">
-          {all.length === 0 ? "Mağaza şu an boş." : "Bu kategoride ürün yok."}
-        </p>
-        <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-ink/55">
-          {all.length === 0
-            ? "Yeni hasat yüklendiğinde ürünler burada listelenir."
-            : "Diğer kategorilere göz atabilirsiniz."}
-        </p>
-        {all.length > 0 && (
-          <div className="mt-8">
-            <ArrowLink href={routes.store} prefetch={false}>Tüm ürünler</ArrowLink>
-          </div>
-        )}
-      </div>
-    );
-  }
+ <main>
+ <section className="doc-section" style={{ paddingBottom: 24 }}>
+ <div className="doc-wrap" style={{ maxWidth: 720, textAlign: "center", margin: "0 auto" }}>
+  <p className="doc-eyebrow" style={{ justifyContent: "center" }}>HASAT LİSTESİ</p>
+  <h1 className="doc-heading doc-heading--xl">Hasat defteri.</h1>
+  <p className="doc-lead" style={{ margin: "14px auto 0" }}>Satış hikâyenin önüne geçmez. Önce nereden geldiğini ve neden Kabia’da olduğunu okursun, sonra listeden seçersin. Kabuklu badem organik sertifikalı ve ekolojik üretim — sürülmeden, dış girdisiz; diğerleri doğal, sertifikasız, tanıdığımız üretim.</p>
+  </div>
+ </section>
 
-  return (
-    <>
-      <p className="label pb-5 text-olive">{products.length} ürün</p>
-      <ul className="grid grid-cols-1 gap-x-8 gap-y-14 pb-24 sm:grid-cols-2 md:pb-32 lg:grid-cols-3">
-        {products.map((product, i) => (
-          <ProductEntry key={product.id} product={product} priority={i < 3} />
-        ))}
-      </ul>
-    </>
-  );
-}
+ <section id="liste" className="doc-section" style={{ paddingTop: 0 }}>
+ <div className="doc-wrap" style={{ maxWidth: 760 }}>
+ {all.length === 0 ? (
+ <p className="doc-muted" style={{ textAlign: "center", padding: "60px 0" }}>Henüz ürün yok.</p>
+ ) : (
+ <>
+ <div style={{ marginTop: 8 }}>
+  <p className="doc-eyebrow">KABİA ÇİFTLİĞİ · ORGANİK SERTİFİKALI · EKOLOJİK ÜRETİM</p>
+  <h2 className="doc-heading" style={{ fontSize: 20, marginTop: 6 }}>Marinada çeşit badem</h2>
+  <p className="doc-muted" style={{ marginTop: 6, fontSize: 13, lineHeight: 1.6 }}>Organik sertifikalı, ekolojik üretim — sürülmeden, dış girdisiz, kendi hasadımız.</p>
+ <div style={{ marginTop: 16, borderTop: "1px solid var(--border-color)" }}>
+ {ciftlik.length === 0 ? <p className="doc-muted" style={{ padding: "16px 0" }}>Yakında.</p> : ciftlik.map((p) => <LedgerRow key={p.id} product={p} />)}
+ </div>
+ </div>
 
-export default async function ShopPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ kategori?: string; sirala?: string }>;
-}) {
-  const { kategori, sirala } = await searchParams;
-  const settings = await getPublicSettings();
-  const banner: ShopBannerSettings = {
-    enabled: settings.shopBannerEnabled,
-    headline: settings.shopBannerHeadline,
-    subtext: settings.shopBannerSubtext,
-    imageUrl: settings.shopBannerImageUrl,
-    ctaLabel: settings.shopBannerCtaLabel,
-    ctaHref: settings.shopBannerCtaHref,
-  };
-  const showBanner = shopBannerVisible(banner);
-  const sort: SortOption = isSort(sirala) ? sirala : "onerilen";
-  const activeCategory =
-    kategori && CATEGORIES.some((c) => c.id === kategori)
-      ? (kategori as ProductCategory)
-      : "tumu";
+ <div style={{ marginTop: 40 }}>
+ <p className="doc-eyebrow">KABİA SEÇKİ · DOĞAL · Sertifikasız</p>
+ <h2 className="doc-heading" style={{ fontSize: 20, marginTop: 6 }}>Tanıdığımız üreticilerden</h2>
+ <div style={{ marginTop: 16, borderTop: "1px solid var(--border-color)" }}>
+ {secki.length === 0 ? <p className="doc-muted" style={{ padding: "16px 0" }}>Yakında.</p> : secki.map((p) => <LedgerRow key={p.id} product={p} />)}
+ </div>
+ </div>
 
-  return (
-    <PageShell>
-      {showBanner && (
-        <ShopHeroBanner
-          headline={banner.headline}
-          subtext={banner.subtext}
-          imageUrl={banner.imageUrl}
-          ctaLabel={banner.ctaLabel}
-          ctaHref={banner.ctaHref}
-        />
-      )}
-      <section aria-labelledby="shop-heading">
-        <div className={showBanner ? "wrap mt-14 md:mt-20" : "wrap page-top"}>
-          <p className="label text-olive">Mağaza</p>
-          <h1
-            id="shop-heading"
-            className="mt-6 max-w-3xl text-4xl leading-[1.08] tracking-tight md:text-6xl"
-          >
-            Bahçeden <em className="font-theme-display italic text-brand">sofraya</em>.
-          </h1>
-          <p className="mt-7 max-w-md text-base leading-relaxed text-ink/65">
-            Geyve&apos;deki bahçelerimizde kimyasal gübre ve ilaç kullanmadan
-            yetiştirilen badem. Katkı maddesi eklenmez.
-          </p>
-        </div>
+  <div style={{ marginTop: 40 }}>
+  <p className="doc-eyebrow">KABİA MUTFAK · GELENEKSEL · Sertifikasız</p>
+ <h2 className="doc-heading" style={{ fontSize: 20, marginTop: 6 }}>Üreticilerin mutfağından</h2>
+ <div style={{ marginTop: 16, borderTop: "1px solid var(--border-color)" }}>
+ {mutfak.length === 0 ? <p className="doc-muted" style={{ padding: "16px 0" }}>Yakında.</p> : mutfak.map((p) => <LedgerRow key={p.id} product={p} />)}
+ </div>
+ </div>
 
-        <div className="wrap mt-14 md:mt-20">
-          <nav aria-label="Kategoriler" className="border-t border-ink/10 pt-5">
-            <ul className="flex flex-wrap items-center gap-x-7 gap-y-3">
-              {CATEGORIES.map((cat) => {
-                const active = cat.id === activeCategory;
-                return (
-                  <li key={cat.id}>
-                    <Link
-                      href={shopHref(cat.id, sort)}
-                      prefetch={false}
-                      aria-current={active ? "true" : undefined}
-                      className={`inline-flex min-h-11 items-center text-sm transition-colors duration-300 ${
-                        active
-                          ? "text-ink underline decoration-brand decoration-2 underline-offset-8"
-                          : "text-ink/55 hover:text-ink"
-                      }`}
-                    >
-                      {cat.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
+ <p className="doc-muted" style={{ marginTop: 32, textAlign: "center", fontSize: 11 }}>Fiyatlar KDV dahil · Kargo hasat haftası · Sorular için info@kabia.com</p>
+ </>
+ )}
+ </div>
+ </section>
+ </main>
 
-          <div className="mt-4 border-b border-ink/10 pb-5">
-            <nav aria-label="Sıralama">
-              <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                {SORT_OPTIONS.map((opt) => {
-                  const active = opt.id === sort;
-                  return (
-                    <li key={opt.id}>
-                      <Link
-                        href={shopHref(activeCategory, opt.id)}
-                        prefetch={false}
-                        aria-current={active ? "true" : undefined}
-                        className={`inline-flex min-h-11 items-center text-sm transition-colors duration-300 ${
-                          active ? "text-brand" : "text-ink/50 hover:text-ink"
-                        }`}
-                      >
-                        {opt.label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </nav>
-          </div>
-
-          <div className="pt-14">
-            <Suspense
-              key={`${activeCategory}-${sort}`}
-              fallback={<GridSkeleton />}
-            >
-              <ProductGrid activeCategory={activeCategory} sort={sort} />
-            </Suspense>
-          </div>
-        </div>
-      </section>
-    </PageShell>
-  );
+ <footer id="iletisim" className="doc-footer">
+ <div className="doc-wrap">
+ <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
+ <p className="doc-footer__brand" style={{ letterSpacing: "0.18em", marginBottom: 12 }}>KABİA EKOLOJİK</p>
+ <p className="doc-body-text" style={{ fontSize: 14, margin: "0 auto", maxWidth: 480, fontWeight: 300 }}>Toprağa saygıyla üretilenleri bir araya getiriyoruz — kendi çiftliğimizden ve üretimini bildiğimiz dostlarımızdan.</p>
+ <p className="doc-muted" style={{ marginTop: 14 }}>Sabırlar Köyü — Kılıçkaya Vadisi, Geyve / Sakarya</p>
+ </div>
+  <div className="doc-footer__bottom" style={{ justifyContent: "center", textAlign: "center", flexDirection: "column", gap: 6, marginTop: 28 }}>
+  <span>© {new Date().getFullYear()} Kabia Ekolojik — Toprağa saygıyla.</span>
+  <span style={{ fontSize: 10, lineHeight: 1.6, color: "var(--text-muted)", maxWidth: 480, margin: "0 auto" }}>Kabia Ekolojik, Epilantis Kozmetik Estetik Medikal Sanayi ve Dış Ticaret Limited Şirketi adına tescilli markadır.</span>
+  </div>
+ </div>
+ </footer>
+ </div>
+ );
 }
