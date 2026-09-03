@@ -15,11 +15,11 @@ export type ProducerStory = {
 
 export const PRODUCER_STORIES: ProducerStory[] = [
  {
- slug: "kabia-ciftligi",
- name: "Kabia Çiftliği",
- region: "Sabırlar · Geyve / Sakarya",
- badge: "ANA ÇİFTLİK · ORGANİK",
- image: "/images/orchard-hillside.jpg",
+  slug: "kabia-ciftligi",
+  name: "Kabia Çiftliği",
+  region: "Sabırlar · Geyve / Sakarya",
+  badge: "ANA ÇİFTLİK · ORGANİK",
+  image: "/images/kabia-badem.jpeg",
   desc: "946 badem ağacı. Organik tarım sertifikalı.",
  tags: ["Marinada", "Orman kompostu", "JADAM"],
  harvest: "Eylül Hasadı — Sınırlı",
