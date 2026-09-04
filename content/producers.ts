@@ -123,7 +123,7 @@ Biz Kabia’da ıhlamuru ıhlamur olduğu için severiz: ne aroma verici, ne kor
   name: "Elma Sirkesi",
   region: "Geyve — Doğal Fermentasyon",
   badge: "MUTFAK · Geleneksel",
-  image: "/images/orchard-hillside.jpg",
+  image: "/images/elma-sirkesi1.jpeg",
   desc: "Geyve'nin elmalarından, annelerimizin yaptığı gibi.",
   tags: ["Doğal fermentasyon", "Tortulu", "6 ay"],
   harvest: "Dört mevsim — Sabırla",

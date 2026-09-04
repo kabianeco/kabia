@@ -34,7 +34,7 @@ const KITCHEN_STORIES: KitchenStory[] = [
   name: "Elma Sirkesi",
   region: "Geyve — Doğal Fermentasyon",
   badge: "MUTFAK · Geleneksel",
-  image: "/images/orchard-hillside.jpg",
+  image: "/images/elma-sirkesi1.jpeg",
   desc: "Geyve'nin elmalarından, annelerimizin yaptığı gibi. Doğal fermentasyon, filtre edilmez, tortulu. 6 ay dinlendirilir.",
   tags: ["Doğal fermentasyon", "Tortulu", "6 ay"],
   season: "Dört mevsim — Sabırla",
