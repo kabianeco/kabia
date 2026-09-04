@@ -34,12 +34,14 @@ function LedgerRow({ product }: { product: Product }) {
  </span>
  <span style={{ minWidth: 0 }}>
  <span style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
- <strong style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--text-heading)", fontWeight: 600 }}>{product.name}</strong>
- {isOrganic ? (
-  <span style={{ fontSize: 10, letterSpacing: "0.07em", background: "white", color: "var(--primary-accent)", border: "1px solid var(--primary-accent)", padding: "3px 8px", borderRadius: 999, fontWeight: 700 }}>ORGANİK</span>
- ) : (
- <span style={{ fontSize: 9, letterSpacing: "0.06em", background: "var(--bg-accent-wash)", color: "var(--text-muted)", border: "1px solid var(--border-color)", padding: "3px 7px", borderRadius: 999 }}>DOĞAL</span>
- )}
+  <strong style={{ fontFamily: "var(--font-heading)", fontSize: 16, color: "var(--text-heading)", fontWeight: 600 }}>{product.name}</strong>
+  {isOrganic ? (
+   <span style={{ fontSize: 10, letterSpacing: "0.07em", background: "white", color: "var(--primary-accent)", border: "1px solid var(--primary-accent)", padding: "3px 8px", borderRadius: 999, fontWeight: 700 }}>ORGANİK</span>
+  ) : (CORRIDORS.mutfak.categories as string[]).includes(product.category) ? (
+  <span style={{ fontSize: 9, letterSpacing: "0.06em", background: "var(--bg-accent-wash)", color: "var(--text-muted)", border: "1px solid var(--border-color)", padding: "3px 7px", borderRadius: 999 }}>GELENEKSEL</span>
+  ) : (
+  <span style={{ fontSize: 9, letterSpacing: "0.06em", background: "var(--bg-accent-wash)", color: "var(--text-muted)", border: "1px solid var(--border-color)", padding: "3px 7px", borderRadius: 999 }}>DOĞAL</span>
+  )}
  </span>
  <span style={{ display: "block", fontFamily: "var(--font-label)", fontSize: 11, letterSpacing: "0.06em", color: "var(--text-muted)", marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
  {product.origin || "Geyve"} · {product.shortDescription?.slice(0, 48) ?? "Hikâyesiyle"}
@@ -90,7 +92,7 @@ export default async function ShopPage() {
  <div className="doc-wrap" style={{ maxWidth: 720, textAlign: "center", margin: "0 auto" }}>
   <p className="doc-eyebrow" style={{ justifyContent: "center" }}>HASAT LİSTESİ</p>
   <h1 className="doc-heading doc-heading--xl">Hasat defteri.</h1>
-  <p className="doc-lead" style={{ margin: "14px auto 0" }}>Satış hikâyenin önüne geçmez. Önce nereden geldiğini ve neden Kabia’da olduğunu okursun, sonra listeden seçersin. Kabuklu badem organik sertifikalı ve ekolojik üretim — sürülmeden, dış girdisiz; diğerleri doğal, sertifikasız, tanıdığımız üretim.</p>
+  <p className="doc-lead" style={{ margin: "14px auto 0" }}>Önce hikâyesini okumanızı isteriz — nereden geldiğini, neden Kabia’da olduğunu. Sonra hasattan dilediğinizi seçebilirsiniz. Kabuklu bademimiz organik sertifikalı ve ekolojik üretim; diğer ürünlerimiz tanıdığımız üreticilerden, doğal ve sertifikasız.</p>
   </div>
  </section>
 

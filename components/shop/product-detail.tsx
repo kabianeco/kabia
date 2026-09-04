@@ -205,8 +205,8 @@ export function ProductDetail({
  <div className="lg:col-span-5 lg:col-start-8">
           <p className="label text-olive" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {product.slug === "kabuklu-badem" ? (
-  <span style={{ fontSize: 10, letterSpacing: "0.07em", background: "white", color: "var(--primary-accent)", border: "1px solid var(--primary-accent)", padding: "4px 10px", borderRadius: 999, fontWeight: 700 }}>ORGANİK SERTİFİKALI</span>
-  ) : ["eriste", "tarhana", "domates-salcasi"].includes(product.slug) ? (
+  <span style={{ fontSize: 10, letterSpacing: "0.08em", background: "var(--primary-accent)", color: "white", padding: "3px 8px", borderRadius: 999, fontWeight: 600 }}>ORGANİK SERTİFİKALI</span>
+  ) : (["eriste", "tarhana", "domates-salcasi", "elma-sirkesi", "alic-sirkesi"].includes(product.slug) || (product.category && ["salca","sirke","eriste","tarhana","kabia-mutfak","paketli-urunler"].includes(product.category))) ? (
   <span style={{ fontSize: 10, letterSpacing: "0.08em", background: "var(--bg-accent-wash)", color: "var(--text-muted)", border: "1px solid var(--border-color)", padding: "3px 8px", borderRadius: 999, fontWeight: 500 }}>GELENEKSEL · Sertifikasız</span>
   ) : (
   <span style={{ fontSize: 10, letterSpacing: "0.08em", background: "var(--bg-accent-wash)", color: "var(--text-muted)", border: "1px solid var(--border-color)", padding: "3px 8px", borderRadius: 999, fontWeight: 500 }}>DOĞAL · Sertifikasız</span>
