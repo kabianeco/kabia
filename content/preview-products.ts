@@ -16,6 +16,8 @@ export const previewProducts: PreviewProduct[] = sourceProducers.map(
     name: `Örnek ${producer.productType}`,
     category: producer.source === "ciftlik" ? "cig-badem" : "paketli-urunler",
     categoryName: producer.source === "ciftlik" ? "Çiğ Badem" : "Paketli Ürünler",
+    // Preview examples, not administered rows — fixed position, never curated.
+    categorySortOrder: 0,
     source: producer.source,
     defaultWeight: "500 g",
     price: 100 + index * 10,

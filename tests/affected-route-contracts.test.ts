@@ -70,21 +70,15 @@ function productsClient(result: { data: unknown; error: unknown }) {
 }
 
 function producersClient(result: { data: unknown; error: unknown }) {
-  return {
-    from() {
-      return {
-        select() {
-          return {
-            eq() {
-              return {
-                order: async () => result,
-              }
-            },
-          }
-        },
-      }
-    },
+  // Same chainable stand-in as productsClient: the producer queries order by
+  // sort_order and then created_at, so a single-depth stub breaks the moment
+  // a second order() is chained.
+  const builder: Record<string, unknown> = {}
+  for (const step of ["select", "eq", "order"]) {
+    builder[step] = () => builder
   }
+  builder.then = (resolve: (value: unknown) => unknown) => Promise.resolve(result).then(resolve)
+  return { from: () => builder }
 }
 
 function publishedThemeClient(result: { data: unknown; error: unknown }) {

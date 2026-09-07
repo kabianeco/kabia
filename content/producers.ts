@@ -1,7 +1,7 @@
 import type { ProductSource } from "@/lib/products";
 import type { Producer } from "@/lib/producers";
 /** Editorial text/images: read-only kabia-2.0/content/producers.ts. Preserve PLACEHOLDER markers. */
-export type SourceProducer = Omit<Producer, "createdAt"> & { source: ProductSource; desc: string };
+export type SourceProducer = Omit<Producer, "createdAt" | "tagline" | "sortOrder"> & { source: ProductSource; desc: string };
 export const producerCollections: Record<ProductSource, SourceProducer[]> = {
 "ciftlik": [
   {

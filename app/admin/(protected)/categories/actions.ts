@@ -5,7 +5,7 @@ import { z } from "zod"
 import { adminContext } from "@/lib/admin/auth"
 import { logAdminAction, AUDIT_WARNING } from "@/lib/admin/audit"
 import { toActionState, type ActionState } from "@/lib/admin/errors"
-import { fieldErrorsFrom, slugSchema, uuid } from "@/lib/admin/schemas"
+import { fieldErrorsFrom, intField, slugSchema, uuid } from "@/lib/admin/schemas"
 
 /**
  * Category lifecycle.
@@ -18,6 +18,7 @@ import { fieldErrorsFrom, slugSchema, uuid } from "@/lib/admin/schemas"
 const categorySchema = z.object({
   name: z.string().trim().min(2, "Kategori adı en az 2 karakter olmalı.").max(60),
   slug: slugSchema,
+  sort_order: intField("Sıra", 0, 9999),
 })
 
 const categoryIdSchema = z.object({ categoryId: uuid })
@@ -41,6 +42,7 @@ export async function createCategoryAction(
     const parsed = categorySchema.safeParse({
       name: formData.get("name"),
       slug: formData.get("slug"),
+      sort_order: formData.get("sort_order") ?? "0",
     })
     if (!parsed.success) {
       return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error), message: "Lütfen alanları düzeltin." }
@@ -54,7 +56,7 @@ export async function createCategoryAction(
 
     const { data, error } = await supabase
       .from("categories")
-      .insert({ name: parsed.data.name, slug: parsed.data.slug })
+      .insert({ name: parsed.data.name, slug: parsed.data.slug, sort_order: parsed.data.sort_order })
       .select("id")
       .single()
 
@@ -64,7 +66,7 @@ export async function createCategoryAction(
       action: "category.create",
       entityType: "category",
       entityId: data.id as string,
-      after: { name: parsed.data.name, slug: parsed.data.slug },
+      after: { name: parsed.data.name, slug: parsed.data.slug, sort_order: parsed.data.sort_order },
       metadata: { created_by: session.userId },
     })
 
@@ -93,6 +95,7 @@ export async function updateCategoryAction(
         categoryId: formData.get("categoryId"),
         name: formData.get("name"),
         slug: formData.get("slug"),
+        sort_order: formData.get("sort_order") ?? "0",
       })
     if (!parsed.success) {
       return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error), message: "Lütfen alanları düzeltin." }
@@ -100,7 +103,7 @@ export async function updateCategoryAction(
 
     const { data: before } = await supabase
       .from("categories")
-      .select("id, name, slug")
+      .select("id, name, slug, sort_order")
       .eq("id", parsed.data.categoryId)
       .maybeSingle()
     if (!before) return { ok: false, message: "Kategori bulunamadı." }
@@ -118,7 +121,7 @@ export async function updateCategoryAction(
 
     const { error } = await supabase
       .from("categories")
-      .update({ name: parsed.data.name, slug: parsed.data.slug })
+      .update({ name: parsed.data.name, slug: parsed.data.slug, sort_order: parsed.data.sort_order })
       .eq("id", parsed.data.categoryId)
 
     if (error) return toActionState(error, "updateCategory")
@@ -127,8 +130,8 @@ export async function updateCategoryAction(
       action: "category.update",
       entityType: "category",
       entityId: before.id,
-      before: { name: before.name, slug: before.slug },
-      after: { name: parsed.data.name, slug: parsed.data.slug },
+      before: { name: before.name, slug: before.slug, sort_order: before.sort_order },
+      after: { name: parsed.data.name, slug: parsed.data.slug, sort_order: parsed.data.sort_order },
       metadata: { updated_by: session.userId },
     })
 

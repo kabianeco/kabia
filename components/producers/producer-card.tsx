@@ -4,7 +4,15 @@ import { ButtonLink } from "@/components/ui/button"
 import { routes } from "@/lib/site"
 import type { Producer } from "@/lib/producers"
 
-type CardProducer = Omit<Producer, "createdAt"> & { desc?: string }
+/**
+ * Database producers carry the administered `tagline`; the content file
+ * carries `desc` under the same meaning. Both shapes are accepted; only `desc`
+ * is rendered for now (see the note at the tagline line below).
+ */
+type CardProducer = Omit<Producer, "createdAt" | "tagline" | "sortOrder"> & {
+  desc?: string
+  tagline?: string | null
+}
 
 function CardImage({ producer, priority }: { producer: CardProducer; priority: boolean }) {
   return (
@@ -62,6 +70,9 @@ export function ProducerCard({
 
         <div className="mt-5 flex flex-1 flex-col border-t border-ink/10 pt-4">
           <h2 className="text-xl leading-snug tracking-tight">{producer.name}</h2>
+          {/* The content file's desc only. Database rows carry an administered
+              tagline, but /ureticiler has never shown one and showing it
+              would change that page; see the maturity-pass recommendations. */}
           {producer.desc && (
             <p className="mt-2 text-sm leading-relaxed text-ink/60">{producer.desc}</p>
           )}

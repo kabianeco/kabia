@@ -5,10 +5,10 @@ const listing = await import('../lib/store-listing.ts').catch(() => null);
 // administrator adds carries its own label through the storefront instead of
 // being collapsed into one of five hardcoded slugs.
 const products = [
-  { id:'a',category:'cig-badem',categoryName:'Çiğ Badem',source:'ciftlik',price:30 },
-  { id:'b',category:'paketli-urunler',categoryName:'Paketli Ürünler',source:'secki',price:20 },
-  { id:'c',category:'paketli-urunler',categoryName:'Paketli Ürünler',source:'mutfak',price:10 },
-  { id:'d',category:'paketli-urunler',categoryName:'Paketli Ürünler',source:'secki',price:20 },
+  { id:'a',category:'cig-badem',categoryName:'Çiğ Badem',categorySortOrder:10,source:'ciftlik',price:30 },
+  { id:'b',category:'paketli-urunler',categoryName:'Paketli Ürünler',categorySortOrder:20,source:'secki',price:20 },
+  { id:'c',category:'paketli-urunler',categoryName:'Paketli Ürünler',categorySortOrder:20,source:'mutfak',price:10 },
+  { id:'d',category:'paketli-urunler',categoryName:'Paketli Ürünler',categorySortOrder:20,source:'secki',price:20 },
 ];
 test('default preserves order, price sorts are stable and source/category pairs filter together', () => {
   assert.ok(listing);
@@ -39,7 +39,7 @@ test('a category an administrator added is offered under its own name', () => {
   // table it was silently relabelled "Çiğ Badem" alongside its source.
   const withNewCategory = [
     ...products,
-    { id:'e',category:'tarhana-corbalik',categoryName:'Tarhana ve Çorbalık',source:'mutfak',price:160 },
+    { id:'e',category:'tarhana-corbalik',categoryName:'Tarhana ve Çorbalık',categorySortOrder:30,source:'mutfak',price:160 },
   ];
   const offered = listing.presentCategories(withNewCategory as never,'mutfak');
   assert.deepEqual(
@@ -52,12 +52,25 @@ test('a category an administrator added is offered under its own name', () => {
   );
 });
 
-test('categories are ordered by their Turkish name so the bar is stable', () => {
+test('the curated sort_order decides the bar order, not the name', () => {
+  assert.ok(listing);
+  const curated = [
+    { id:'x',category:'zeytin',categoryName:'Zeytin',categorySortOrder:0,source:'secki',price:1 },
+    { id:'y',category:'incir',categoryName:'İncir',categorySortOrder:10,source:'secki',price:1 },
+    { id:'z',category:'ceviz',categoryName:'Ceviz',categorySortOrder:20,source:'secki',price:1 },
+  ];
+  assert.deepEqual(
+    listing.presentCategories(curated as never,'tumu').map((entry:{id:string})=>entry.id),
+    ['tumu','zeytin','incir','ceviz'],
+  );
+});
+
+test('equal orders fall back to the Turkish name so the bar stays stable', () => {
   assert.ok(listing);
   const unordered = [
-    { id:'x',category:'zeytin',categoryName:'Zeytin',source:'secki',price:1 },
-    { id:'y',category:'incir',categoryName:'İncir',source:'secki',price:1 },
-    { id:'z',category:'ceviz',categoryName:'Ceviz',source:'secki',price:1 },
+    { id:'x',category:'zeytin',categoryName:'Zeytin',categorySortOrder:0,source:'secki',price:1 },
+    { id:'y',category:'incir',categoryName:'İncir',categorySortOrder:0,source:'secki',price:1 },
+    { id:'z',category:'ceviz',categoryName:'Ceviz',categorySortOrder:0,source:'secki',price:1 },
   ];
   assert.deepEqual(
     listing.presentCategories(unordered as never,'tumu').map((entry:{id:string})=>entry.id),

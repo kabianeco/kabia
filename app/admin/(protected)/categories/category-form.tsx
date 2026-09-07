@@ -44,7 +44,7 @@ export function CategoryForm() {
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <AdminInput
           label="Kategori adı"
           name="name"
@@ -71,6 +71,14 @@ export function CategoryForm() {
           }}
           hint="Yalnızca küçük harf, rakam ve tire."
         />
+        <AdminInput
+          label="Sıra"
+          name="sort_order"
+          inputMode="numeric"
+          defaultValue="0"
+          error={state.fieldErrors?.sort_order}
+          hint="Mağaza filtre çubuğundaki yer. Küçük sayı önce gelir."
+        />
       </div>
       <FormMessage state={state} />
       <SubmitButton pendingLabel="Ekleniyor…">Kategori ekle</SubmitButton>
@@ -85,11 +93,13 @@ export function CategoryRowActions({
   categoryId,
   name: initialName,
   slug: initialSlug,
+  sortOrder: initialSortOrder,
   productCount,
 }: {
   categoryId: string
   name: string
   slug: string
+  sortOrder: number
   productCount: number
 }) {
   const [editing, setEditing] = useState(false)
@@ -101,6 +111,7 @@ export function CategoryRowActions({
         categoryId={categoryId}
         initialName={initialName}
         initialSlug={initialSlug}
+        initialSortOrder={initialSortOrder}
         productCount={productCount}
         onCancel={handleCancel}
       />
@@ -136,12 +147,14 @@ function CategoryEditForm({
   categoryId,
   initialName,
   initialSlug,
+  initialSortOrder,
   productCount,
   onCancel,
 }: {
   categoryId: string
   initialName: string
   initialSlug: string
+  initialSortOrder: number
   productCount: number
   onCancel: () => void
 }) {
@@ -182,6 +195,14 @@ function CategoryEditForm({
             value={slug}
             error={state.fieldErrors?.slug}
             onChange={(event) => setSlug(slugify(event.target.value))}
+            wrapperClassName="min-w-0 flex-1"
+          />
+          <AdminInput
+            label="Sıra"
+            name="sort_order"
+            inputMode="numeric"
+            defaultValue={String(initialSortOrder)}
+            error={state.fieldErrors?.sort_order}
             wrapperClassName="min-w-0 flex-1"
           />
           <div className="flex shrink-0 items-end gap-2">

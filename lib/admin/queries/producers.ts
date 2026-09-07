@@ -74,7 +74,7 @@ export interface ProducerDetail {
   slug: string
   name: string
   source: ProductSource
-  tagline: string
+  tagline: string | null
   region: string | null
   productType: string | null
   photoUrl: string | null

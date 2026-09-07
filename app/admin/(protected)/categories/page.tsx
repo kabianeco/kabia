@@ -34,6 +34,7 @@ export default async function CategoriesPage() {
                   <tr>
                     <Th>Kategori</Th>
                     <Th>Kısa ad (URL)</Th>
+                    <Th align="right">Sıra</Th>
                     <Th align="right">Ürün</Th>
                     <Th align="right">
                       <span className="sr-only">İşlemler</span>
@@ -50,6 +51,9 @@ export default async function CategoriesPage() {
                         <span className="text-sm text-ink/60">/{category.slug}</span>
                       </Td>
                       <Td align="right" numeric>
+                        {category.sortOrder}
+                      </Td>
+                      <Td align="right" numeric>
                         {category.productCount}
                       </Td>
                       <Td align="right">
@@ -57,6 +61,7 @@ export default async function CategoriesPage() {
                           categoryId={category.id}
                           name={category.name}
                           slug={category.slug}
+                          sortOrder={category.sortOrder}
                           productCount={category.productCount}
                         />
                       </Td>

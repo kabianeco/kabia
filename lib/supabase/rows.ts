@@ -18,6 +18,8 @@ export interface CategoryRow {
   slug: string;
   /** The administered display label, selected alongside the slug so a product carries its own. */
   name: string;
+  /** Curated filter-bar order; 0 until placed. */
+  sort_order: number;
 }
 
 export interface ProductVariantRow {
@@ -170,6 +172,9 @@ export interface ProducerRow {
   id: string;
   slug: string;
   name: string;
+  source: string | null;
+  tagline: string | null;
+  sort_order: number | null;
   product_type: string | null;
   region: string | null;
   photo_url: string | null;

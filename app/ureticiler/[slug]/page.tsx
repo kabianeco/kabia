@@ -94,7 +94,10 @@ export default async function ProducerDetailPage({ params }: { params: Promise<{
   if (result.status === "not_found") notFound()
 
   if (result.status !== "ok") notFound()
-  const producer: Omit<Producer, "createdAt"> = result.producer
+  // Database rows carry the administered tagline/sortOrder; the preview
+  // content file carries desc instead. The page reads neither — only the
+  // fields both shapes share.
+  const producer: Omit<Producer, "createdAt" | "tagline" | "sortOrder"> = result.producer
   const products: Product[] = isBrandPreview()
     ? previewProducts.filter((product) => product.producerSlug === producer.slug)
     : await fetchProductsByProducer(await createSupabaseServerClient(), producer.id)

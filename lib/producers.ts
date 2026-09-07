@@ -1,13 +1,20 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { ProducerRow } from "@/lib/supabase/rows"
+import type { ProductSource } from "@/lib/products"
 
 const PRODUCER_SELECT =
-  "id, slug, name, product_type, region, photo_url, story, production_place, method, inputs, certificates, why_selected, is_published, created_at"
+  "id, slug, name, source, tagline, sort_order, product_type, region, photo_url, story, production_place, method, inputs, certificates, why_selected, is_published, created_at"
 
 export interface Producer {
   id: string
   slug: string
   name: string
+  /** Which of the three lines this producer belongs to; drives /secki membership. */
+  source: ProductSource | null
+  /** One-line card copy under the name. */
+  tagline: string | null
+  /** Curated display order, ascending. */
+  sortOrder: number
   productType: string | null
   region: string | null
   photoUrl: string | null
@@ -25,6 +32,9 @@ function mapProducer(row: ProducerRow): Producer {
     id: row.id,
     slug: row.slug,
     name: row.name,
+    source: (row.source as ProductSource | null) ?? null,
+    tagline: row.tagline,
+    sortOrder: row.sort_order ?? 0,
     productType: row.product_type,
     region: row.region,
     photoUrl: row.photo_url,
@@ -62,8 +72,9 @@ export type PublicProducersResult =
   | { status: "error" }
 
 /**
- * Every published producer, newest first — the same is_published gate the RLS
- * policy enforces.
+ * Every published producer in curated order — the same is_published gate the
+ * RLS policy enforces. `sort_order` carries the display sequence (backfilled
+ * to reproduce the previous `created_at desc`), `created_at` breaks ties.
  *
  * Returns a tagged result for the same reason `fetchPublicProducts` and
  * `fetchPublishedProducerBySlug` do: "nobody has published a producer yet" and
@@ -78,6 +89,26 @@ export async function fetchPublicProducers(
     .from("producers")
     .select(PRODUCER_SELECT)
     .eq("is_published", true)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false })
+
+  if (error || !data) return { status: "error" }
+  return { status: "ok", producers: (data as unknown as ProducerRow[]).map(mapProducer) }
+}
+
+/**
+ * The Seçki line in curated order. Same honest-error contract as
+ * `fetchPublicProducers`: a failed read is an outage, never an empty shelf.
+ */
+export async function fetchSeckiProducers(
+  client: SupabaseClient,
+): Promise<PublicProducersResult> {
+  const { data, error } = await client
+    .from("producers")
+    .select(PRODUCER_SELECT)
+    .eq("is_published", true)
+    .eq("source", "secki")
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false })
 
   if (error || !data) return { status: "error" }

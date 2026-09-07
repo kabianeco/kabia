@@ -34,7 +34,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/ureticiler" },
 }
 
-type GridProducer = Omit<Producer, "createdAt"> & { desc?: string }
+type GridProducer = Omit<Producer, "createdAt" | "tagline" | "sortOrder"> & {
+  desc?: string
+  tagline?: string | null
+}
 
 /** The curated ORDER above, applied to whichever source the page read from. */
 const inCuratedOrder = <T extends { slug: string }>(list: readonly T[]): T[] =>

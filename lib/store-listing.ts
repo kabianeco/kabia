@@ -58,21 +58,28 @@ export function presentCategories(
       ? products
       : products.filter((p) => p.source === source);
 
-  const bySlug = new Map<string, string>();
+  const bySlug = new Map<string, { label: string; order: number }>();
   for (const product of scope) {
     if (!product.category) continue;
     if (!bySlug.has(product.category)) {
-      bySlug.set(product.category, product.categoryName || product.category);
+      bySlug.set(product.category, {
+        label: product.categoryName || product.category,
+        order: product.categorySortOrder,
+      });
     }
   }
 
-  const options = [...bySlug].map(([id, label]) => ({ id, label }));
-  // `categories` has no display order of its own, so the bar is sorted by the
-  // administered name under Turkish collation — stable, and readable to the
-  // person who named them.
-  options.sort((a, b) => a.label.localeCompare(b.label, "tr"));
+  const options = [...bySlug].map(([id, { label, order }]) => ({ id, label, order }));
+  // Curated order first; the administered name under Turkish collation breaks
+  // ties (including new rows still sitting at 0) and stays deterministic.
+  options.sort(
+    (a, b) => a.order - b.order || a.label.localeCompare(b.label, "tr"),
+  );
 
-  return [{ id: ALL_CATEGORIES, label: ALL_CATEGORIES_LABEL }, ...options];
+  return [
+    { id: ALL_CATEGORIES, label: ALL_CATEGORIES_LABEL },
+    ...options.map(({ id, label }) => ({ id, label })),
+  ];
 }
 
 export function listingHref(

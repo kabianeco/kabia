@@ -63,7 +63,8 @@ const optionalPriceField = (label: string) =>
       return parseDecimal(raw, label, ctx)
     })
 
-const intField = (label: string, min: number, max: number) =>
+/** Integer text input shared by the entity screens (sıra fields). */
+export const intField = (label: string, min: number, max: number) =>
   z.union([z.string(), z.number()]).transform((raw, ctx) => {
     const n = typeof raw === "number" ? raw : Number(raw.trim())
     if (!Number.isInteger(n)) {

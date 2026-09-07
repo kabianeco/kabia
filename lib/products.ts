@@ -115,6 +115,8 @@ export interface Product {
   category: string
   /** `categories.name` — the administered display label. */
   categoryName: string
+  /** `categories.sort_order` — the curated filter-bar position. */
+  categorySortOrder: number
   source: ProductSource
   defaultWeight: string
   price: number
