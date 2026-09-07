@@ -38,6 +38,25 @@ function mapProducer(row: ProducerRow): Producer {
   }
 }
 
+/**
+ * A producer story is stored exactly as authored — plain text, paragraphs
+ * separated by a blank line, the same convention `content/producers.ts` used.
+ * The database keeps no markup, so no paragraph can arrive broken by an
+ * editor that half-escaped it; the split happens at render, in one place.
+ *
+ * A single newline inside a paragraph is left alone (it renders as a space,
+ * as it always has). Only blank-line runs start a new paragraph, and empty
+ * runs from leading/trailing blank lines are dropped rather than rendered
+ * as empty `<p>` elements.
+ */
+export function splitStoryParagraphs(story: string | null): string[] {
+  if (!story) return []
+  return story
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph !== "")
+}
+
 export type PublicProducersResult =
   | { status: "ok"; producers: Producer[] }
   | { status: "error" }

@@ -63,6 +63,8 @@ const PROTECTED_ROUTES = [
   "/admin",
   "/admin/products",
   "/admin/products/new",
+  "/admin/producers",
+  "/admin/producers/new",
   "/admin/categories",
   "/admin/inventory",
   "/admin/orders",

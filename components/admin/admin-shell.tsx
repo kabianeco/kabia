@@ -22,6 +22,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingCart,
+  Sprout,
   Tags,
   TriangleAlert,
   Users,
@@ -68,6 +69,7 @@ const COLLAPSE_COOKIE = "kabia_admin_sidebar"
 const NAV_ICONS: Record<AdminNavIcon, LucideIcon> = {
   overview: LayoutDashboard,
   products: Package,
+  producers: Sprout,
   categories: Tags,
   inventory: Warehouse,
   orders: ShoppingCart,

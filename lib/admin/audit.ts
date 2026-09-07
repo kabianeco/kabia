@@ -27,6 +27,11 @@ export type AuditAction =
   | "category.create"
   | "category.update"
   | "category.delete"
+  | "producer.create"
+  | "producer.update"
+  | "producer.publish"
+  | "producer.unpublish"
+  | "producer.delete"
   | "media.upload"
   | "media.update"
   | "media.delete"
@@ -109,6 +114,11 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "category.create": "Kategori oluşturuldu",
   "category.update": "Kategori güncellendi",
   "category.delete": "Kategori silindi",
+  "producer.create": "Üretici oluşturuldu",
+  "producer.update": "Üretici güncellendi",
+  "producer.publish": "Üretici yayına alındı",
+  "producer.unpublish": "Üretici yayından kaldırıldı",
+  "producer.delete": "Üretici silindi",
   "inventory.adjust": "Stok güncellendi",
   "media.upload": "Medya yüklendi",
   "media.update": "Medya bilgileri güncellendi",
@@ -151,6 +161,7 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   product_variant: "Ürün seçeneği",
   product_image: "Ürün görseli",
   category: "Kategori",
+  producer: "Üretici",
   order: "Sipariş",
   media: "Medya",
   setting: "Ayar",

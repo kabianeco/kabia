@@ -410,7 +410,36 @@ export const listQuerySchema = z.object({
   dir: z.enum(["asc", "desc"]).catch("desc"),
 })
 
+/**
+ * Producer editor input.
+ *
+ * Producers are flat — no variants, gallery, scheduling, SEO or rich text —
+ * so this is one object, not the four-place contract products need. `source`
+ * is a database enum with no fallback value: an unrecognised line is rejected
+ * rather than being quietly filed under the farm. `desc` is the one-line card
+ * copy `/secki` prints under the name; the story keeps blank-line paragraph
+ * breaks as authored (see splitStoryParagraphs) and is length-bounded only.
+ */
+export const producerSchema = z.object({
+  name: z.string().trim().min(2, "Üretici adı en az 2 karakter olmalı.").max(120),
+  slug: slugSchema,
+  source: z.enum(PRODUCT_SOURCES, { message: "Geçersiz kaynak." }),
+  desc: z.string().trim().min(2, "Tek satırlık tanıtım en az 2 karakter olmalı.").max(200),
+  region: optionalText("Bölge", 200),
+  product_type: optionalText("Ürün türü", 120),
+  photo_url: optionalText("Fotoğraf", 1000),
+  story: z.string().trim().max(8000, "Hikâye en fazla 8000 karakter olabilir.").nullish().transform((v) => v || null),
+  production_place: optionalText("Üretim yeri", 300),
+  method: optionalText("Yöntem", 1000),
+  inputs: optionalText("Girdiler", 1000),
+  certificates: optionalText("Belgeler", 1000),
+  why_selected: optionalText("Neden seçildi", 1000),
+  is_published: z.boolean(),
+  sort_order: intField("Sıra", 0, 9999),
+})
+
 export type ProductInput = z.infer<typeof productSchema>
+export type ProducerInput = z.infer<typeof producerSchema>
 export type VariantInput = z.infer<typeof variantSchema>
 export type ImageInput = z.infer<typeof imageSchema>
 

@@ -62,6 +62,7 @@ describe("role model", () => {
     for (const permission of [
       "manageCatalogue",
       "manageCategories",
+      "manageProducers",
       "manageInventory",
       "manageOrders",
       "viewCustomers",

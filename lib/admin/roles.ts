@@ -25,7 +25,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 
 export const ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
   admin:
-    "Ürün, stok, sipariş, müşteri, medya, içerik ve hassas olmayan ayarları yönetir.",
+    "Ürün, üretici, stok, sipariş, müşteri, medya, içerik ve hassas olmayan ayarları yönetir.",
   super_admin:
     "Yönetici ekleyebilir, rol değiştirebilir, yetki kaldırabilir; hassas ayarlara ve tüm denetim kayıtlarına erişir.",
 }
@@ -37,6 +37,7 @@ export const ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
 export const PERMISSIONS = {
   manageCatalogue: ["admin", "super_admin"],
   manageCategories: ["admin", "super_admin"],
+  manageProducers: ["admin", "super_admin"],
   manageInventory: ["admin", "super_admin"],
   manageOrders: ["admin", "super_admin"],
   viewCustomers: ["admin", "super_admin"],

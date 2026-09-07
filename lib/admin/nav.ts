@@ -12,6 +12,7 @@ import { can } from "@/lib/admin/roles"
 export type AdminNavIcon =
   | "overview"
   | "products"
+  | "producers"
   | "categories"
   | "inventory"
   | "orders"
@@ -36,6 +37,7 @@ export interface AdminNavItem {
 export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin", label: "Genel Bakış", icon: "overview" },
   { href: "/admin/products", label: "Ürünler", icon: "products", permission: "manageCatalogue", matchPrefix: true },
+  { href: "/admin/producers", label: "Üreticiler", icon: "producers", permission: "manageProducers", matchPrefix: true },
   { href: "/admin/categories", label: "Kategoriler", icon: "categories", permission: "manageCategories", matchPrefix: true },
   { href: "/admin/inventory", label: "Stok", icon: "inventory", permission: "manageInventory", matchPrefix: true },
   { href: "/admin/orders", label: "Siparişler", icon: "orders", permission: "manageOrders", matchPrefix: true },
