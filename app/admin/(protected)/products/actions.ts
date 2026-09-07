@@ -15,6 +15,11 @@ import {
   variantSchema,
 } from "@/lib/admin/schemas"
 import { countOrderReferences, loadProductDetail } from "@/lib/admin/queries/products"
+import {
+  ORGANIC_CONFIRMATION_MESSAGE,
+  buildProductRow,
+  requiresOrganicConfirmation,
+} from "@/lib/admin/product-fields"
 
 /**
  * Product mutations.
@@ -112,6 +117,16 @@ export async function saveProductAction(
       display_order: formData.get("display_order") ?? "0",
       seo_title: textOrNull(formData, "seo_title"),
       seo_description: textOrNull(formData, "seo_description"),
+      source: formData.get("source"),
+      certification: formData.get("certification"),
+      producer_id: textOrNull(formData, "producer_id"),
+      harvest_year: textOrNull(formData, "harvest_year"),
+      lot_code: textOrNull(formData, "lot_code"),
+      variety: textOrNull(formData, "variety"),
+      rootstock: textOrNull(formData, "rootstock"),
+      processing: textOrNull(formData, "processing"),
+      allergens: textOrNull(formData, "allergens"),
+      net_weight: textOrNull(formData, "net_weight"),
       variants,
     })
 
@@ -155,27 +170,22 @@ export async function saveProductAction(
       return { ok: false, message: "Ürün bulunamadı." }
     }
 
-    const productRow = {
-      name: input.name,
-      slug: input.slug,
-      category_id: input.category_id,
-      short_description: input.short_description,
-      description: input.description,
-      base_price: input.base_price,
-      original_price: input.original_price,
-      main_image_url: input.main_image_url,
-      origin: input.origin ?? null,
-      production_method: input.production_method ?? null,
-      shelf_life: input.shelf_life ?? null,
-      storage_conditions: input.storage_conditions ?? null,
-      certifications: input.certifications ?? null,
-      is_active: input.is_active,
-      is_featured: input.is_featured,
-      low_stock_threshold: input.low_stock_threshold,
-      display_order: input.display_order,
-      seo_title: input.seo_title ?? null,
-      seo_description: input.seo_description ?? null,
+    // "Organik sertifikalı" is a legal claim, so it is confirmed at the moment
+    // it is made. The previous value comes from the row just read, never from
+    // the form, so a crafted request cannot present itself as already organic
+    // to skip the check.
+    if (
+      requiresOrganicConfirmation(before?.certification ?? null, input.certification) &&
+      !boolField(formData, "organic_confirmed")
+    ) {
+      return {
+        ok: false,
+        fieldErrors: { certification: ORGANIC_CONFIRMATION_MESSAGE },
+        message: "Lütfen işaretli alanları düzeltin.",
+      }
     }
+
+    const productRow = buildProductRow(input)
 
     let savedId = productId
 

@@ -5,6 +5,7 @@ import { adminPageContext } from "@/lib/admin/auth"
 import {
   countOrderReferences,
   loadCategories,
+  loadProducers,
   loadProductDetail,
 } from "@/lib/admin/queries/products"
 import { formatDateTime } from "@/lib/admin/format"
@@ -28,9 +29,10 @@ export default async function EditProductPage({
   const { productId } = await params
   const query = await searchParams
 
-  const [product, categories] = await Promise.all([
+  const [product, categories, producers] = await Promise.all([
     loadProductDetail(supabase, productId),
     loadCategories(supabase),
+    loadProducers(supabase),
   ])
 
   if (!product) notFound()
@@ -134,7 +136,7 @@ export default async function EditProductPage({
         )}
       </div>
 
-      <ProductForm product={product} categories={categories} />
+      <ProductForm product={product} categories={categories} producers={producers} />
     </>
   )
 }

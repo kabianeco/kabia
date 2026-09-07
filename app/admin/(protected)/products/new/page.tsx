@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { adminPageContext } from "@/lib/admin/auth"
-import { loadCategories } from "@/lib/admin/queries/products"
+import { loadCategories, loadProducers } from "@/lib/admin/queries/products"
 import { PageHeader } from "@/components/admin/ui/surfaces"
 import { ProductForm } from "../product-form"
 
@@ -9,7 +9,10 @@ export const dynamic = "force-dynamic"
 
 export default async function NewProductPage() {
   const { supabase } = await adminPageContext("manageCatalogue")
-  const categories = await loadCategories(supabase)
+  const [categories, producers] = await Promise.all([
+    loadCategories(supabase),
+    loadProducers(supabase),
+  ])
 
   return (
     <>
@@ -22,7 +25,7 @@ export default async function NewProductPage() {
           { label: "Yeni" },
         ]}
       />
-      <ProductForm product={null} categories={categories} />
+      <ProductForm product={null} categories={categories} producers={producers} />
     </>
   )
 }

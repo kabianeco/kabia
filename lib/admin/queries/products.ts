@@ -3,6 +3,8 @@ import "server-only"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { logQueryError } from "@/lib/admin/errors"
 import { toNumber } from "@/lib/admin/format"
+import { PRODUCT_READ_COLUMNS } from "@/lib/admin/product-fields"
+import type { ProductCertification, ProductSource } from "@/lib/products"
 
 /**
  * Product list and detail reads.
@@ -163,6 +165,38 @@ export async function loadCategories(supabase: SupabaseClient): Promise<Category
   return (data ?? []) as CategoryOption[]
 }
 
+export interface ProducerOption {
+  id: string
+  name: string
+  slug: string
+  isPublished: boolean
+}
+
+/**
+ * Producers an administrator can attach a product to. Unpublished producers are
+ * included — a product is often prepared before its producer profile goes live —
+ * and the form marks them so the choice is deliberate.
+ */
+export async function loadProducers(supabase: SupabaseClient): Promise<ProducerOption[]> {
+  const { data, error } = await supabase
+    .from("producers")
+    .select("id, name, slug, is_published")
+    .order("name")
+  if (error) {
+    logQueryError("products:producers", error)
+    return []
+  }
+  return (data ?? []).map((row) => {
+    const producer = row as { id: string; name: string; slug: string; is_published: boolean }
+    return {
+      id: producer.id,
+      name: producer.name,
+      slug: producer.slug,
+      isPublished: producer.is_published,
+    }
+  })
+}
+
 export interface ProductDetail {
   id: string
   slug: string
@@ -184,6 +218,16 @@ export interface ProductDetail {
   displayOrder: number
   seoTitle: string | null
   seoDescription: string | null
+  source: ProductSource
+  certification: ProductCertification
+  producerId: string | null
+  harvestYear: number | null
+  lotCode: string | null
+  variety: string | null
+  rootstock: string | null
+  processing: string | null
+  allergens: string | null
+  netWeight: string | null
   createdAt: string
   updatedAt: string
   ratingAvg: number
@@ -212,11 +256,13 @@ export interface ProductDetail {
   } | null
 }
 
+/**
+ * Built from the shared column list rather than typed out again, so a column
+ * the editor writes cannot be missing here — that mismatch is invisible until
+ * an operator saves a field and reloads to find the old value.
+ */
 const DETAIL_SELECT = `
-  id, slug, name, category_id, description, short_description, base_price, original_price,
-  main_image_url, origin, production_method, shelf_life, storage_conditions, certifications,
-  is_active, is_featured, low_stock_threshold, display_order, seo_title, seo_description,
-  created_at, updated_at, rating_avg, rating_count,
+  ${PRODUCT_READ_COLUMNS.join(", ")},
   product_variants(id, label, price, stock_quantity, sku),
   product_images(id, image_url, alt_text, sort_order, storage_path),
   nutrition_facts(calories, protein, carbohydrates, fat, fiber, sodium)
@@ -259,6 +305,16 @@ export async function loadProductDetail(
     display_order: number
     seo_title: string | null
     seo_description: string | null
+    source: ProductSource
+    certification: ProductCertification
+    producer_id: string | null
+    harvest_year: number | null
+    lot_code: string | null
+    variety: string | null
+    rootstock: string | null
+    processing: string | null
+    allergens: string | null
+    net_weight: string | null
     created_at: string
     updated_at: string
     rating_avg: number | string
@@ -303,6 +359,16 @@ export async function loadProductDetail(
     displayOrder: row.display_order,
     seoTitle: row.seo_title,
     seoDescription: row.seo_description,
+    source: row.source,
+    certification: row.certification,
+    producerId: row.producer_id,
+    harvestYear: row.harvest_year,
+    lotCode: row.lot_code,
+    variety: row.variety,
+    rootstock: row.rootstock,
+    processing: row.processing,
+    allergens: row.allergens,
+    netWeight: row.net_weight,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ratingAvg: toNumber(row.rating_avg),

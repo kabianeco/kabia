@@ -237,6 +237,11 @@ describe("product validation", () => {
     is_featured: false,
     low_stock_threshold: "5",
     display_order: "0",
+    // `source` and `certification` are database enums with no schema default.
+    // They are mandatory here because `products.certification` is NOT NULL with
+    // no database default: a payload without it fails the insert with 23502.
+    source: "ciftlik",
+    certification: "kabia_secki",
     // Already through variantSchema — see the two-stage test below.
     variants: [{ label: "500 g", price: 100, stock_quantity: 10, sku: null }],
   }

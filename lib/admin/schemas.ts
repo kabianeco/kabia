@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { APP_ROLES } from "@/lib/admin/roles"
+import { PRODUCT_CERTIFICATIONS, PRODUCT_SOURCES } from "@/lib/products"
 import { MEDIA_MAX_BYTES } from "@/lib/admin/media"
 
 /**
@@ -126,6 +127,55 @@ export const imageSchema = z.object({
   storage_path: z.string().trim().max(500).optional().nullable(),
 })
 
+/**
+ * Optional free-text provenance fields. They arrive from text inputs, so an
+ * untouched input is "" and must become SQL NULL rather than an empty string —
+ * the product page hides a row whose value is null, and would otherwise print
+ * an empty "Çeşit" line for every product nobody filled in.
+ */
+const optionalText = (label: string, max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max, `${label} en fazla ${max} karakter olabilir.`)
+    .transform((v) => (v === "" ? null : v))
+    .nullish()
+    .transform((v) => v ?? null)
+
+/** A harvest season, or nothing. Bounded so a typo cannot become a claim. */
+const harvestYearField = z
+  .union([z.string(), z.number()])
+  .nullish()
+  .transform((raw, ctx): number | null | typeof z.NEVER => {
+    if (raw === null || raw === undefined) return null
+    const text = typeof raw === "number" ? String(raw) : raw.trim()
+    if (text === "") return null
+    const n = Number(text)
+    if (!Number.isInteger(n)) {
+      ctx.addIssue({ code: "custom", message: "Hasat yılı tam sayı olmalı." })
+      return z.NEVER
+    }
+    if (n < 1900 || n > 2099) {
+      ctx.addIssue({ code: "custom", message: "Hasat yılı 1900 ile 2099 arasında olmalı." })
+      return z.NEVER
+    }
+    return n
+  })
+
+/** A producer reference, or none. Never a slug — the column is a uuid FK. */
+const producerIdField = z
+  .string()
+  .trim()
+  .nullish()
+  .transform((raw, ctx): string | null | typeof z.NEVER => {
+    if (!raw || raw === "") return null
+    if (!z.string().uuid().safeParse(raw).success) {
+      ctx.addIssue({ code: "custom", message: "Geçersiz üretici kaydı." })
+      return z.NEVER
+    }
+    return raw
+  })
+
 export const productSchema = z
   .object({
     name: z.string().trim().min(2, "Ürün adı en az 2 karakter olmalı.").max(120),
@@ -152,6 +202,24 @@ export const productSchema = z
       .max(200, "SEO açıklaması en fazla 200 karakter.")
       .optional()
       .nullable(),
+
+    // ---- taxonomy and provenance -------------------------------------------
+    // `source` and `certification` are database enums, and `certification` is
+    // NOT NULL with no default: omitting it from the payload is what made every
+    // product creation fail with 23502. Neither is optional here, and neither
+    // has a fallback value — an unrecognised certification is rejected rather
+    // than being quietly resolved, because one of the three is a legal claim.
+    source: z.enum(PRODUCT_SOURCES, { message: "Geçersiz kaynak." }),
+    certification: z.enum(PRODUCT_CERTIFICATIONS, { message: "Geçersiz sertifika değeri." }),
+    producer_id: producerIdField,
+    harvest_year: harvestYearField,
+    lot_code: optionalText("Lot kodu", 60),
+    variety: optionalText("Çeşit", 80),
+    rootstock: optionalText("Anaç", 80),
+    processing: optionalText("İşleme", 200),
+    allergens: optionalText("Alerjenler", 200),
+    net_weight: optionalText("Net ağırlık", 60),
+
     variants: z.array(parsedVariantSchema).min(1, "En az bir ürün seçeneği gerekli."),
   })
   .superRefine((value, ctx) => {

@@ -19,7 +19,13 @@ import type { MediaAsset } from "@/lib/admin/media"
 import { cn } from "@/lib/utils"
 import { ACTION_IDLE } from "@/lib/admin/errors"
 import type { ProductDetail } from "@/lib/admin/queries/products"
-import type { CategoryOption } from "@/lib/admin/queries/products"
+import type { CategoryOption, ProducerOption } from "@/lib/admin/queries/products"
+import {
+  CERTIFICATION_LABEL,
+  PRODUCT_CERTIFICATIONS,
+  SOURCES,
+  type ProductCertification,
+} from "@/lib/products"
 import {
   AdminButton,
   AdminCheckbox,
@@ -90,9 +96,11 @@ function toImageDrafts(product: ProductDetail | null): ImageDraft[] {
 export function ProductForm({
   product,
   categories,
+  producers,
 }: {
   product: ProductDetail | null
   categories: CategoryOption[]
+  producers: ProducerOption[]
 }) {
   const [state, formAction] = useActionState(saveProductAction, ACTION_IDLE)
   const [variants, setVariants] = useState<VariantDraft[]>(() => toVariantDrafts(product))
@@ -100,6 +108,17 @@ export function ProductForm({
   const [mainImageUrl, setMainImageUrl] = useState(product?.mainImageUrl ?? "")
   const [slugTouched, setSlugTouched] = useState(Boolean(product))
   const [slug, setSlug] = useState(product?.slug ?? "")
+  // Certification drives a confirmation step, so the form has to know the
+  // current choice rather than leaving it entirely to the DOM.
+  const [certification, setCertification] = useState<ProductCertification | "">(
+    product?.certification ?? "",
+  )
+  // Confirmation is asked when the organic claim is *made*, matching the server
+  // rule in lib/admin/product-fields.ts — not on every save of a product that
+  // already holds a certificate.
+  const needsOrganicConfirmation =
+    certification === "organik_sertifikali" &&
+    product?.certification !== "organik_sertifikali"
 
   const errors = state.fieldErrors ?? {}
   const isEdit = Boolean(product)
@@ -429,13 +448,107 @@ export function ProductForm({
             />
           </Panel>
 
+          <Panel
+            title="Kaynak ve üretici"
+            description="Mağazada ürünün altında görünen satır ve /magaza kaynak filtresi buradan gelir."
+          >
+            <div className="space-y-5">
+              <AdminSelect
+                label="Kaynak"
+                name="source"
+                required
+                defaultValue={product?.source ?? ""}
+                error={errors.source}
+                hint="Ürün Kabia'nın hangi hattına ait: kendi çiftliğimiz, seçtiğimiz üretici ya da üreticinin mutfağı."
+              >
+                <option value="" disabled>
+                  Kaynak seçin
+                </option>
+                {SOURCES.filter((entry) => entry.id !== "tumu").map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.badgeLabel}
+                  </option>
+                ))}
+              </AdminSelect>
+
+              <div>
+                <AdminSelect
+                  label="Üretici"
+                  name="producer_id"
+                  defaultValue={product?.producerId ?? ""}
+                  error={errors.producer_id}
+                  hint="Seçki ve Mutfak ürünleri için. Ürün sayfasındaki üretici satırını ve /magaza/[üretici] listesini belirler."
+                >
+                  <option value="">Üretici yok</option>
+                  {producers.map((producer) => (
+                    <option key={producer.id} value={producer.id}>
+                      {producer.name}
+                      {producer.isPublished ? "" : " (yayında değil)"}
+                    </option>
+                  ))}
+                </AdminSelect>
+                <div className="mt-1.5 flex justify-end">
+                  <Link
+                    href="/admin/producers"
+                    prefetch={false}
+                    className="text-xs text-brand transition-colors duration-300 hover:text-forest"
+                  >
+                    Üreticileri yönet →
+                  </Link>
+                </div>
+              </div>
+
+              <AdminSelect
+                label="Sertifika"
+                name="certification"
+                required
+                value={certification}
+                onChange={(event) =>
+                  setCertification(event.target.value as ProductCertification | "")
+                }
+                error={errors.certification}
+                hint="“Organik Sertifikalı” yalnızca gerçek bir organik sertifika varsa seçilir; diğer ikisi Kabia'nın kendi seçme yaklaşımını ifade eder."
+              >
+                <option value="" disabled>
+                  Sertifika seçin
+                </option>
+                {PRODUCT_CERTIFICATIONS.map((value) => (
+                  <option key={value} value={value}>
+                    {CERTIFICATION_LABEL[value]}
+                  </option>
+                ))}
+              </AdminSelect>
+
+              {needsOrganicConfirmation && (
+                <AdminCheckbox
+                  name="organic_confirmed"
+                  label="Bu ürün için gerçek bir organik sertifika bulunduğunu onaylıyorum."
+                  hint="Organik sertifikalı etiketi yasal bir iddiadır. Onaylanmadan kaydedilmez."
+                />
+              )}
+            </div>
+          </Panel>
+
           <Panel title="Üretim bilgileri">
             <div className="space-y-5">
               <AdminInput label="Menşei" name="origin" defaultValue={product?.origin ?? ""} />
               <AdminInput label="Üretim yöntemi" name="production_method" defaultValue={product?.productionMethod ?? ""} />
+              <AdminInput label="İşleme" name="processing" defaultValue={product?.processing ?? ""} error={errors.processing} />
+              <AdminInput label="Çeşit" name="variety" defaultValue={product?.variety ?? ""} error={errors.variety} />
+              <AdminInput label="Anaç" name="rootstock" defaultValue={product?.rootstock ?? ""} error={errors.rootstock} />
+              <AdminInput
+                label="Hasat yılı"
+                name="harvest_year"
+                inputMode="numeric"
+                defaultValue={product?.harvestYear != null ? String(product.harvestYear) : ""}
+                error={errors.harvest_year}
+              />
+              <AdminInput label="Lot kodu" name="lot_code" defaultValue={product?.lotCode ?? ""} error={errors.lot_code} />
+              <AdminInput label="Net ağırlık" name="net_weight" defaultValue={product?.netWeight ?? ""} error={errors.net_weight} hint="Ambalajda yazan net miktar. Seçenek adından ayrıdır." />
+              <AdminInput label="Alerjenler" name="allergens" defaultValue={product?.allergens ?? ""} error={errors.allergens} />
               <AdminInput label="Raf ömrü" name="shelf_life" defaultValue={product?.shelfLife ?? ""} />
               <AdminInput label="Saklama koşulları" name="storage_conditions" defaultValue={product?.storageConditions ?? ""} />
-              <AdminInput label="Sertifikalar" name="certifications" defaultValue={product?.certifications ?? ""} />
+              <AdminInput label="Sertifikalar" name="certifications" defaultValue={product?.certifications ?? ""} hint="Serbest metin not. Yasal sertifika iddiası için yukarıdaki Sertifika alanı kullanılır." />
             </div>
           </Panel>
 
