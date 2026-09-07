@@ -163,46 +163,6 @@ const PRODUCT_LEAN_SELECT = `
   producer:producers(slug, name)
 `
 
-/**
- * Uzak veritabanı taxonomy migration'ını (20260805000000_kabia_taxonomy)
- * henüz almamışsa `source` / `certification` / `producer_id` kolonları ve
- * `producers` tablosu yoktur. Bu durumda tam select PGRST200 / 42703 ile
- * düşer ve mağaza "Ürünler şu anda yüklenemiyor." gösterir. Migration
- * uygulanana kadar mağazayı çalışır tutmak için baz şemada var olan
- * kolonlarla yetinen legacy select'lere düşüyoruz. Eksik alanlar
- * mapProduct içindeki güvenli varsayılanlara (ciftlik / kabia_secki /
- * üreticisiz) kalır.
- */
-const PRODUCT_SELECT_LEGACY = `
-  id, slug, name, base_price, original_price, main_image_url,
-  origin, production_method, shelf_life, storage_conditions, certifications,
-  short_description, description, is_active, is_featured, created_at,
-  rating_avg, rating_count, rating_breakdown,
-  category:categories(slug, name),
-  product_variants(id, label, price, stock_quantity),
-  product_images(image_url, sort_order),
-  nutrition_facts(calories, protein, carbohydrates, fat, fiber, sodium)
-`
-
-const PRODUCT_LEAN_SELECT_LEGACY = `
-  id, slug, name, base_price, main_image_url,
-  short_description, is_active, is_featured, created_at,
-  rating_avg, rating_count,
-  category:categories(slug, name)
-`
-
-function isMissingSchemaError(error: { code?: string; message?: string } | null | undefined): boolean {
-  if (!error) return false
-  if (error.code === "PGRST200" || error.code === "PGRST205" || error.code === "42703" || error.code === "42P01") return true
-  const msg = error.message ?? ""
-  return (
-    msg.includes("Could not find a relationship") ||
-    msg.includes("Could not find the table") ||
-    msg.includes("does not exist") ||
-    msg.includes("schema cache")
-  )
-}
-
 // ---- async fetch functions (accept a server or browser client) ----
 
 export type PublicProductsResult =
@@ -217,30 +177,16 @@ export type PublicProductsResult =
 export async function fetchPublicProducts(
   client: SupabaseClient,
 ): Promise<PublicProductsResult> {
-  const first = await client
+  const { data, error } = await client
     .from("products")
     .select(PRODUCT_SELECT)
     .eq("is_active", true)
     .order("created_at", { ascending: true })
     .limit(50)
-  if (!first.error && first.data) {
-    return {
-      status: "ok",
-      products: first.data.map((row) => mapProduct(row as unknown as ProductRow, false)),
-    }
-  }
-  // Eski şemalı uzak DB'ye düş: migration uygulanana kadar legacy kolonlarla dene.
-  if (!isMissingSchemaError(first.error)) return { status: "error" }
-  const fallback = await client
-    .from("products")
-    .select(PRODUCT_SELECT_LEGACY)
-    .eq("is_active", true)
-    .order("created_at", { ascending: true })
-    .limit(50)
-  if (fallback.error || !fallback.data) return { status: "error" }
+  if (error || !data) return { status: "error" }
   return {
     status: "ok",
-    products: fallback.data.map((row) => mapProduct(row as unknown as ProductRow, false)),
+    products: data.map((row) => mapProduct(row as unknown as ProductRow, false)),
   }
 }
 
@@ -250,22 +196,17 @@ export async function fetchProducts(client: SupabaseClient): Promise<Product[]> 
   return result.status === "ok" ? result.products : []
 }
 
-async function selectLeanWithFallback(
-  client: SupabaseClient,
-  build: (select: string) => PromiseLike<{ data: unknown[] | null; error: { code?: string; message?: string } | null }>,
+/** Shared shape for the listing reads that degrade to an empty list. */
+async function selectLean(
+  build: (select: string) => PromiseLike<{ data: unknown[] | null; error: unknown }>,
 ): Promise<Product[]> {
-  const first = await build(PRODUCT_LEAN_SELECT)
-  if (!first.error && first.data) {
-    return first.data.map((row) => mapProduct(row as unknown as ProductRow, false))
-  }
-  if (!isMissingSchemaError(first.error)) return []
-  const fallback = await build(PRODUCT_LEAN_SELECT_LEGACY)
-  if (fallback.error || !fallback.data) return []
-  return fallback.data.map((row) => mapProduct(row as unknown as ProductRow, false))
+  const { data, error } = await build(PRODUCT_LEAN_SELECT)
+  if (error || !data) return []
+  return data.map((row) => mapProduct(row as unknown as ProductRow, false))
 }
 
 export async function fetchFeaturedProducts(client: SupabaseClient): Promise<Product[]> {
-  return selectLeanWithFallback(client, (select) =>
+  return selectLean((select) =>
     client
       .from("products")
       .select(select)
@@ -278,21 +219,18 @@ export async function fetchFeaturedProducts(client: SupabaseClient): Promise<Pro
 
 /** A producer's own products, for their profile page — same card fields as the storefront grid. */
 export async function fetchProductsByProducer(client: SupabaseClient, producerId: string): Promise<Product[]> {
-  // Eski şemada producer_id kolonu yoktur — bu filtre hep şema hatası verir,
-  // üretici sayfası boş listelenir. Yeni şemada normal çalışır.
   const { data, error } = await client
     .from("products")
     .select(PRODUCT_LEAN_SELECT)
     .eq("is_active", true)
     .eq("producer_id", producerId)
     .order("created_at", { ascending: true })
-  if (!error && data) return data.map((row) => mapProduct(row as unknown as ProductRow, false))
-  if (!isMissingSchemaError(error)) return []
-  return []
+  if (error || !data) return []
+  return data.map((row) => mapProduct(row as unknown as ProductRow, false))
 }
 
 export async function fetchLeanProducts(client: SupabaseClient, limit = 4): Promise<Product[]> {
-  return selectLeanWithFallback(client, (select) =>
+  return selectLean((select) =>
     client
       .from("products")
       .select(select)
@@ -356,7 +294,7 @@ export async function fetchProductBySlug(
   client: SupabaseClient,
   slug: string,
 ): Promise<Product | null> {
-  const first = await client
+  const { data, error } = await client
     .from("products")
     .select(
       `${PRODUCT_SELECT}, reviews(id, reviewer_name, user_id, rating, review_text, is_verified_purchase, created_at)`,
@@ -365,19 +303,8 @@ export async function fetchProductBySlug(
     .eq("is_active", true)
     .order("created_at", { referencedTable: "reviews", ascending: false })
     .maybeSingle()
-  if (!first.error && first.data) return mapProduct(first.data as unknown as ProductRow, true)
-  if (!isMissingSchemaError(first.error)) return null
-  const fallback = await client
-    .from("products")
-    .select(
-      `${PRODUCT_SELECT_LEGACY}, reviews(id, reviewer_name, user_id, rating, review_text, is_verified_purchase, created_at)`,
-    )
-    .eq("slug", slug)
-    .eq("is_active", true)
-    .order("created_at", { referencedTable: "reviews", ascending: false })
-    .maybeSingle()
-  if (fallback.error || !fallback.data) return null
-  return mapProduct(fallback.data as unknown as ProductRow, true)
+  if (error || !data) return null
+  return mapProduct(data as unknown as ProductRow, true)
 }
 
 export async function fetchRelatedProducts(
@@ -386,24 +313,18 @@ export async function fetchRelatedProducts(
   count = 4,
 ): Promise<Product[]> {
   const categoryId = await categoryIdBySlug(client, product.category)
-  const queryLean = (select: string) =>
-    Promise.all([
-      categoryId
-        ? client.from("products").select(select).eq("is_active", true).eq("category_id", categoryId).neq("slug", product.slug).order("created_at", { ascending: true }).limit(count)
-        : Promise.resolve({ data: [] as unknown[] | null, error: null }),
-      client.from("products").select(select).eq("is_active", true).neq("slug", product.slug).order("created_at", { ascending: true }).limit(count),
-    ])
-  let [sameRes, restRes] = await queryLean(PRODUCT_LEAN_SELECT)
-  const sameErr = (sameRes as { error?: { code?: string; message?: string } | null }).error
-  const restErr = (restRes as { error?: { code?: string; message?: string } | null }).error
-  if (isMissingSchemaError(sameErr) || isMissingSchemaError(restErr)) {
-    ;[sameRes, restRes] = await queryLean(PRODUCT_LEAN_SELECT_LEGACY)
-  }
-  const same = (sameRes as { data: unknown[] | null }).data
-  const rest = (restRes as { data: unknown[] | null }).data
+  // Same category first, then anything else, so a thin category still fills the
+  // row. Both reads degrade to an empty list; related products are a courtesy,
+  // never a reason to fail the product page.
+  const [sameRes, restRes] = await Promise.all([
+    categoryId
+      ? client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).eq("category_id", categoryId).neq("slug", product.slug).order("created_at", { ascending: true }).limit(count)
+      : Promise.resolve({ data: [] as unknown[] | null }),
+    client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).neq("slug", product.slug).order("created_at", { ascending: true }).limit(count),
+  ])
   const combined = [
-    ...(same ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),
-    ...(rest ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),
+    ...(sameRes.data ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),
+    ...(restRes.data ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),
   ]
   // dedupe by slug
   const seen = new Set<string>()
