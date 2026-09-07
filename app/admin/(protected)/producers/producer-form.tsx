@@ -112,10 +112,10 @@ export function ProducerForm({ producer }: { producer: ProducerDetail | null }) 
 
               <AdminInput
                 label="Tek satırlık tanıtım"
-                name="desc"
+                name="tagline"
                 required
-                defaultValue={producer?.desc ?? ""}
-                error={errors.desc}
+                defaultValue={producer?.tagline ?? ""}
+                error={errors.tagline}
                 wrapperClassName="sm:col-span-2"
                 hint="/secki kartında adın altında görünür."
               />

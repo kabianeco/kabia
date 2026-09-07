@@ -71,7 +71,7 @@ export async function saveProducerAction(
       name: formData.get("name"),
       slug: formData.get("slug"),
       source: formData.get("source"),
-      desc: formData.get("desc"),
+      tagline: formData.get("tagline"),
       region: textOrNull(formData, "region"),
       product_type: textOrNull(formData, "product_type"),
       photo_url: textOrNull(formData, "photo_url"),

@@ -424,7 +424,7 @@ export const producerSchema = z.object({
   name: z.string().trim().min(2, "Üretici adı en az 2 karakter olmalı.").max(120),
   slug: slugSchema,
   source: z.enum(PRODUCT_SOURCES, { message: "Geçersiz kaynak." }),
-  desc: z.string().trim().min(2, "Tek satırlık tanıtım en az 2 karakter olmalı.").max(200),
+  tagline: z.string().trim().min(2, "Tek satırlık tanıtım en az 2 karakter olmalı.").max(200),
   region: optionalText("Bölge", 200),
   product_type: optionalText("Ürün türü", 120),
   photo_url: optionalText("Fotoğraf", 1000),

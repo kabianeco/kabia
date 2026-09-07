@@ -21,7 +21,7 @@ const input = {
   name: "Kayadibi Köyü Aile Bahçesi",
   slug: "ege-ceviz",
   source: "secki" as const,
-  desc: "Doğal üretim.",
+  tagline: "Doğal üretim.",
   region: "Kayadibi Köyü Aile Bahçesi",
   product_type: "Ceviz",
   photo_url: "/images/kabuklu-ceviz.jpeg",
@@ -70,7 +70,7 @@ describe("producer editor field coverage", () => {
   it("carries the Phase 2 columns the storefront will read", () => {
     const row = buildProducerRow(input) as Record<string, unknown>
     assert.equal(row.source, "secki")
-    assert.equal(row.desc, "Doğal üretim.")
+    assert.equal(row.tagline, "Doğal üretim.")
     assert.equal(row.sort_order, 70)
   })
 })

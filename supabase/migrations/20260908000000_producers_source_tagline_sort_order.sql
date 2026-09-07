@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------
--- KABIA Phase 2 — producers become administrable: source, desc, sort_order.
+-- KABIA Phase 2 — producers become administrable: source, tagline, sort_order.
 --
 -- WHY THESE COLUMNS
 --
@@ -12,7 +12,7 @@
 --     `producerCollections` object in `content/producers.ts`, and the table has
 --     no equivalent. Reuses the existing `public.product_source` enum rather
 --     than adding a second vocabulary for the same three lines.
---   * `desc` — the one-line card copy `/secki` prints under the producer name.
+--   * `tagline` — the one-line card copy `/secki` prints under the producer name.
 --     This value lives only in `content/producers.ts`; no migration has ever
 --     given it a column (see docs/audit-2026-09-07.md §2, `/secki` table).
 --   * `sort_order` — display order for `/ureticiler` (currently fixed
@@ -24,7 +24,7 @@
 --
 -- BACKFILL, NOT HAND ENTRY
 --
--- All three values already exist in reviewed form: `source` and `desc` are the
+-- All three values already exist in reviewed form: `source` and `tagline` are the
 -- `producerCollections` entries in `content/producers.ts` (whose ten slugs
 -- match the ten live rows exactly), and every producer's linked products agree
 -- on a single `source` that matches that mapping 10/10 — verified by query,
@@ -44,7 +44,7 @@
 --
 --   * `source` follows the taxonomy migration's own pattern: added nullable,
 --     backfilled below, then SET NOT NULL. No row can be left without one.
---   * `desc` is nullable, like every other producer detail column — missing
+--   * `tagline` is nullable, like every other producer detail column — missing
 --     copy renders as missing, never as a broken row.
 --   * `sort_order` is NOT NULL with `default 0` and `check (>= 0)`, mirroring
 --     the `base_price >= 0` / `display_order` conventions: existing rows take
@@ -56,7 +56,7 @@
 --     `idx_producers_published (created_at desc)` index is kept; the new
 --     ordering index sits alongside it.
 --
--- Rollback: alter table public.producers drop column source / desc /
+-- Rollback: alter table public.producers drop column source / tagline /
 --           sort_order; alter table public.categories drop column sort_order;
 --           drop index if exists idx_producers_published_order.
 -- ---------------------------------------------------------------------------
@@ -67,14 +67,14 @@ alter table public.producers
   add column if not exists source public.product_source;
 
 alter table public.producers
-  add column if not exists desc text;
+  add column if not exists tagline text;
 
 alter table public.producers
   add column if not exists sort_order integer not null default 0 check (sort_order >= 0);
 
 comment on column public.producers.source is
   'Which of Kabia''s three product lines this producer belongs to: ciftlik (own farm), secki (trusted producers), mutfak (traditional small-batch). Drives /secki membership.';
-comment on column public.producers.desc is
+comment on column public.producers.tagline is
   'One-line card copy shown under the producer name on /secki and /ureticiler.';
 comment on column public.producers.sort_order is
   'Curated display order, ascending. Gaps of ten leave room for inserts; new rows default to 0 (front) until placed.';
@@ -94,16 +94,16 @@ comment on column public.categories.sort_order is
 -- Values from content/producers.ts; cross-checked 10/10 against each
 -- producer's linked products' distinct source before writing this file.
 
-update public.producers set source = 'ciftlik', desc = $$Organik sertifikalı, ekolojik hasadımız.$$, sort_order = 90 where slug = 'kabia-ciftligi';
-update public.producers set source = 'secki', desc = $$Sade, doğal ve olduğu gibi.$$, sort_order = 80 where slug = 'geyce-setce-findik';
-update public.producers set source = 'secki', desc = $$Doğal üretim.$$, sort_order = 70 where slug = 'ege-ceviz';
-update public.producers set source = 'secki', desc = $$Gezgin değil, sabit kovan. Aynı flora, aynı rakım.$$, sort_order = 60 where slug = 'anadolu-bal';
-update public.producers set source = 'secki', desc = $$Doğal ürün.$$, sort_order = 50 where slug = 'akinci-ihlamur';
-update public.producers set source = 'mutfak', desc = $$Mevsiminde olgunlaşan domatesler, güneşte ağır ağır kurutulur.$$, sort_order = 40 where slug = 'domates-salcasi';
-update public.producers set source = 'mutfak', desc = $$Geyve'nin elmalarından, annelerimizin yaptığı gibi.$$, sort_order = 30 where slug = 'elma-sirkesi';
-update public.producers set source = 'mutfak', desc = $$Geyve alıçlarından, doğal fermentasyonla.$$, sort_order = 20 where slug = 'alic-sirkesi';
-update public.producers set source = 'mutfak', desc = $$Un, yumurta ve tuz. Ovalarda kurutulan yufka, elle kesilir.$$, sort_order = 10 where slug = 'eriste';
-update public.producers set source = 'mutfak', desc = $$Domates, biber, yoğurt ve un. Geleneksel tarhana fermantasyonu.$$, sort_order = 0 where slug = 'tarhana';
+update public.producers set source = 'ciftlik', tagline = $$Organik sertifikalı, ekolojik hasadımız.$$, sort_order = 90 where slug = 'kabia-ciftligi';
+update public.producers set source = 'secki', tagline = $$Sade, doğal ve olduğu gibi.$$, sort_order = 80 where slug = 'geyce-setce-findik';
+update public.producers set source = 'secki', tagline = $$Doğal üretim.$$, sort_order = 70 where slug = 'ege-ceviz';
+update public.producers set source = 'secki', tagline = $$Gezgin değil, sabit kovan. Aynı flora, aynı rakım.$$, sort_order = 60 where slug = 'anadolu-bal';
+update public.producers set source = 'secki', tagline = $$Doğal ürün.$$, sort_order = 50 where slug = 'akinci-ihlamur';
+update public.producers set source = 'mutfak', tagline = $$Mevsiminde olgunlaşan domatesler, güneşte ağır ağır kurutulur.$$, sort_order = 40 where slug = 'domates-salcasi';
+update public.producers set source = 'mutfak', tagline = $$Geyve'nin elmalarından, annelerimizin yaptığı gibi.$$, sort_order = 30 where slug = 'elma-sirkesi';
+update public.producers set source = 'mutfak', tagline = $$Geyve alıçlarından, doğal fermentasyonla.$$, sort_order = 20 where slug = 'alic-sirkesi';
+update public.producers set source = 'mutfak', tagline = $$Un, yumurta ve tuz. Ovalarda kurutulan yufka, elle kesilir.$$, sort_order = 10 where slug = 'eriste';
+update public.producers set source = 'mutfak', tagline = $$Domates, biber, yoğurt ve un. Geleneksel tarhana fermantasyonu.$$, sort_order = 0 where slug = 'tarhana';
 
 alter table public.producers alter column source set not null;
 

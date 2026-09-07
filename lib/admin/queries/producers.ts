@@ -19,7 +19,7 @@ export interface ProducerListRow {
   slug: string
   name: string
   source: ProductSource | null
-  desc: string | null
+  tagline: string | null
   region: string | null
   productType: string | null
   isPublished: boolean
@@ -31,7 +31,7 @@ export interface ProducerListRow {
 export async function loadProducerList(supabase: SupabaseClient): Promise<ProducerListRow[]> {
   const { data, error } = await supabase
     .from("producers")
-    .select("id, slug, name, source, desc, region, product_type, is_published, sort_order, created_at, products(count)")
+    .select("id, slug, name, source, tagline, region, product_type, is_published, sort_order, created_at, products(count)")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false })
 
@@ -45,7 +45,7 @@ export async function loadProducerList(supabase: SupabaseClient): Promise<Produc
     slug: string
     name: string
     source: ProductSource | null
-    desc: string | null
+    tagline: string | null
     region: string | null
     product_type: string | null
     is_published: boolean
@@ -59,7 +59,7 @@ export async function loadProducerList(supabase: SupabaseClient): Promise<Produc
     slug: row.slug,
     name: row.name,
     source: row.source,
-    desc: row.desc,
+    tagline: row.tagline,
     region: row.region,
     productType: row.product_type,
     isPublished: row.is_published,
@@ -74,7 +74,7 @@ export interface ProducerDetail {
   slug: string
   name: string
   source: ProductSource
-  desc: string
+  tagline: string
   region: string | null
   productType: string | null
   photoUrl: string | null
@@ -94,7 +94,7 @@ const DETAIL_SELECT = [
   "slug",
   "name",
   "source",
-  "desc",
+  "tagline",
   "region",
   "product_type",
   "photo_url",
@@ -130,7 +130,7 @@ export async function loadProducerDetail(
     slug: string
     name: string
     source: ProductSource
-    desc: string
+    tagline: string
     region: string | null
     product_type: string | null
     photo_url: string | null
@@ -152,7 +152,7 @@ export async function loadProducerDetail(
     slug: row.slug,
     name: row.name,
     source: row.source,
-    desc: row.desc,
+    tagline: row.tagline,
     region: row.region,
     productType: row.product_type,
     photoUrl: row.photo_url,
