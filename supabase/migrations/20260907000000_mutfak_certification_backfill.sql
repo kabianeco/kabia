@@ -1,0 +1,56 @@
+-- ---------------------------------------------------------------------------
+-- KABIA — correct the certification label on Kabia Mutfak products.
+--
+-- WHY THIS EXISTS
+--
+-- 20260805000000_kabia_taxonomy backfilled `products.certification` to
+-- 'kabia_secki' for every existing row. That was the right call at the time:
+-- the migration had no reliable way to tell which products held a genuine
+-- organic certificate, and its header is explicit that an administrator
+-- reviews and corrects individual products by hand afterwards.
+--
+-- The `source` half of that review was completed — all ten catalogue rows now
+-- carry a correct, individually-assigned source, and one product has been
+-- upgraded to 'organik_sertifikali' by hand. The `certification` half was not:
+-- every Kabia Mutfak product still carries the blanket 'kabia_secki' it was
+-- backfilled with.
+--
+-- The storefront shows both labels, so a Mutfak product currently reads
+-- "Kabia Mutfak" as its source and "Kabia Seçki Standardı" as its standard on
+-- the same page. This migration removes that contradiction.
+--
+-- WHAT IT DERIVES FROM, AND WHAT IT DOES NOT GUESS
+--
+-- The new value is derived from `source`, which is already correct per product
+-- in the database — it is not inferred from a name, a category or a producer.
+-- 'kabia_mutfak' is by definition the standard for the Mutfak line; like
+-- 'kabia_secki' it expresses Kabia's own selection approach and carries no
+-- official certification claim, so this is a relabelling, never an upgrade.
+--
+-- Nothing here can create an organic claim:
+--   * 'organik_sertifikali' is never assigned. That upgrade stays a deliberate
+--     administrator action against a real certificate, now with a confirmation
+--     step in the product editor.
+--   * The WHERE clause only ever reads rows that are currently 'kabia_secki',
+--     so an existing organic row is not touched, and re-running cannot
+--     downgrade a product an administrator has since upgraded.
+--
+-- Rows deliberately left alone:
+--   * source = 'ciftlik' — one row, already 'organik_sertifikali'.
+--   * source = 'secki'  — four rows, correctly 'kabia_secki'.
+--
+-- No schema change. No default is added to `certification`: it stays NOT NULL
+-- with no default on purpose, so an insert that forgets it fails loudly rather
+-- than silently labelling a product with a standard nobody chose. That failure
+-- is what surfaced the missing field in the product editor.
+--
+-- Idempotent: re-running changes nothing once applied.
+--
+-- Rollback: update public.products set certification = 'kabia_secki'
+--           where source = 'mutfak' and certification = 'kabia_mutfak';
+-- ---------------------------------------------------------------------------
+
+update public.products
+   set certification = 'kabia_mutfak'
+ where source = 'mutfak'
+   and certification = 'kabia_secki';
