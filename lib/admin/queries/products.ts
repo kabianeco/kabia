@@ -37,6 +37,7 @@ export const PRODUCT_SORTS = {
   base_price: "base_price",
   total_stock: "total_stock",
   display_order: "display_order",
+  producer_name: "producer_name",
 } as const
 
 export type ProductSortKey = keyof typeof PRODUCT_SORTS
@@ -45,6 +46,7 @@ export interface ProductListParams {
   q?: string
   status?: "aktif" | "arsiv"
   category?: string
+  producer?: string
   stock?: "tukendi" | "kritik" | "yeterli"
   featured?: "evet"
   sort: ProductSortKey
@@ -64,6 +66,9 @@ export interface ProductListRow {
   updatedAt: string
   categoryName: string | null
   categorySlug: string | null
+  producerId: string | null
+  producerName: string | null
+  source: ProductSource | null
   totalStock: number
   variantCount: number
   lowStockThreshold: number
@@ -74,6 +79,72 @@ export interface ProductListResult {
   rows: ProductListRow[]
   total: number
   error: boolean
+  /**
+   * Whether the read model exposed the producer dimension. The Phase 3 view
+   * migration is authored but unapplied, so this is false until it lands and
+   * the screen hides the producer filter and column meanwhile — the list
+   * behaves exactly as it did before, rather than erroring.
+   */
+  producerDimension: boolean
+}
+
+/**
+ * PostgREST reports an unknown select column from the schema cache. Only
+ * that condition falls back to the pre-dimension select; every other error
+ * keeps today's error path.
+ */
+function isMissingViewColumn(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false
+  if (error.code === "PGRST204" || error.code === "PGRST200" || error.code === "42703") return true
+  const msg = error.message ?? ""
+  return msg.includes("schema cache") && msg.includes("Could not find")
+}
+
+const LIST_SELECT =
+  "id, slug, name, base_price, main_image_url, is_active, is_featured, updated_at, category_name, category_slug, total_stock, variant_count, low_stock_threshold, stock_status"
+
+const LIST_SELECT_WITH_PRODUCER = `${LIST_SELECT}, producer_id, producer_name, source`
+
+type ListRow = {
+  id: string
+  slug: string
+  name: string
+  base_price: number | string
+  main_image_url: string | null
+  is_active: boolean
+  is_featured: boolean
+  updated_at: string
+  category_name: string | null
+  category_slug: string | null
+  producer_id?: string | null
+  producer_name?: string | null
+  source?: ProductSource | null
+  total_stock: number
+  variant_count: number
+  low_stock_threshold: number
+  stock_status: "tukendi" | "kritik" | "yeterli"
+}
+
+function toListRow(row: ListRow): ProductListRow {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    basePrice: toNumber(row.base_price),
+    mainImageUrl: row.main_image_url,
+    isActive: row.is_active,
+    isFeatured: row.is_featured,
+    updatedAt: row.updated_at,
+    categoryName: row.category_name,
+    categorySlug: row.category_slug,
+    producerId: row.producer_id ?? null,
+    producerName: row.producer_name ?? null,
+    source: row.source ?? null,
+    totalStock: row.total_stock,
+    variantCount: row.variant_count,
+    lowStockThreshold: row.low_stock_threshold,
+    stockStatus: row.stock_status,
+  }
 }
 
 export async function loadProductList(
@@ -82,71 +153,75 @@ export async function loadProductList(
 ): Promise<ProductListResult> {
   const from = (params.page - 1) * params.perPage
   const to = from + params.perPage - 1
-
-  let query = supabase
-    .from("admin_product_overview")
-    .select(
-      "id, slug, name, base_price, main_image_url, is_active, is_featured, updated_at, category_name, category_slug, total_stock, variant_count, low_stock_threshold, stock_status",
-      { count: "exact" },
-    )
-
   const q = sanitizeSearch(params.q)
+
+  // The enriched select exposes the producer dimension once the Phase 3 view
+  // migration lands. Until then the view lacks those columns and PostgREST
+  // answers from the schema cache — that, and only that, falls back to
+  // today's select below, so the list behaves exactly as before.
+  let enriched = supabase
+    .from("admin_product_overview")
+    .select(LIST_SELECT_WITH_PRODUCER, { count: "exact" })
+
   if (q.length >= 2) {
     // name, slug and every SKU on the product, in one indexed pass.
-    query = query.or(`name.ilike.%${q}%,slug.ilike.%${q}%,skus.ilike.%${q}%`)
+    enriched = enriched.or(`name.ilike.%${q}%,slug.ilike.%${q}%,skus.ilike.%${q}%`)
   }
-  if (params.status === "aktif") query = query.eq("is_active", true)
-  if (params.status === "arsiv") query = query.eq("is_active", false)
-  if (params.category) query = query.eq("category_slug", params.category)
-  if (params.stock) query = query.eq("stock_status", params.stock)
-  if (params.featured === "evet") query = query.eq("is_featured", true)
+  if (params.status === "aktif") enriched = enriched.eq("is_active", true)
+  if (params.status === "arsiv") enriched = enriched.eq("is_active", false)
+  if (params.category) enriched = enriched.eq("category_slug", params.category)
+  if (params.producer) enriched = enriched.eq("producer_id", params.producer)
+  if (params.stock) enriched = enriched.eq("stock_status", params.stock)
+  if (params.featured === "evet") enriched = enriched.eq("is_featured", true)
 
-  const { data, error, count } = await query
+  const first = await enriched
     .order(PRODUCT_SORTS[params.sort], { ascending: params.dir === "asc" })
     .order("id", { ascending: true })
     .range(from, to)
 
-  if (error) {
-    logQueryError("products:list", error)
-    return { rows: [], total: 0, error: true }
+  if (!first.error && first.data) {
+    return {
+      rows: (first.data as ListRow[]).map(toListRow),
+      total: first.count ?? 0,
+      error: false,
+      producerDimension: true,
+    }
+  }
+  if (first.error && !isMissingViewColumn(first.error)) {
+    logQueryError("products:list", first.error)
+    return { rows: [], total: 0, error: true, producerDimension: false }
   }
 
-  type Row = {
-    id: string
-    slug: string
-    name: string
-    base_price: number | string
-    main_image_url: string | null
-    is_active: boolean
-    is_featured: boolean
-    updated_at: string
-    category_name: string | null
-    category_slug: string | null
-    total_stock: number
-    variant_count: number
-    low_stock_threshold: number
-    stock_status: "tukendi" | "kritik" | "yeterli"
+  let legacy = supabase.from("admin_product_overview").select(LIST_SELECT, { count: "exact" })
+
+  if (q.length >= 2) {
+    legacy = legacy.or(`name.ilike.%${q}%,slug.ilike.%${q}%,skus.ilike.%${q}%`)
+  }
+  if (params.status === "aktif") legacy = legacy.eq("is_active", true)
+  if (params.status === "arsiv") legacy = legacy.eq("is_active", false)
+  if (params.category) legacy = legacy.eq("category_slug", params.category)
+  if (params.stock) legacy = legacy.eq("stock_status", params.stock)
+  if (params.featured === "evet") legacy = legacy.eq("is_featured", true)
+
+  // No producer column to sort or filter by on the old view: the one sort key
+  // that needs it degrades to recency, and a producer filter has nothing to
+  // match against, so it is left off rather than erroring.
+  const legacySort = params.sort === "producer_name" ? "updated_at" : PRODUCT_SORTS[params.sort]
+  const second = await legacy
+    .order(legacySort, { ascending: params.dir === "asc" })
+    .order("id", { ascending: true })
+    .range(from, to)
+
+  if (second.error) {
+    logQueryError("products:list", second.error)
+    return { rows: [], total: 0, error: true, producerDimension: false }
   }
 
   return {
-    rows: ((data ?? []) as Row[]).map((row) => ({
-      id: row.id,
-      slug: row.slug,
-      name: row.name,
-      basePrice: toNumber(row.base_price),
-      mainImageUrl: row.main_image_url,
-      isActive: row.is_active,
-      isFeatured: row.is_featured,
-      updatedAt: row.updated_at,
-      categoryName: row.category_name,
-      categorySlug: row.category_slug,
-      totalStock: row.total_stock,
-      variantCount: row.variant_count,
-      lowStockThreshold: row.low_stock_threshold,
-      stockStatus: row.stock_status,
-    })),
-    total: count ?? 0,
+    rows: (second.data as ListRow[]).map(toListRow),
+    total: second.count ?? 0,
     error: false,
+    producerDimension: false,
   }
 }
 

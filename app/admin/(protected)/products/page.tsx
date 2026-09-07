@@ -4,10 +4,12 @@ import Link from "next/link"
 import { adminPageContext } from "@/lib/admin/auth"
 import {
   loadCategories,
+  loadProducers,
   loadProductList,
   PRODUCT_SORTS,
   type ProductSortKey,
 } from "@/lib/admin/queries/products"
+import { uuid } from "@/lib/admin/schemas"
 import { formatCurrency, formatDate, formatInteger } from "@/lib/admin/format"
 import { hrefBuilder, pickEnum, pickPage, pickString } from "@/lib/admin/url"
 import { EmptyState, ErrorState, PageHeader, Panel } from "@/components/admin/ui/surfaces"
@@ -47,13 +49,18 @@ export default async function ProductsPage({
   const stock = pickEnum(params, "stok", ["tukendi", "kritik", "yeterli"] as const)
   const featured = pickEnum(params, "one-cikan", ["evet"] as const)
   const category = pickString(params, "kategori", 60)
+  const rawProducer = pickString(params, "uretici", 60)
+  // A producer filter is a row id, never a name: names change, and a crafted
+  // value must not reach the query. Anything that is not a uuid is ignored.
+  const producer = rawProducer && uuid.safeParse(rawProducer).success ? rawProducer : undefined
   const q = pickString(params, "q", 60)
 
-  const [{ rows, total, error }, categories] = await Promise.all([
+  const [{ rows, total, error, producerDimension }, categories, producers] = await Promise.all([
     loadProductList(supabase, {
       q,
       status,
       category,
+      producer,
       stock,
       featured,
       sort,
@@ -62,10 +69,11 @@ export default async function ProductsPage({
       perPage: PER_PAGE,
     }),
     loadCategories(supabase),
+    loadProducers(supabase),
   ])
 
   const href = hrefBuilder("/admin/products", params)
-  const hasFilters = Boolean(q || status || stock || category || featured)
+  const hasFilters = Boolean(q || status || stock || category || featured || (producerDimension && producer))
 
   return (
     <>
@@ -119,7 +127,17 @@ export default async function ProductsPage({
           paramName="one-cikan"
           options={[{ value: "evet", label: "Yalnızca öne çıkanlar" }]}
         />
-        <ClearFilters params={["q", "durum", "stok", "kategori", "one-cikan"]} />
+        {producerDimension && (
+          <FilterSelect
+            label="Üretici"
+            paramName="uretici"
+            options={producers.map((option) => ({
+              value: option.id,
+              label: option.isPublished ? option.name : `${option.name} (yayında değil)`,
+            }))}
+          />
+        )}
+        <ClearFilters params={["q", "durum", "stok", "kategori", "one-cikan", "uretici"]} />
       </FilterBar>
 
       <Panel bodyClassName="px-0 py-0 md:px-0">
@@ -164,6 +182,16 @@ export default async function ProductsPage({
                         Ürün
                       </SortableTh>
                       <Th>Kategori</Th>
+                      {producerDimension && (
+                        <SortableTh
+                          field="producer_name"
+                          activeField={sort}
+                          activeDir={dir}
+                          buildHref={(field, nextDir) => href({ sirala: field, yon: nextDir, sayfa: null })}
+                        >
+                          Üretici
+                        </SortableTh>
+                      )}
                       <SortableTh
                         field="base_price"
                         align="right"
@@ -228,6 +256,7 @@ export default async function ProductsPage({
                           </span>
                         </Td>
                         <Td>{product.categoryName ?? "—"}</Td>
+                        {producerDimension && <Td>{product.producerName ?? "—"}</Td>}
                         <Td align="right" numeric>
                           {formatCurrency(product.basePrice)}
                         </Td>
@@ -290,6 +319,9 @@ export default async function ProductsPage({
                       />
                     </RecordField>
                     <RecordField label="Kategori">{product.categoryName ?? "—"}</RecordField>
+                    {producerDimension && (
+                      <RecordField label="Üretici">{product.producerName ?? "—"}</RecordField>
+                    )}
                     <RecordField label="Güncellendi">{formatDate(product.updatedAt)}</RecordField>
                     <div className="col-span-2">
                       <PublishTag active={product.isActive} />
