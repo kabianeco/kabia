@@ -1,4 +1,10 @@
-import { ALL_CATEGORIES, SOURCES, type Product } from "@/lib/products";
+import {
+  ALL_CATEGORIES,
+  ALL_CATEGORIES_LABEL,
+  SOURCES,
+  type CategoryOption,
+  type Product,
+} from "@/lib/products";
 import { orderOf } from "@/lib/shop-badges";
 
 export const SORT_OPTIONS = [
@@ -15,8 +21,8 @@ export function selectProducts(
 ): Product[] {
   const filtered = products.filter(
     (p) =>
-      (category === "tumu" || category === p.category) &&
-      (source === "tumu" || source === p.source),
+      (category === ALL_CATEGORIES || category === p.category) &&
+      (source === ALL_CATEGORIES || source === p.source),
   );
   if (sort === "fiyat-artan") filtered.sort((a, b) => a.price - b.price);
   else if (sort === "fiyat-azalan") filtered.sort((a, b) => b.price - a.price);
@@ -36,26 +42,37 @@ export function presentSources(products: readonly Product[]) {
  * Categories narrowed to what is present, and — once a source is chosen —
  * to what is present *within that source*, so the bar never offers a
  * combination that resolves to an empty grid.
+ *
+ * The options are built from the products themselves, each carrying its own
+ * `categories` row, so a category an administrator adds appears here under its
+ * administered name without a second query and without a code change. A product
+ * whose category could not be read contributes no option rather than being
+ * filed under someone else's category.
  */
-export function presentCategories(products: readonly Product[], source: string) {
+export function presentCategories(
+  products: readonly Product[],
+  source: string,
+): CategoryOption[] {
   const scope =
-    source === "tumu" ? products : products.filter((p) => p.source === source);
-  // Built from the products in scope rather than filtered out of a fixed
-  // list, so a category an administrator adds appears here the moment a
-  // product is in it, and one that is emptied disappears. Each product
-  // carries its own label, so the bar never has to look one up.
-  const seen = new Map<string, string>();
+    source === ALL_CATEGORIES
+      ? products
+      : products.filter((p) => p.source === source);
+
+  const bySlug = new Map<string, string>();
   for (const product of scope) {
-    if (product.category && !seen.has(product.category)) {
-      seen.set(product.category, product.categoryLabel || product.category);
+    if (!product.category) continue;
+    if (!bySlug.has(product.category)) {
+      bySlug.set(product.category, product.categoryName || product.category);
     }
   }
-  return [
-    { id: ALL_CATEGORIES, label: "Tümü" },
-    ...[...seen]
-      .map(([id, label]) => ({ id, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, "tr")),
-  ];
+
+  const options = [...bySlug].map(([id, label]) => ({ id, label }));
+  // `categories` has no display order of its own, so the bar is sorted by the
+  // administered name under Turkish collation — stable, and readable to the
+  // person who named them.
+  options.sort((a, b) => a.label.localeCompare(b.label, "tr"));
+
+  return [{ id: ALL_CATEGORIES, label: ALL_CATEGORIES_LABEL }, ...options];
 }
 
 export function listingHref(
@@ -65,8 +82,8 @@ export function listingHref(
   sort: string,
 ): string {
   const params = new URLSearchParams();
-  if (category !== "tumu") params.set("kategori", category);
-  if (source !== "tumu") params.set("kaynak", source);
+  if (category !== ALL_CATEGORIES) params.set("kategori", category);
+  if (source !== ALL_CATEGORIES) params.set("kaynak", source);
   if (sort !== "onerilen") params.set("sirala", sort);
   return params.size ? `${base}?${params}` : base;
 }

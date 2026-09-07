@@ -38,16 +38,31 @@ function mapProducer(row: ProducerRow): Producer {
   }
 }
 
-/** Every published producer, newest first — the same is_published gate the RLS policy enforces. */
-export async function fetchPublicProducers(client: SupabaseClient): Promise<Producer[]> {
+export type PublicProducersResult =
+  | { status: "ok"; producers: Producer[] }
+  | { status: "error" }
+
+/**
+ * Every published producer, newest first — the same is_published gate the RLS
+ * policy enforces.
+ *
+ * Returns a tagged result for the same reason `fetchPublicProducts` and
+ * `fetchPublishedProducerBySlug` do: "nobody has published a producer yet" and
+ * "the producers table could not be read" are different facts, and only one of
+ * them is something to tell a visitor. Collapsing them meant a missing table
+ * rendered as a considered editorial state.
+ */
+export async function fetchPublicProducers(
+  client: SupabaseClient,
+): Promise<PublicProducersResult> {
   const { data, error } = await client
     .from("producers")
     .select(PRODUCER_SELECT)
     .eq("is_published", true)
     .order("created_at", { ascending: false })
 
-  if (error || !data) return []
-  return (data as unknown as ProducerRow[]).map(mapProducer)
+  if (error || !data) return { status: "error" }
+  return { status: "ok", producers: (data as unknown as ProducerRow[]).map(mapProducer) }
 }
 
 export type ProducerBySlugResult =

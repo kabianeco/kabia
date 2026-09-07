@@ -16,7 +16,7 @@ export type Numeric = number | string;
 
 export interface CategoryRow {
   slug: string;
-  /** Selected alongside the slug so a product carries its own label. */
+  /** The administered display label, selected alongside the slug so a product carries its own. */
   name: string;
 }
 

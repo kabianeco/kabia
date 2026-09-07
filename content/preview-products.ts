@@ -15,7 +15,7 @@ export const previewProducts: PreviewProduct[] = sourceProducers.map(
     slug: `onizleme-${producer.slug}`,
     name: `Örnek ${producer.productType}`,
     category: producer.source === "ciftlik" ? "cig-badem" : "paketli-urunler",
-    categoryLabel: producer.source === "ciftlik" ? "Çiğ Badem" : "Paketli Ürünler",
+    categoryName: producer.source === "ciftlik" ? "Çiğ Badem" : "Paketli Ürünler",
     source: producer.source,
     defaultWeight: "500 g",
     price: 100 + index * 10,

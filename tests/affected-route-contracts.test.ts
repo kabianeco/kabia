@@ -3,6 +3,8 @@ import assert from "node:assert/strict"
 
 import nextConfig from "../next.config.ts"
 import { fetchPublicProducts } from "../lib/catalog.ts"
+import { fetchPublicProducers } from "../lib/producers.ts"
+import { routes, sitemapStaticPaths } from "../lib/site.ts"
 import {
   ThemeSettingsReadError,
   getThemeSettingsRow,
@@ -65,6 +67,24 @@ function productsClient(result: { data: unknown; error: unknown }) {
   }
   builder.then = (resolve: (value: unknown) => unknown) => Promise.resolve(result).then(resolve)
   return { from: () => builder }
+}
+
+function producersClient(result: { data: unknown; error: unknown }) {
+  return {
+    from() {
+      return {
+        select() {
+          return {
+            eq() {
+              return {
+                order: async () => result,
+              }
+            },
+          }
+        },
+      }
+    },
+  }
 }
 
 function publishedThemeClient(result: { data: unknown; error: unknown }) {
@@ -191,5 +211,71 @@ describe("affected route contracts", () => {
       productsClient({ data: [], error: null }) as never,
     )
     assert.deepEqual(empty, { status: "ok", products: [] })
+  })
+
+  it("does not present a failed producer query as an empty producer list", async () => {
+    // The taxonomy migration being absent answers PGRST205 here. Reporting that
+    // as "no producers are published yet" turns an outage into an editorial
+    // statement, which is exactly what the neighbouring reads refuse to do.
+    const failed = await fetchPublicProducers(
+      producersClient({ data: null, error: { code: "PGRST205" } }) as never,
+    )
+    assert.deepEqual(failed, { status: "error" })
+
+    const empty = await fetchPublicProducers(
+      producersClient({ data: [], error: null }) as never,
+    )
+    assert.deepEqual(empty, { status: "ok", producers: [] })
+  })
+
+  it("maps a published producer row onto the card fields the grid reads", async () => {
+    const result = await fetchPublicProducers(
+      producersClient({
+        data: [
+          {
+            id: "33333333-3333-4333-8333-333333333333",
+            slug: "ege-ceviz",
+            name: "Kayadibi Köyü Aile Bahçesi",
+            product_type: "Ceviz",
+            region: "Kayadibi Köyü Aile Bahçesi",
+            photo_url: "/images/kabuklu-ceviz.jpeg",
+            story: null,
+            production_place: null,
+            method: null,
+            inputs: null,
+            certificates: null,
+            why_selected: null,
+            is_published: true,
+            created_at: "2026-09-05T00:00:00.000Z",
+          },
+        ],
+        error: null,
+      }) as never,
+    )
+    assert.equal(result.status, "ok")
+    assert.equal(result.status === "ok" && result.producers.length, 1)
+    assert.equal(result.status === "ok" && result.producers[0].slug, "ege-ceviz")
+    assert.equal(result.status === "ok" && result.producers[0].productType, "Ceviz")
+  })
+
+  it("advertises the brand routes in the sitemap, not only the store and legal pages", () => {
+    // The restructure exists to lead with land and producers; those were the
+    // only pages the sitemap did not carry.
+    for (const path of [routes.farm, routes.secki, routes.mutfak, "/badem", routes.journal, routes.producers]) {
+      assert.ok(
+        sitemapStaticPaths.some((entry) => entry.path === path),
+        `${path} must be advertised in the sitemap`,
+      )
+    }
+  })
+
+  it("keeps preview-only and per-item routes out of the sitemap's static entries", () => {
+    for (const entry of sitemapStaticPaths) {
+      assert.ok(entry.path.startsWith("/"), `${entry.path} must be a root-relative path`)
+      assert.ok(!entry.path.includes("["), `${entry.path} must not be a dynamic segment`)
+      assert.ok(!entry.path.includes("onizleme-"), `${entry.path} must not be a preview URL`)
+    }
+    const paths = sitemapStaticPaths.map((entry) => entry.path)
+    assert.equal(new Set(paths).size, paths.length, "sitemap paths must be unique")
   })
 })

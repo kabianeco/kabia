@@ -15,7 +15,7 @@ import { useAuth } from "@/lib/auth-context";
 import { isPreviewItem } from "@/lib/preview-identity";
 import {
   formatTL,
-  sourceBadgeLabel,
+  productMetaLine,
   CERTIFICATION_LABEL,
   isOrganicCertified,
   type Product,
@@ -285,7 +285,7 @@ export function ProductDetail({
 
         {/* Info */}
         <div className="md:col-span-1 lg:col-span-5 lg:col-start-8">
-          <p className="label text-olive">{product.categoryLabel} • {sourceBadgeLabel(product.source)}</p>
+          <p className="label text-olive">{productMetaLine(product)}</p>
           {isOrganicCertified(product.certification) && (
             <p className="label mt-2 text-brand">{CERTIFICATION_LABEL[product.certification]}</p>
           )}

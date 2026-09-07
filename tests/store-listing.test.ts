@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 const listing = await import('../lib/store-listing.ts').catch(() => null);
+// Category is the database slug plus the administered name, so a category an
+// administrator adds carries its own label through the storefront instead of
+// being collapsed into one of five hardcoded slugs.
 const products = [
-  { id:'a',category:'cig-badem',source:'ciftlik',price:30 },
-  { id:'b',category:'paketli-urunler',source:'secki',price:20 },
-  { id:'c',category:'paketli-urunler',source:'mutfak',price:10 },
-  { id:'d',category:'paketli-urunler',source:'secki',price:20 },
+  { id:'a',category:'cig-badem',categoryName:'Çiğ Badem',source:'ciftlik',price:30 },
+  { id:'b',category:'paketli-urunler',categoryName:'Paketli Ürünler',source:'secki',price:20 },
+  { id:'c',category:'paketli-urunler',categoryName:'Paketli Ürünler',source:'mutfak',price:10 },
+  { id:'d',category:'paketli-urunler',categoryName:'Paketli Ürünler',source:'secki',price:20 },
 ];
 test('default preserves order, price sorts are stable and source/category pairs filter together', () => {
   assert.ok(listing);
@@ -28,6 +31,70 @@ test('the bar offers only sources and categories the catalogue actually has', ()
   // A catalogue missing a source never offers it.
   const farmOnly = [products[0]];
   assert.deepEqual(ids(listing.presentSources(farmOnly as never)),['tumu','ciftlik']);
+});
+
+test('a category an administrator added is offered under its own name', () => {
+  assert.ok(listing);
+  // Nothing in the code knows this slug. Before categories came from the
+  // table it was silently relabelled "Çiğ Badem" alongside its source.
+  const withNewCategory = [
+    ...products,
+    { id:'e',category:'tarhana-corbalik',categoryName:'Tarhana ve Çorbalık',source:'mutfak',price:160 },
+  ];
+  const offered = listing.presentCategories(withNewCategory as never,'mutfak');
+  assert.deepEqual(
+    offered.map((entry:{id:string;label:string}) => [entry.id, entry.label]),
+    [['tumu','Tümü'],['paketli-urunler','Paketli Ürünler'],['tarhana-corbalik','Tarhana ve Çorbalık']],
+  );
+  assert.deepEqual(
+    listing.selectProducts(withNewCategory as never,'tarhana-corbalik','tumu','onerilen').map((p:{id:string})=>p.id),
+    ['e'],
+  );
+});
+
+test('categories are ordered by their Turkish name so the bar is stable', () => {
+  assert.ok(listing);
+  const unordered = [
+    { id:'x',category:'zeytin',categoryName:'Zeytin',source:'secki',price:1 },
+    { id:'y',category:'incir',categoryName:'İncir',source:'secki',price:1 },
+    { id:'z',category:'ceviz',categoryName:'Ceviz',source:'secki',price:1 },
+  ];
+  assert.deepEqual(
+    listing.presentCategories(unordered as never,'tumu').map((entry:{id:string})=>entry.id),
+    ['tumu','ceviz','incir','zeytin'],
+  );
+});
+
+test('a product whose category could not be read is not filed under another category', () => {
+  assert.ok(listing);
+  const withUnknown = [
+    products[0],
+    { id:'f',category:'',categoryName:'',source:'secki',price:5 },
+  ];
+  // It must not appear under cig-badem, and it must not invent an option.
+  assert.deepEqual(
+    listing.presentCategories(withUnknown as never,'tumu').map((entry:{id:string})=>entry.id),
+    ['tumu','cig-badem'],
+  );
+  assert.deepEqual(
+    listing.selectProducts(withUnknown as never,'cig-badem','tumu','onerilen').map((p:{id:string})=>p.id),
+    ['a'],
+  );
+  // It is still sold — "Tümü" shows everything.
+  assert.deepEqual(
+    listing.selectProducts(withUnknown as never,'tumu','tumu','onerilen').map((p:{id:string})=>p.id),
+    ['a','f'],
+  );
+});
+
+test('the card metadata line never shows a dangling separator', async () => {
+  const { productMetaLine } = await import('../lib/products.ts');
+  assert.equal(
+    productMetaLine({ categoryName: 'Çiğ Badem', source: 'ciftlik' } as never),
+    'Çiğ Badem • Kabia Çiftliği',
+  );
+  // Category unreadable: the source still reads, without a leading bullet.
+  assert.equal(productMetaLine({ categoryName: '', source: 'mutfak' } as never), 'Kabia Mutfak');
 });
 
 test('listingHref keeps the existing parameters and omits defaults', () => {

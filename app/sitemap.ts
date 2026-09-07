@@ -3,12 +3,17 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { fetchPublicProducts } from "@/lib/catalog"
 import { fetchPublicProducers } from "@/lib/producers"
 import { journalEntries } from "@/content/journal"
-import { site, routes } from "@/lib/site"
+import { site, routes, sitemapStaticPaths } from "@/lib/site"
 
 /**
  * Only the routes safe to advertise to crawlers: static pages and active
  * products. Preview products and preview producer stores are never
  * included — they exist solely behind the design-review switch.
+ *
+ * The static list lives in lib/site.ts next to the route table, so a new brand
+ * page cannot be added to the site and forgotten here. Producer and journal URLs
+ * are appended from live data; a failed producer read advertises none of them
+ * rather than failing the whole sitemap.
  */
 export const revalidate = 3600
 
@@ -17,24 +22,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const productsResult = await fetchPublicProducts(supabase)
 
-  const staticEntries: MetadataRoute.Sitemap = [
-    { url: site.url, changeFrequency: "weekly", priority: 1 },
-    { url: `${site.url}${routes.store}`, changeFrequency: "daily", priority: 0.9 },
-    { url: `${site.url}${routes.secki}`, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${site.url}${routes.mutfak}`, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${site.url}/badem`, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${site.url}${routes.farm}`, changeFrequency: "monthly", priority: 0.8 },
-    { url: `${site.url}${routes.producers}`, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${site.url}${routes.journal}`, changeFrequency: "weekly", priority: 0.6 },
-    { url: `${site.url}${routes.distanceSalesAgreement}`, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${site.url}${routes.preliminaryInfo}`, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${site.url}${routes.privacyPolicy}`, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${site.url}${routes.kvkkDisclosure}`, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${site.url}${routes.explicitConsent}`, changeFrequency: "monthly", priority: 0.4 },
-    { url: `${site.url}${routes.cookiePolicy}`, changeFrequency: "monthly", priority: 0.4 },
-    { url: `${site.url}${routes.deliveryAndReturn}`, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${site.url}${routes.termsOfUse}`, changeFrequency: "monthly", priority: 0.5 },
-  ]
+  const staticEntries: MetadataRoute.Sitemap = sitemapStaticPaths.map((entry) => ({
+    // The homepage is "/" in the route table; the sitemap wants the bare origin.
+    url: entry.path === routes.home ? site.url : `${site.url}${entry.path}`,
+    changeFrequency: entry.changeFrequency,
+    priority: entry.priority,
+  }))
 
   const productEntries: MetadataRoute.Sitemap =
     productsResult.status === "ok"
@@ -47,7 +40,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }))
       : []
 
-  const producers = await fetchPublicProducers(supabase)
+  const producersResult = await fetchPublicProducers(supabase)
+  const producers = producersResult.status === "ok" ? producersResult.producers : []
   const producerEntries: MetadataRoute.Sitemap = producers.map((p) => ({
     url: `${site.url}${routes.producer(p.slug)}`,
     lastModified: new Date(),

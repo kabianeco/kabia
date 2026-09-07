@@ -74,7 +74,7 @@ export async function generateMetadata({
     robots: preview ? { index: false, follow: false } : undefined,
     title: product.name,
     description: product.shortDescription,
-    keywords: [product.name, product.categoryLabel, "Kabia Ekolojik", "Geyve", "doğal ürün"],
+    keywords: [product.name, product.categoryName, "Kabia Ekolojik", "Geyve", "doğal ürün"],
     alternates: { canonical: `/shop/${product.slug}` },
     openGraph: product.mainImageUrl
       ? {

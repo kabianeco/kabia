@@ -101,6 +101,44 @@ export const routes = {
   termsOfUse: "/kullanim-kosullari",
 } as const;
 
+/**
+ * The static routes `app/sitemap.ts` advertises, declared next to the route
+ * table they are drawn from so the two cannot drift apart.
+ *
+ * Only pages that exist at a fixed URL and are safe to advertise belong here:
+ * no dynamic segments, no preview URLs. Product and producer URLs are appended
+ * by the sitemap itself from live data.
+ */
+export type SitemapChangeFrequency = "daily" | "weekly" | "monthly" | "yearly"
+
+export interface SitemapStaticPath {
+  path: string
+  changeFrequency: SitemapChangeFrequency
+  priority: number
+}
+
+export const sitemapStaticPaths: readonly SitemapStaticPath[] = [
+  { path: routes.home, changeFrequency: "weekly", priority: 1 },
+  { path: routes.store, changeFrequency: "daily", priority: 0.9 },
+
+  // The brand pages: the story half of the site, advertised alongside the shop.
+  { path: routes.secki, changeFrequency: "monthly", priority: 0.7 },
+  { path: routes.mutfak, changeFrequency: "monthly", priority: 0.7 },
+  { path: "/badem", changeFrequency: "monthly", priority: 0.7 },
+  { path: routes.farm, changeFrequency: "monthly", priority: 0.8 },
+  { path: routes.producers, changeFrequency: "monthly", priority: 0.7 },
+  { path: routes.journal, changeFrequency: "weekly", priority: 0.6 },
+
+  { path: routes.distanceSalesAgreement, changeFrequency: "monthly", priority: 0.5 },
+  { path: routes.preliminaryInfo, changeFrequency: "monthly", priority: 0.5 },
+  { path: routes.privacyPolicy, changeFrequency: "monthly", priority: 0.5 },
+  { path: routes.kvkkDisclosure, changeFrequency: "monthly", priority: 0.5 },
+  { path: routes.explicitConsent, changeFrequency: "monthly", priority: 0.4 },
+  { path: routes.cookiePolicy, changeFrequency: "monthly", priority: 0.4 },
+  { path: routes.deliveryAndReturn, changeFrequency: "monthly", priority: 0.5 },
+  { path: routes.termsOfUse, changeFrequency: "monthly", priority: 0.5 },
+] as const
+
 /** Footer'da ve form onay kutularında kullanılan yasal linkler. */
 export const legalLinks = [
   { label: "Mesafeli Satış Sözleşmesi", href: "/mesafeli-satis-sozlesmesi" },

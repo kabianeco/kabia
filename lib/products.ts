@@ -1,32 +1,32 @@
 // Product catalog type definitions + pure UI helpers.
 // Catalog DATA now lives in Supabase (see lib/catalog.ts). This file keeps the
-// shared TypeScript interfaces and the formatTL / category-label helpers used
+// shared TypeScript interfaces and the formatTL / source-label helpers used
 // across the UI. No mock business data remains here.
 
 /**
- * A category slug as it exists in the `categories` table.
+ * A product's category is whatever the `categories` table says it is: the row's
+ * slug for filtering, its name for display.
  *
- * This was a closed union of five almond slugs with a matching hardcoded
- * label list. Administrators can create categories from /admin/categories,
- * so the two drifted apart completely: the union still named kavrulmus,
- * badem-unu, badem-ezmesi and paketli-urunler — none of which are in the
- * database — while the nine categories that actually hold products (sirke,
- * bal, ceviz, findik, ihlamur, kabuklu-badem, salca, tarhana, eriste) were
- * named nowhere in the code. The mapper's fallback then quietly labelled
- * every single product "Çiğ Badem".
+ * There is deliberately no hardcoded list here any more. There used to be one,
+ * and because an administrator can create categories freely, anything outside
+ * those five slugs was silently relabelled as "Çiğ Badem" — which put a wrong
+ * category next to a correct source on every card. The vocabulary now has one
+ * home, the one an administrator can actually edit.
  *
- * A union cannot track a table somebody edits at runtime, so it no longer
- * tries. The slug is whatever the row says, and its display name travels
- * with it — see `Product.categoryLabel` — rather than being looked up in a
- * copy of the table kept over here.
+ * "Tümü" is the only category label that stays in code: it is a UI affordance
+ * meaning "no filter", not a category any product belongs to.
  */
-export type ProductCategory = string
-
-/** The one category id that is not a row: the unfiltered state. */
 export const ALL_CATEGORIES = "tumu"
+export const ALL_CATEGORIES_LABEL = "Tümü"
+
+export interface CategoryOption {
+  id: string
+  label: string
+}
 
 /** Which of Kabia's three product lines this belongs to. */
-export type ProductSource = "ciftlik" | "secki" | "mutfak"
+export const PRODUCT_SOURCES = ["ciftlik", "secki", "mutfak"] as const
+export type ProductSource = (typeof PRODUCT_SOURCES)[number]
 
 // UI label config — the matching `products.source` values are the enum
 // public.product_source ('ciftlik' | 'secki' | 'mutfak').
@@ -42,12 +42,33 @@ export function sourceBadgeLabel(id: ProductSource) {
 }
 
 /**
+ * The metadata line under a product card and beside the detail gallery —
+ * "Çiğ Badem • Kabia Çiftliği". Since a82a52a this is where the source lives,
+ * so it is also where a wrong category would be read next to a right source.
+ *
+ * A product whose category could not be read shows its source alone, rather
+ * than an empty segment and a dangling separator.
+ */
+export function productMetaLine(
+  product: Pick<Product, "categoryName" | "source">,
+): string {
+  return [product.categoryName, sourceBadgeLabel(product.source)]
+    .filter((part) => part !== "")
+    .join(" • ")
+}
+
+/**
  * Legal-weight label — see the Phase 2 migration comment on
  * `products.certification`. `organik_sertifikali` asserts a real organic
  * certificate; the other two express Kabia's own selection approach and must
  * never be described using the word "organik".
  */
-export type ProductCertification = "organik_sertifikali" | "kabia_secki" | "kabia_mutfak"
+export const PRODUCT_CERTIFICATIONS = [
+  "organik_sertifikali",
+  "kabia_secki",
+  "kabia_mutfak",
+] as const
+export type ProductCertification = (typeof PRODUCT_CERTIFICATIONS)[number]
 
 export const CERTIFICATION_LABEL: Record<ProductCertification, string> = {
   organik_sertifikali: "Organik Sertifikalı",
@@ -90,9 +111,10 @@ export interface Product {
   id: string
   slug: string
   name: string
-  category: ProductCategory
-  /** The category's display name, read from the same row as the slug. */
-  categoryLabel: string
+  /** `categories.slug`; "" when the category row could not be read. */
+  category: string
+  /** `categories.name` — the administered display label. */
+  categoryName: string
   source: ProductSource
   defaultWeight: string
   price: number
