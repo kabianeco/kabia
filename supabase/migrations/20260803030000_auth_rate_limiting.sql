@@ -1,6 +1,18 @@
 -- ---------------------------------------------------------------------------
 -- SEC-05: Distributed authentication rate limiting.
 --
+-- NOTE (2026-09-08): a migration named `auth_rate_limiting_functions` is
+-- recorded as applied on the project but has no file in this repository (same
+-- August remediation provenance as the `admin_override_and_setting_hardening`
+-- orphan — applied from another checkout, never committed here). The limiter
+-- this file describes was verified live on 2026-09-08 and matches:
+-- `private.auth_rate_limit_buckets`, `consume_auth_rate_limit()` and
+-- `cleanup_auth_rate_limit_buckets()` all exist. The orphan's exact content
+-- could not be recovered — no history in any reachable branch — so what, if
+-- anything, it added on top (signature revisions, grant passes) is unknown.
+-- If that SQL is ever recovered, it belongs here as a follow-up file, not as
+-- an edit to this one.
+--
 -- Private schema, Postgres-backed rate limiter suitable for Vercel serverless.
 -- The table is in a private schema (not exposed through PostgREST), RLS is
 -- enabled, and no role except service_role can read or call the consume

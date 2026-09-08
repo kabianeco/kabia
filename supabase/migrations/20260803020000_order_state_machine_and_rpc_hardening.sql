@@ -1,4 +1,35 @@
 -- ---------------------------------------------------------------------------
+-- SUPERSEDED — DO NOT APPLY. See below; the protections herein are live.
+--
+-- This file was superseded by the recorded migration
+-- `admin_override_and_setting_hardening`, applied 2026-08-03. That migration
+-- has no file in this repository (it was applied from another checkout during
+-- the August security remediation and never committed here), while this file
+-- was committed here but never applied — so the migration list suggests a
+-- missing hardening pass that is, in fact, already in place.
+--
+-- Verified live by function body rather than by migration record on
+-- 2026-09-08. All five items this file would install were confirmed present:
+--   1. The strict order-status transition matrix in
+--      `enforce_order_status_transition()` (rejects terminal-state exits).
+--   2. The super-admin override RPC `admin_override_order_status()` behind
+--      its super-admin gate, with mandatory reason and audit.
+--   3. The `is_public` / `is_sensitive` guards inside `setting_number()` and
+--      `setting_bool()`, with `create_order()` reading the sensitive
+--      `checkout_enabled` through the privileged readers.
+--   4. Body-level authorization guards in the admin RPCs (checked on
+--      `admin_update_order_status()`).
+--   5. The least-privilege grant posture: trigger-only functions and the
+--      privileged setting readers callable by service_role only, no
+--      public/anon grants.
+--
+-- Re-applying this file would be harmless (idempotent CREATE OR REPLACE
+-- statements converging on the already-live definitions) but pointless.
+-- This file is kept as the readable record of what those definitions are
+-- and why; the recorded migration remains the source of truth for what ran.
+-- ---------------------------------------------------------------------------
+--
+-- ---------------------------------------------------------------------------
 -- SEC-08 + SEC-10: Order-status state machine and SECURITY DEFINER
 -- least-privilege hardening.
 --
