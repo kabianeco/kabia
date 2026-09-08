@@ -14,6 +14,13 @@
 -- column. Nothing errors, nothing changes visibly. When this lands, the
 -- dimension lights up with no code change.
 --
+-- Column placement is load-bearing: CREATE OR REPLACE VIEW only permits new
+-- columns appended at the END (same names, same order, same types for the
+-- existing ones), so producer_id / producer_name / source sit after
+-- stock_status rather than beside the joins that produce them. An earlier
+-- revision placed them mid-list and Postgres refused it with 42P16; the view
+-- was left untouched.
+--
 -- Definition is otherwise identical to
 -- 20260801001500_restrict_admin_views.sql: same security_invoker, same
 -- has_admin_role() predicate, same grants (restated so a fresh apply is
@@ -34,9 +41,6 @@ select
   p.low_stock_threshold, p.category_id,
   c.slug as category_slug,
   c.name as category_name,
-  p.producer_id,
-  pr.name as producer_name,
-  p.source,
   coalesce(sum(v.stock_quantity), 0)::int as total_stock,
   count(v.id)::int                        as variant_count,
   min(v.price)                            as min_price,
@@ -46,7 +50,10 @@ select
     when coalesce(sum(v.stock_quantity), 0) = 0 then 'tukendi'
     when coalesce(sum(v.stock_quantity), 0) <= p.low_stock_threshold then 'kritik'
     else 'yeterli'
-  end as stock_status
+  end as stock_status,
+  p.producer_id,
+  pr.name as producer_name,
+  p.source
 from public.products p
 left join public.categories c       on c.id = p.category_id
 left join public.producers pr       on pr.id = p.producer_id
