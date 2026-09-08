@@ -225,6 +225,11 @@ export async function fetchProductsByProducer(client: SupabaseClient, producerId
     .select(PRODUCT_LEAN_SELECT)
     .eq("is_active", true)
     .eq("producer_id", producerId)
+    // The producer's shelf is curated in the product editor via display_order,
+    // the same field that orders the admin catalogue. created_at keeps the
+    // order total where display_order is tied (as it is for every current
+    // single-product shelf, which this reorders not at all).
+    .order("display_order", { ascending: true })
     .order("created_at", { ascending: true })
   if (error || !data) return []
   return data.map((row) => mapProduct(row as unknown as ProductRow, false))
