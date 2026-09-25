@@ -125,6 +125,9 @@ export function CheckoutFlow() {
       p_card_name: isCard ? payment.cardName : null,
       p_full_name: fullName,
       p_email: email,
+      // Consent was already gated above; the server records it with its clock.
+      p_consented_sales: agreedSales,
+      p_consented_kvkk: agreedKvkk,
     });
     setSubmitting(false);
 

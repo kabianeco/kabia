@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useAuth } from "@/lib/auth-context"
 import { hasPreviewItems, isPreviewItem } from "@/lib/preview-identity"
+import { clampCartQuantity } from "@/lib/cart-quantity"
 import type { CartItemRow } from "@/lib/supabase/rows"
 
 export interface CartItem {
@@ -102,7 +103,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     cartIdRef.current = null
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      setItems(raw ? JSON.parse(raw) : [])
+      const parsed = raw ? (JSON.parse(raw) as CartItem[]) : []
+      // localStorage is a client boundary: sanitize staged quantities.
+      setItems(
+        Array.isArray(parsed)
+          ? parsed.map((i) => ({ ...i, quantity: clampCartQuantity(i?.quantity) }))
+          : [],
+      )
     } catch {
       setItems([])
     }
@@ -139,11 +146,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 .maybeSingle()
               if (cancelled || authority.current.userId !== userId) break
               if (ex) {
-                await supabase.from("cart_items").update({ quantity: ex.quantity + gi.quantity }).eq("id", ex.id)
+                await supabase.from("cart_items").update({ quantity: clampCartQuantity(ex.quantity + gi.quantity) }).eq("id", ex.id)
               } else {
                 await supabase
                   .from("cart_items")
-                  .insert({ cart_id: cid, product_id: gi.productId, variant_id: gi.variantId, quantity: gi.quantity })
+                  .insert({ cart_id: cid, product_id: gi.productId, variant_id: gi.variantId, quantity: clampCartQuantity(gi.quantity) })
               }
             }
             if (!cancelled) localStorage.setItem(STORAGE_KEY, JSON.stringify(previewGuest))
@@ -172,7 +179,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     (item) => {
       const auth = authority.current
       if (!auth.authHydrated || (isPreviewItem(item) && auth.userId)) return false
-      const qty = item.quantity ?? 1
+      const qty = clampCartQuantity(item.quantity ?? 1)
       if (auth.userId) {
         const uid = auth.userId
         const existing = items.find((i) => i.variantId === item.variantId)
@@ -212,7 +219,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           if (quantity <= 0) {
             await supabase.from("cart_items").delete().eq("cart_id", cid).eq("variant_id", item.variantId)
           } else {
-            await supabase.from("cart_items").update({ quantity }).eq("cart_id", cid).eq("variant_id", item.variantId)
+            await supabase.from("cart_items").update({ quantity: clampCartQuantity(quantity) }).eq("cart_id", cid).eq("variant_id", item.variantId)
           }
         })()
       }
