@@ -26,6 +26,7 @@ import {
 
 /** The looping field footage the whole intro is staged on. */
 const HERO_VIDEO = "/video/kabia-hero.mp4";
+const HERO_VIDEO_AV1 = "/video/kabia-hero.av1.mp4";
 const HERO_POSTER = "/video/kabia-hero-poster.jpg";
 
 /* ------------------------------------------------------------------ */
@@ -188,7 +189,13 @@ function StageBackdrop({ active }: { active: boolean }) {
         preload="metadata"
         disablePictureInPicture
       >
+        {/* AV1 first, H.264 as the fallback, per breakpoint: a browser that
+            cannot decode AV1 skips those entries on their type. Same footage,
+            same frames — the AV1 files are the same loop at a fraction of the
+            bytes. */}
+        <source src="/video/kabia-hero-mobile.av1.mp4" media="(max-width: 768px)" type={'video/mp4; codecs="av01.0.04M.08"'} />
         <source src="/video/kabia-hero-mobile.mp4" media="(max-width: 768px)" type="video/mp4" />
+        <source src={HERO_VIDEO_AV1} media="(min-width: 769px)" type={'video/mp4; codecs="av01.0.05M.08"'} />
         <source src={HERO_VIDEO} media="(min-width: 769px)" type="video/mp4" />
       </video>
       <div className="absolute inset-0 bg-forest/20" />
