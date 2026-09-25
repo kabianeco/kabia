@@ -4,6 +4,7 @@ import { fetchPublicProducts } from "@/lib/catalog"
 import { fetchPublicProducers } from "@/lib/producers"
 import { journalEntries } from "@/content/journal"
 import { site, routes, sitemapStaticPaths } from "@/lib/site"
+import { absoluteUrl } from "@/lib/seo"
 
 /**
  * Only the routes safe to advertise to crawlers: static pages and active
@@ -33,21 +34,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     productsResult.status === "ok"
       ? productsResult.products.map((p) => ({
           url: `${site.url}${routes.product(p.slug)}`,
-          lastModified: new Date(),
+          // The row's own last change, not the time of the request.
+          ...(p.updatedAt ? { lastModified: new Date(p.updatedAt) } : {}),
           changeFrequency: "weekly" as const,
           priority: 0.8,
-          images: p.mainImageUrl ? [p.mainImageUrl] : undefined,
+          // Sitemap image locations must be absolute.
+          images: p.mainImageUrl ? [absoluteUrl(p.mainImageUrl)] : undefined,
         }))
       : []
 
+  // A producer's store page is advertised only while it has something on its
+  // shelf, taken from the same product read (each row carries its producer).
+  const stockedProducers = new Set(
+    productsResult.status === "ok" ? productsResult.products.map((p) => p.producerSlug).filter(Boolean) : [],
+  )
+
   const producersResult = await fetchPublicProducers(supabase)
   const producers = producersResult.status === "ok" ? producersResult.producers : []
+  // Producer rows carry no update timestamp, so no lastmod is claimed for
+  // them rather than a made-up one.
   const producerEntries: MetadataRoute.Sitemap = producers.map((p) => ({
     url: `${site.url}${routes.producer(p.slug)}`,
-    lastModified: new Date(),
     changeFrequency: "monthly" as const,
     priority: 0.6,
   }))
+  const producerStoreEntries: MetadataRoute.Sitemap = producers
+    .filter((p) => stockedProducers.has(p.slug))
+    .map((p) => ({
+      url: `${site.url}/magaza/${p.slug}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+    }))
 
   const journalSitemapEntries: MetadataRoute.Sitemap = journalEntries.map((e) => ({
     url: `${site.url}${routes.journalEntry(e.slug)}`,
@@ -56,5 +73,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }))
 
-  return [...staticEntries, ...productEntries, ...producerEntries, ...journalSitemapEntries]
+  return [...staticEntries, ...productEntries, ...producerEntries, ...producerStoreEntries, ...journalSitemapEntries]
 }
