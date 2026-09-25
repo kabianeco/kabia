@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { LegalLayout } from "@/components/legal/legal-layout";
 
-export const metadata: Metadata = {
-  title: "Açık Rıza Metni",
-  description:
-    "Kabia Ekolojik açık rıza metni — ticari elektronik ileti, kişiselleştirme ve çerezler için rıza kapsamı.",
-  alternates: { canonical: "/acik-riza-metni" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Açık Rıza Metni",
+    description:
+      "Kabia Ekolojik açık rıza metni — ticari elektronik ileti, kişiselleştirme ve çerezler için rıza kapsamı.",
+    path: "/acik-riza-metni",
+  });
+}
 
 export default function Page() {
   return (

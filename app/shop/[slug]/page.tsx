@@ -9,6 +9,7 @@ import { isPreviewItem } from "@/lib/preview-identity";
 import { previewProducts } from "@/content/preview-products";
 import { fetchProductBySlug, fetchRelatedProducts } from "@/lib/catalog";
 import { site } from "@/lib/site";
+import { absoluteUrl, pageMetadata } from "@/lib/seo";
 import type { Product } from "@/lib/products";
 
 /**
@@ -19,12 +20,14 @@ function productJsonLd(product: Product) {
   const defaultVariant =
     product.variants.find((v) => v.weight === product.defaultWeight) ?? product.variants[0];
   const inStock = product.variants.some((v) => v.stock > 0);
+  const accountReviews = product.reviews.filter((review) => review.accountBacked);
   return {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
     description: product.shortDescription || product.description,
-    image: product.images.length > 0 ? product.images : undefined,
+    // Structured data does not resolve relative paths.
+    image: product.images.length > 0 ? product.images.map(absoluteUrl) : undefined,
     brand: { "@type": "Brand", name: "Kabia Ekolojik" },
     offers: {
       "@type": "Offer",
@@ -34,12 +37,17 @@ function productJsonLd(product: Product) {
       availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       seller: { "@type": "Organization", name: "Kabia Ekolojik" },
     },
-    ...(product.reviewCount > 0
+    // Only reviews written through a real account count. The stored
+    // rating_avg/rating_count also include seeded fixture rows, which must
+    // never be published as a rating.
+    ...(accountReviews.length > 0
       ? {
           aggregateRating: {
             "@type": "AggregateRating",
-            ratingValue: product.rating,
-            reviewCount: product.reviewCount,
+            ratingValue: Number(
+              (accountReviews.reduce((sum, r) => sum + r.rating, 0) / accountReviews.length).toFixed(1),
+            ),
+            reviewCount: accountReviews.length,
             bestRating: 5,
             worstRating: 1,
           },
@@ -76,20 +84,14 @@ export async function generateMetadata({
     ? previewProducts.find((product) => product.slug === slug)
     : isPreviewItem({ slug }) ? null : await getProduct(slug);
   if (!product) return { title: "Ürün bulunamadı" };
-  return {
-    robots: preview ? { index: false, follow: false } : undefined,
+  const metadata = await pageMetadata({
     title: product.name,
-    description: product.shortDescription,
+    description: product.shortDescription || product.description,
+    path: `/shop/${product.slug}`,
     keywords: [product.name, product.categoryName, "Kabia Ekolojik", "Geyve", "doğal ürün"],
-    alternates: { canonical: `/shop/${product.slug}` },
-    openGraph: product.mainImageUrl
-      ? {
-          title: product.name,
-          description: product.shortDescription,
-          images: [{ url: product.mainImageUrl, alt: product.name }],
-        }
-      : undefined,
-  };
+    image: product.mainImageUrl ? { url: product.mainImageUrl, alt: product.name } : undefined,
+  });
+  return preview ? { ...metadata, robots: { index: false, follow: false } } : metadata;
 }
 
 export default async function ProductDetailPage({

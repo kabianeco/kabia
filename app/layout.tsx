@@ -55,26 +55,21 @@ export async function generateMetadata(): Promise<Metadata> {
     formatDetection: { email: false, address: false, telephone: false },
     category: "organic food, ecological agriculture",
     classification: "Ecological Agriculture, Organic Food",
-    alternates: {
-      canonical: "/",
-      languages: { "tr-TR": "/", "en-US": "/en" },
-    },
+    // No canonical or og:url here: nested metadata objects are replaced, not
+    // merged, so anything set at the root is inherited verbatim by every route
+    // that does not restate it — which pointed every such route's canonical and
+    // share card at the homepage. Public routes state their own through
+    // lib/seo.ts; the homepage's canonical lives on app/page.tsx. The en-US
+    // alternate is gone too: there is no /en route, so it announced a 404.
     openGraph: {
       type: "website",
       locale: "tr_TR",
-      alternateLocale: ["en_US"],
-      url: site.url,
       siteName: settings.storeName,
       title: settings.seoDefaultTitle,
       description: settings.seoDefaultDescription,
-      images: [
-        {
-          url: settings.seoSocialImage,
-          width: 1536,
-          height: 2040,
-          alt: "Kurumaya serilmiş kabuklu Kabia bademleri",
-        },
-      ],
+      // The image is administered, so its dimensions are not known here; the
+      // previous fixed 1536x2040 did not match the default image (2200x1466).
+      images: [{ url: settings.seoSocialImage, alt: settings.storeName }],
     },
     twitter: {
       card: "summary_large_image",
@@ -126,11 +121,9 @@ const websiteJsonLd = {
   url: site.url,
   inLanguage: "tr-TR",
   publisher: { "@type": "Organization", name: site.name, logo: { "@type": "ImageObject", url: `${site.url}/images/logo.svg` } },
-  potentialAction: {
-    "@type": "SearchAction",
-    target: `${site.url}/magaza?q={search_term_string}`,
-    "query-input": "required name=search_term_string",
-  },
+  // No SearchAction: /magaza has no text search (it filters by category and
+  // source), so a search box pointing at ?q= would promise a result page that
+  // does not exist.
 };
 
 export default async function RootLayout({

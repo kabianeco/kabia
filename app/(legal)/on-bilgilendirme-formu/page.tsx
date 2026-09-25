@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { LegalLayout } from "@/components/legal/legal-layout";
 import { site } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Ön Bilgilendirme Formu",
-  description:
-    "Kabia Ekolojik ön bilgilendirme formu — mesafeli sözleşme öncesi ürün, fiyat, teslimat, cayma hakkı ve iletişim bilgileri.",
-  alternates: { canonical: "/on-bilgilendirme-formu" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Ön Bilgilendirme Formu",
+    description:
+      "Kabia Ekolojik ön bilgilendirme formu — mesafeli sözleşme öncesi ürün, fiyat, teslimat, cayma hakkı ve iletişim bilgileri.",
+    path: "/on-bilgilendirme-formu",
+  });
+}
 
 export default function Page() {
   return (

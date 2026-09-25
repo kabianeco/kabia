@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { Suspense } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { StoreListing } from "@/components/shop/store-listing";
@@ -13,11 +14,14 @@ import { getPublicSettings } from "@/lib/settings";
 import { shopBannerVisible, type ShopBannerSettings } from "@/lib/shop-banner";
 import { ShopHeroBanner } from "@/components/shop/shop-hero-banner";
 
-export const metadata: Metadata = {
-  title: "Mağaza",
-  description:
-    "Kabuklu badem, kabuklu fındık, kabuklu ceviz, bal, ıhlamur, salça, sirke, erişte, tarhana. Katkısız, izlenebilir, hikâyesiyle.",
-  keywords: [
+/** /shop and /magaza render the same listing; both canonicalise to /magaza. */
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Mağaza",
+    description:
+      "Kabuklu badem, kabuklu fındık, kabuklu ceviz, bal, ıhlamur, salça, sirke, erişte, tarhana. Katkısız, izlenebilir, hikâyesiyle.",
+    path: "/magaza",
+    keywords: [
     "kabuklu badem",
     "organik badem",
     "kabuklu fındık",
@@ -29,8 +33,8 @@ export const metadata: Metadata = {
     "erişte",
     "tarhana",
   ],
-  alternates: { canonical: "/magaza" },
-};
+  });
+}
 
 type SortOption = typeof SORT_OPTIONS[number]["id"];
 const isSort = (value: string | undefined): value is SortOption => SORT_OPTIONS.some(option => option.id === value);

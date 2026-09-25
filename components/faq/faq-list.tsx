@@ -4,12 +4,25 @@ import { faqs, type FaqGroup } from "@/content/faqs";
  * Visible accordion plus its own FAQPage JSON-LD — one import per page,
  * so what the reader sees and what Google reads are always identical.
  */
-export function FaqList({ group, heading = "Sıkça sorulanlar" }: { group: FaqGroup; heading?: string }) {
+export function FaqList({
+  group,
+  heading = "Sıkça sorulanlar",
+  structuredData = [group],
+}: {
+  group: FaqGroup;
+  heading?: string;
+  /**
+   * Which groups this list's FAQPage covers. A page may carry only one
+   * FAQPage, so a page with two lists hands both groups to the first and
+   * `false` to the second.
+   */
+  structuredData?: readonly FaqGroup[] | false;
+}) {
   const items = faqs[group];
-  const jsonLd = {
+  const jsonLd = structuredData && {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: items.map((f) => ({
+    mainEntity: structuredData.flatMap((g): readonly { q: string; a: string }[] => faqs[g]).map((f) => ({
       "@type": "Question",
       name: f.q,
       acceptedAnswer: { "@type": "Answer", text: f.a },
@@ -32,10 +45,12 @@ export function FaqList({ group, heading = "Sıkça sorulanlar" }: { group: FaqG
           </details>
         ))}
       </div>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
     </section>
   );
 }

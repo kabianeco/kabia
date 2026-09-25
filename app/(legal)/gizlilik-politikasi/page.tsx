@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { LegalLayout } from "@/components/legal/legal-layout";
 
-export const metadata: Metadata = {
-  title: "Gizlilik Politikası",
-  description:
-    "Kabia Ekolojik gizlilik politikası — hangi verileri topladığımız, nasıl kullandığımız ve haklarınız.",
-  alternates: { canonical: "/gizlilik-politikasi" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Gizlilik Politikası",
+    description:
+      "Kabia Ekolojik gizlilik politikası — hangi verileri topladığımız, nasıl kullandığımız ve haklarınız.",
+    path: "/gizlilik-politikasi",
+  });
+}
 
 export default function Page() {
   return (

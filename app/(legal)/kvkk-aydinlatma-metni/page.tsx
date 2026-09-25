@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { LegalLayout } from "@/components/legal/legal-layout";
 
-export const metadata: Metadata = {
-  title: "KVKK Aydınlatma Metni",
-  description:
-    "6698 sayılı KVKK uyarınca Kabia Ekolojik kişisel verilerin işlenmesi hakkında aydınlatma metni — veri sorumlusu, amaç, aktarım ve haklar.",
-  alternates: { canonical: "/kvkk-aydinlatma-metni" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "KVKK Aydınlatma Metni",
+    description:
+      "6698 sayılı KVKK uyarınca Kabia Ekolojik kişisel verilerin işlenmesi hakkında aydınlatma metni — veri sorumlusu, amaç, aktarım ve haklar.",
+    path: "/kvkk-aydinlatma-metni",
+  });
+}
 
 export default function Page() {
   return (

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { SiteHeader } from "@/components/layout/site-header";
@@ -15,6 +16,19 @@ import { Principles } from "@/components/home/principles";
 import { Emanet } from "@/components/home/emanet";
 import { BrandQuote } from "@/components/home/brand-quote";
 import { FinalCta } from "@/components/home/final-cta";
+import { getPublicSettings } from "@/lib/settings";
+import { pageMetadata } from "@/lib/seo";
+
+/** The homepage carries the administered default title and description as-is. */
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getPublicSettings();
+  return pageMetadata({
+    title: settings.seoDefaultTitle,
+    absoluteTitle: true,
+    description: settings.seoDefaultDescription,
+    path: "/",
+  });
+}
 
 // Only client-heavy below-fold sections are code-split to avoid
 // pushing their framer-motion JS into the LCP bundle.

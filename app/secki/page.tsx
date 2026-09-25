@@ -1,15 +1,18 @@
 import type { Metadata } from "next"
+import { pageMetadata } from "@/lib/seo"
 import { PageShell } from "@/components/layout/page-shell"
 import { ProducerCard } from "@/components/producers/producer-card"
 import { FaqList } from "@/components/faq/faq-list"
 import { producerCollections } from "@/content/producers"
 
-export const metadata: Metadata = {
-  title: "Seçki",
-  description:
-    "Kendi çiftliğimizin ötesinde: üretim anlayışına güvendiğimiz, tanıdığımız küçük üreticiler.",
-  keywords: ["kabuklu fındık", "doğal fındık", "kabuklu ceviz", "doğal bal", "ıhlamur", "tanıdık üretici"],
-  alternates: { canonical: "/secki" },
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Seçki",
+    description:
+      "Kendi çiftliğimizin ötesinde: üretim anlayışına güvendiğimiz, tanıdığımız küçük üreticiler.",
+    path: "/secki",
+    keywords: ["kabuklu fındık", "doğal fındık", "kabuklu ceviz", "doğal bal", "ıhlamur", "tanıdık üretici"],
+  })
 }
 
 /**

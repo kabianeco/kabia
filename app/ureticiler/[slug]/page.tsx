@@ -13,6 +13,7 @@ import { sourceProducers } from "@/content/producers"
 import { previewProducts } from "@/content/preview-products"
 import { isBrandPreview } from "@/lib/brand-preview"
 import { routes } from "@/lib/site"
+import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo"
 
 /** One React cache() read per request, shared between generateMetadata and the page body. */
 const getProducer = cache(async (slug: string) => {
@@ -30,12 +31,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (result.status !== "ok") return { title: "Üretici" }
 
   const producer = result.producer
-  return {
-    robots: isBrandPreview() ? { index: false, follow: false } : undefined,
+  const metadata = await pageMetadata({
     title: producer.name,
     description: producer.story ?? `${producer.name} — Kabia'nın güvendiği üreticilerden.`,
-    alternates: { canonical: routes.producer(producer.slug) },
-  }
+    path: routes.producer(producer.slug),
+    image: producer.photoUrl ? { url: producer.photoUrl, alt: producer.name } : undefined,
+    type: "article",
+  })
+  return isBrandPreview() ? { ...metadata, robots: { index: false, follow: false } } : metadata
 }
 
 function Breadcrumbs({ name, slug }: { name: string; slug: string }) {
@@ -62,6 +65,13 @@ function Breadcrumbs({ name, slug }: { name: string; slug: string }) {
           </li>
         ))}
       </ol>
+      {/* The same trail, for search engines — built from the visible items. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd(items.map((item) => [item.label, item.href] as const))),
+        }}
+      />
     </nav>
   )
 }

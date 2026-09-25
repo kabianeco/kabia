@@ -1,15 +1,18 @@
 import type { Metadata } from "next"
+import { pageMetadata } from "@/lib/seo"
 import { PageShell } from "@/components/layout/page-shell"
 import { ProducerCard } from "@/components/producers/producer-card"
 import { FaqList } from "@/components/faq/faq-list"
 import { producerCollections } from "@/content/producers"
 
-export const metadata: Metadata = {
-  title: "Mutfak",
-  description:
-    "Üreticilerin mutfağından: erişte, tarhana, salça, sirke. Geleneksel yöntemler, tanıdığımız eller.",
-  keywords: ["erişte", "tarhana", "domates salçası", "elma sirkesi", "alıç sirkesi", "geleneksel mutfak"],
-  alternates: { canonical: "/mutfak" },
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Mutfak",
+    description:
+      "Üreticilerin mutfağından: erişte, tarhana, salça, sirke. Geleneksel yöntemler, tanıdığımız eller.",
+    path: "/mutfak",
+    keywords: ["erişte", "tarhana", "domates salçası", "elma sirkesi", "alıç sirkesi", "geleneksel mutfak"],
+  })
 }
 
 /**

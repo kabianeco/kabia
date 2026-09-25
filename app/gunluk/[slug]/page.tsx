@@ -5,6 +5,7 @@ import Link from "next/link"
 import { PageShell } from "@/components/layout/page-shell"
 import { journalEntries, type JournalEntry } from "@/content/journal"
 import { routes } from "@/lib/site"
+import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo"
 
 function getEntry(slug: string): JournalEntry | undefined {
   return journalEntries.find((e) => e.slug === slug)
@@ -22,11 +23,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params
   const entry = getEntry(slug)
   if (!entry) return { title: "Günlük" }
-  return {
+  return pageMetadata({
     title: `${formatEntryDate(entry.date)} — ${entry.location}`,
     description: entry.observation,
-    alternates: { canonical: routes.journalEntry(entry.slug) },
-  }
+    path: routes.journalEntry(entry.slug),
+    image: entry.photo ? { url: entry.photo, alt: entry.observation } : undefined,
+    type: "article",
+  })
 }
 
 function Breadcrumbs({ label, slug }: { label: string; slug: string }) {
@@ -53,6 +56,13 @@ function Breadcrumbs({ label, slug }: { label: string; slug: string }) {
           </li>
         ))}
       </ol>
+      {/* The same trail, for search engines — built from the visible items. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd(items.map((item) => [item.label, item.href] as const))),
+        }}
+      />
     </nav>
   )
 }

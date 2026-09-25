@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { LegalLayout } from "@/components/legal/legal-layout";
 
-export const metadata: Metadata = {
-  title: "Kullanım Koşulları ve Üyelik Sözleşmesi",
-  description:
-    "Kabia Ekolojik site kullanım koşulları ve üyelik sözleşmesi — hesap güvenliği, fikri mülkiyet ve sorumluluk.",
-  alternates: { canonical: "/kullanim-kosullari" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Kullanım Koşulları ve Üyelik Sözleşmesi",
+    description:
+      "Kabia Ekolojik site kullanım koşulları ve üyelik sözleşmesi — hesap güvenliği, fikri mülkiyet ve sorumluluk.",
+    path: "/kullanim-kosullari",
+  });
+}
 
 export default function Page() {
   return (

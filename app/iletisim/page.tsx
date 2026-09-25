@@ -1,13 +1,16 @@
 import type { Metadata } from "next"
+import { pageMetadata } from "@/lib/seo"
 import { PageShell } from "@/components/layout/page-shell"
 import { ContactForm } from "@/components/contact/contact-form"
 import { site, whatsappHref } from "@/lib/site"
 
-export const metadata: Metadata = {
-  title: "İletişim",
-  description:
-    "Kabia Ekolojik'e ulaşın: Geyve'deki bahçemizin adresi, telefon, e-posta ve doğrudan bize yazabileceğiniz form.",
-  alternates: { canonical: "/iletisim" },
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "İletişim",
+    description:
+      "Kabia Ekolojik'e ulaşın: Geyve'deki bahçemizin adresi, telefon, e-posta ve doğrudan bize yazabileceğiniz form.",
+    path: "/iletisim",
+  })
 }
 
 /** Opens the address in whichever map app the visitor's device prefers. */

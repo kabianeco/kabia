@@ -1,14 +1,18 @@
 import type { Metadata } from "next"
+import { pageMetadata } from "@/lib/seo"
 import Image from "next/image"
 import Link from "next/link"
 import { PageShell } from "@/components/layout/page-shell"
 import { journalEntries } from "@/content/journal"
 import { routes } from "@/lib/site"
 
-export const metadata: Metadata = {
-  title: "Saha Notları",
-  description: "Günlük kısa saha notları arşivi: konum, hava, uygulama ve gözlem. Çiftliğin uzun hikâyesi /ciftlik kronolojisinde.",
-  alternates: { canonical: "/gunluk" },
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Saha Notları",
+    description:
+      "Günlük kısa saha notları arşivi: konum, hava, uygulama ve gözlem. Çiftliğin uzun hikâyesi /ciftlik kronolojisinde.",
+    path: "/gunluk",
+  })
 }
 
 function formatEntryDate(iso: string): string {

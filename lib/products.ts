@@ -105,6 +105,9 @@ export interface ProductReview {
   rating: number
   text: string
   verified: boolean
+  /** Written through a signed-in account (reviews.user_id is set). Seeded
+   * fixture rows have no account and must never feed structured data. */
+  accountBacked?: boolean
 }
 
 export interface Product {
@@ -139,6 +142,8 @@ export interface Product {
   producerId: string | null
   producerName: string
   producerSlug: string
+  /** `products.updated_at` — the sitemap's lastmod; absent on preview items. */
+  updatedAt?: string
   producerWhySelected: string
   harvestYear: number | null
   lotCode: string

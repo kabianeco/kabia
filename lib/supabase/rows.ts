@@ -45,6 +45,8 @@ export interface NutritionFactsRow {
 
 export interface ReviewRow {
   reviewer_name: string | null;
+  /** Set when the review was written through an account; null on seeded rows. */
+  user_id?: string | null;
   rating: number;
   review_text: string;
   is_verified_purchase: boolean | null;
@@ -52,6 +54,7 @@ export interface ReviewRow {
 }
 
 export interface ProductRow {
+  updated_at?: string;
   id: string;
   slug: string;
   name: string;

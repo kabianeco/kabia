@@ -70,6 +70,7 @@ export function mapReview(r: ReviewRow): ProductReview {
     rating: r.rating,
     text: r.review_text,
     verified: r.is_verified_purchase ?? false,
+    accountBacked: r.user_id != null,
   }
 }
 
@@ -106,6 +107,7 @@ export function mapProduct(row: ProductRow, includeReviews = false): Product {
     producerId: row.producer_id ?? null,
     producerName: row.producer?.name ?? "",
     producerSlug: row.producer?.slug ?? "",
+    updatedAt: row.updated_at ?? undefined,
     producerWhySelected: row.producer?.why_selected ?? "",
     harvestYear: row.harvest_year ?? null,
     lotCode: row.lot_code ?? "",
@@ -143,7 +145,7 @@ const PRODUCT_SELECT = `
   origin, production_method, shelf_life, storage_conditions, certifications, source,
   certification, producer_id, harvest_year, lot_code, variety, rootstock,
   processing, allergens, net_weight,
-  short_description, description, is_active, is_featured, created_at,
+  short_description, description, is_active, is_featured, created_at, updated_at,
   rating_avg, rating_count, rating_breakdown,
   category:categories(slug, name, sort_order),
   producer:producers(slug, name, why_selected),

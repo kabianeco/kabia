@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { pageMetadata } from "@/lib/seo"
 import { PageShell } from "@/components/layout/page-shell"
 import { ProducerCard } from "@/components/producers/producer-card"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
@@ -28,10 +29,13 @@ const orderOf = (slug: string): number => {
   return i === -1 ? ORDER.length : i
 }
 
-export const metadata: Metadata = {
-  title: "Üreticiler",
-  description: "Kabia'nın ürünlerini bir araya getirdiği, güvendiği küçük üreticiler.",
-  alternates: { canonical: "/ureticiler" },
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Üreticiler",
+    description:
+      "Kabia'nın ürünlerini bir araya getirdiği, güvendiği küçük üreticiler.",
+    path: "/ureticiler",
+  })
 }
 
 type GridProducer = Omit<Producer, "createdAt" | "tagline" | "sortOrder"> & {

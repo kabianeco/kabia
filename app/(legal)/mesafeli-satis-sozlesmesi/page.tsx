@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { LegalLayout } from "@/components/legal/legal-layout";
 import { site } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Mesafeli Satış Sözleşmesi",
-  description:
-    "Kabia Ekolojik mesafeli satış sözleşmesi — 6502 sayılı Kanun ve Mesafeli Sözleşmeler Yönetmeliği uyarınca taraflar, ürün, fiyat, teslimat ve cayma hakları.",
-  alternates: { canonical: "/mesafeli-satis-sozlesmesi" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Mesafeli Satış Sözleşmesi",
+    description:
+      "Kabia Ekolojik mesafeli satış sözleşmesi — 6502 sayılı Kanun ve Mesafeli Sözleşmeler Yönetmeliği uyarınca taraflar, ürün, fiyat, teslimat ve cayma hakları.",
+    path: "/mesafeli-satis-sozlesmesi",
+  });
+}
 
 export default function Page() {
   return (

@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { LegalLayout } from "@/components/legal/legal-layout";
 
-export const metadata: Metadata = {
-  title: "Çerez Politikası",
-  description:
-    "Kabia Ekolojik çerez politikası — kullandığımız çerez türleri, amaçları ve tercihlerinizi nasıl yöneteceğiniz.",
-  alternates: { canonical: "/cerez-politikasi" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Çerez Politikası",
+    description:
+      "Kabia Ekolojik çerez politikası — kullandığımız çerez türleri, amaçları ve tercihlerinizi nasıl yöneteceğiniz.",
+    path: "/cerez-politikasi",
+  });
+}
 
 export default function Page() {
   return (

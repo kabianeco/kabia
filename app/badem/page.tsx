@@ -1,13 +1,16 @@
 import type { Metadata } from "next"
+import { pageMetadata } from "@/lib/seo"
 import { PageShell } from "@/components/layout/page-shell"
 import { process } from "@/content/homepage"
 
-export const metadata: Metadata = {
-  title: "Badem",
-  description:
-    "Bademimizi tanıyın: Marinada, Geyve/Sakarya, Kabia Çiftliği, organik sertifikalı. Bahçeden sofraya altı adımda.",
-  keywords: ["organik badem", "kabuklu badem", "Marinada badem", "Geyve badem"],
-  alternates: { canonical: "/badem" },
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Badem",
+    description:
+      "Bademimizi tanıyın: Marinada, Geyve/Sakarya, Kabia Çiftliği, organik sertifikalı. Bahçeden sofraya altı adımda.",
+    path: "/badem",
+    keywords: ["organik badem", "kabuklu badem", "Marinada badem", "Geyve badem"],
+  })
 }
 
 const notes = [

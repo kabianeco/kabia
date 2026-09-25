@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { LegalLayout } from "@/components/legal/legal-layout";
 
-export const metadata: Metadata = {
-  title: "Teslimat ve İade Koşulları",
-  description:
-    "Kabia Ekolojik teslimat, cayma, iade ve değişim koşulları — kargo süreleri, gıda ürünlerinde iade istisnaları ve ayıplı mal hakları.",
-  alternates: { canonical: "/teslimat-ve-iade" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Teslimat ve İade Koşulları",
+    description:
+      "Kabia Ekolojik teslimat, cayma, iade ve değişim koşulları — kargo süreleri, gıda ürünlerinde iade istisnaları ve ayıplı mal hakları.",
+    path: "/teslimat-ve-iade",
+  });
+}
 
 export default function Page() {
   return (

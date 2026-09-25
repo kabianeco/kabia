@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Image from "next/image";
 import { PageShell } from "@/components/layout/page-shell";
 import { FarmTimeline } from "@/components/farm/farm-timeline";
@@ -6,12 +7,14 @@ import { FaqList } from "@/components/faq/faq-list";
 import { emanetManifesto, farmCertificate, farmOpening, farmPrinciples } from "@/content/farm";
 import { farm } from "@/content/pages";
 
-export const metadata: Metadata = {
-  title: "Çiftlik",
-  description: farmOpening.body,
-  keywords: ["organik badem", "kabuklu badem", "Marinada", "ekolojik çiftlik", "Geyve", "Kılıçkaya"],
-  alternates: { canonical: "/ciftlik" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Çiftlik",
+    description: farmOpening.body,
+    path: "/ciftlik",
+    keywords: ["organik badem", "kabuklu badem", "Marinada", "ekolojik çiftlik", "Geyve", "Kılıçkaya"],
+  });
+}
 
 export default function FarmPage() {
   return (
@@ -394,8 +397,9 @@ export default function FarmPage() {
         </div>
       </section>
 
-      <FaqList group="ciftlik" />
-      <FaqList group="emanet" heading="Emanet hakkında" />
+      {/* One FAQPage for the page, covering both visible lists. */}
+      <FaqList group="ciftlik" structuredData={["ciftlik", "emanet"]} />
+      <FaqList group="emanet" heading="Emanet hakkında" structuredData={false} />
 
       <section aria-label="Mağaza" className="border-t border-ink/10">
         <div className="wrap py-24 text-center md:py-32">

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
@@ -32,12 +33,18 @@ export async function generateMetadata({
   }
   const result = await getProducer(slug);
   if (result.status !== "ok") return { title: "Mağaza bulunamadı" };
-  return {
-    title: `${result.producer.name} — Mağaza`,
-    description:
-      result.producer.story ??
-      `${result.producer.name} — Kabia'nın güvendiği üreticilerden.`,
-  };
+  const producer = result.producer;
+  const detail = [producer.productType, producer.region].filter(Boolean).join(" — ");
+  // Distinct from /ureticiler/<slug>, which carries the story: this page is
+  // the producer's shelf, so its snippet says so.
+  return pageMetadata({
+    title: `${producer.name} — Mağaza`,
+    description: `${producer.name} ürünleri Kabia mağazasında${detail ? ` (${detail})` : ""}.${
+      producer.tagline ? ` ${producer.tagline}` : ""
+    }`,
+    path: `/magaza/${producer.slug}`,
+    image: producer.photoUrl ? { url: producer.photoUrl, alt: producer.name } : undefined,
+  });
 }
 
 export default async function ProducerStore({
@@ -113,6 +120,18 @@ export default async function ProducerStore({
             search={await searchParams}
           />
         </div>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(
+              breadcrumbJsonLd([
+                ["Ana sayfa", "/"],
+                ["Mağaza", "/magaza"],
+                [producer.name, `/magaza/${producer.slug}`],
+              ]),
+            ),
+          }}
+        />
       </section>
     </PageShell>
   );
