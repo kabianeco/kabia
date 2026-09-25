@@ -68,8 +68,8 @@ function RecentlyViewed() {
       <ul className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4" aria-busy="true">
         {Array.from({ length: 4 }).map((_, i) => (
           <li key={i}>
-            <div className="aspect-square animate-pulse rounded-media bg-paper" />
-            <div className="mt-3 h-4 w-3/4 animate-pulse bg-paper" />
+            <div className="aspect-square motion-safe:animate-pulse rounded-media bg-paper" />
+            <div className="mt-3 h-4 w-3/4 motion-safe:animate-pulse bg-paper" />
           </li>
         ))}
       </ul>

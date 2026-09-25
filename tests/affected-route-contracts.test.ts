@@ -2,7 +2,7 @@ import { describe, it } from "node:test"
 import assert from "node:assert/strict"
 
 import nextConfig from "../next.config.ts"
-import { fetchPublicProducts } from "../lib/catalog.ts"
+import { fetchProductBySlug, fetchPublicProducts } from "../lib/catalog.ts"
 import { fetchPublicProducers } from "../lib/producers.ts"
 import { routes, sitemapStaticPaths } from "../lib/site.ts"
 import {
@@ -65,6 +65,7 @@ function productsClient(result: { data: unknown; error: unknown }) {
   for (const step of ["select", "eq", "neq", "order", "limit", "range"]) {
     builder[step] = () => builder
   }
+  builder.maybeSingle = async () => result
   builder.then = (resolve: (value: unknown) => unknown) => Promise.resolve(result).then(resolve)
   return { from: () => builder }
 }
@@ -205,6 +206,20 @@ describe("affected route contracts", () => {
       productsClient({ data: [], error: null }) as never,
     )
     assert.deepEqual(empty, { status: "ok", products: [] })
+  })
+
+  it("does not present a failed product read as a missing product", async () => {
+    // A failed read must reach the route's error boundary, not notFound():
+    // telling a visitor the product does not exist during an outage is wrong.
+    await assert.rejects(
+      fetchProductBySlug(productsClient({ data: null, error: { message: "boom" } }) as never, "kabuklu-badem"),
+      /product read failed/,
+    )
+    // No row is the one case that still answers "no such product".
+    assert.equal(
+      await fetchProductBySlug(productsClient({ data: null, error: null }) as never, "yok"),
+      null,
+    )
   })
 
   it("does not present a failed producer query as an empty producer list", async () => {

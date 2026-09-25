@@ -194,7 +194,12 @@ export function ProductDetail({
   const showReviews = () => {
     setActiveTab("degerlendirmeler");
     setTimeout(
-      () => reviewsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      () =>
+        reviewsRef.current?.scrollIntoView({
+          // An explicit "smooth" overrides the stylesheet's reduced-motion rule.
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+          block: "start",
+        }),
       50,
     );
   };

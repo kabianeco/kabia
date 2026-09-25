@@ -311,7 +311,12 @@ export async function fetchProductBySlug(
     .eq("is_active", true)
     .order("created_at", { referencedTable: "reviews", ascending: false })
     .maybeSingle()
-  if (error || !data) return null
+  // No row is "no such product" (the page 404s). A failed read is not: it
+  // throws, so the route's error boundary tells the visitor the page could
+  // not load instead of claiming the product does not exist. The message
+  // stays in the server log; the boundary never shows it.
+  if (error) throw new Error(`[catalog] product read failed for "${slug}": ${error.message}`)
+  if (!data) return null
   return mapProduct(data as unknown as ProductRow, true)
 }
 

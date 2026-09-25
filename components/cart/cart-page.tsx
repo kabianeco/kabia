@@ -17,18 +17,18 @@ function CartSkeleton() {
   return (
     <div className="wrap page-top pb-24" aria-busy="true" aria-live="polite">
       <span className="sr-only">Sepet yükleniyor</span>
-      <div className="h-10 w-56 animate-pulse bg-paper" />
+      <div className="h-10 w-56 motion-safe:animate-pulse bg-paper" />
       <ul className="mt-12 border-t border-ink/10">
         {[0, 1].map((i) => (
           <li
             key={i}
             className="grid grid-cols-[6rem_1fr] gap-5 border-b border-ink/10 py-6"
           >
-            <div className="aspect-square animate-pulse rounded-media bg-paper" />
+            <div className="aspect-square motion-safe:animate-pulse rounded-media bg-paper" />
             <div className="space-y-3 py-1">
-              <div className="h-4 w-2/3 animate-pulse bg-paper" />
-              <div className="h-3 w-20 animate-pulse bg-paper" />
-              <div className="h-11 w-36 animate-pulse bg-paper" />
+              <div className="h-4 w-2/3 motion-safe:animate-pulse bg-paper" />
+              <div className="h-3 w-20 motion-safe:animate-pulse bg-paper" />
+              <div className="h-11 w-36 motion-safe:animate-pulse bg-paper" />
             </div>
           </li>
         ))}

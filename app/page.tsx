@@ -64,7 +64,7 @@ export default function HomePage() {
           fallback={
             <section className="border-y border-ink/10 bg-paper">
               <div className="wrap py-24 md:py-32">
-                <div className="h-64 animate-pulse bg-paper" aria-hidden="true" />
+                <div className="h-64 motion-safe:animate-pulse bg-paper" aria-hidden="true" />
               </div>
             </section>
           }

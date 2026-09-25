@@ -46,11 +46,11 @@ function GridSkeleton() {
       <ul className="grid grid-cols-1 gap-x-8 gap-y-14 pt-14 pb-24 sm:grid-cols-2 md:pb-32 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <li key={i}>
-            <div className="aspect-[4/5] animate-pulse rounded-theme-product-image bg-paper" />
+            <div className="aspect-[4/5] motion-safe:animate-pulse rounded-theme-product-image bg-paper" />
             <div className="mt-5 border-t border-ink/10 pt-4">
-              <div className="h-3 w-16 animate-pulse bg-paper" />
-              <div className="mt-3 h-5 w-3/4 animate-pulse bg-paper" />
-              <div className="mt-3 h-5 w-20 animate-pulse bg-paper" />
+              <div className="h-3 w-16 motion-safe:animate-pulse bg-paper" />
+              <div className="mt-3 h-5 w-3/4 motion-safe:animate-pulse bg-paper" />
+              <div className="mt-3 h-5 w-20 motion-safe:animate-pulse bg-paper" />
             </div>
           </li>
         ))}
