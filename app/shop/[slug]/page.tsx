@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { ProductDetail } from "@/components/shop/product-detail";
@@ -59,6 +60,11 @@ function breadcrumbJsonLd(product: Product) {
   };
 }
 
+/** One catalogue read per request, shared by generateMetadata and the page. */
+const getProduct = cache(async (slug: string) =>
+  fetchProductBySlug(await createSupabaseServerClient(), slug),
+);
+
 export async function generateMetadata({
   params,
 }: {
@@ -68,7 +74,7 @@ export async function generateMetadata({
   const preview = isBrandPreview();
   const product = preview
     ? previewProducts.find((product) => product.slug === slug)
-    : isPreviewItem({ slug }) ? null : await fetchProductBySlug(await createSupabaseServerClient(), slug);
+    : isPreviewItem({ slug }) ? null : await getProduct(slug);
   if (!product) return { title: "Ürün bulunamadı" };
   return {
     robots: preview ? { index: false, follow: false } : undefined,
@@ -99,10 +105,9 @@ export default async function ProductDetailPage({
     return <PageShell><ProductDetail product={product} related={related} /></PageShell>;
   }
   if (isPreviewItem({ slug })) notFound();
-  const supabase = await createSupabaseServerClient();
-  const product = await fetchProductBySlug(supabase, slug);
+  const product = await getProduct(slug);
   if (!product) notFound();
-  const related = await fetchRelatedProducts(supabase, product, 4);
+  const related = await fetchRelatedProducts(await createSupabaseServerClient(), product, 4);
 
   return (
     <PageShell>

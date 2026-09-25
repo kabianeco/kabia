@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { StoreListing, type StoreSearch } from "@/components/shop/store-listing";
@@ -10,6 +11,11 @@ import { fetchPublishedProducerBySlug } from "@/lib/producers";
 import { fetchProductsByProducer } from "@/lib/catalog";
 
 type Params = Promise<{ "producer-slug": string }>;
+
+/** One producer read per request, shared by generateMetadata and the page. */
+const getProducer = cache(async (slug: string) =>
+  fetchPublishedProducerBySlug(await createSupabaseServerClient(), slug),
+);
 
 export async function generateMetadata({
   params,
@@ -24,8 +30,7 @@ export async function generateMetadata({
       robots: { index: false, follow: false },
     };
   }
-  const supabase = await createSupabaseServerClient();
-  const result = await fetchPublishedProducerBySlug(supabase, slug);
+  const result = await getProducer(slug);
   if (result.status !== "ok") return { title: "Mağaza bulunamadı" };
   return {
     title: `${result.producer.name} — Mağaza`,
@@ -80,7 +85,7 @@ export default async function ProducerStore({
   // A read failure answers like an unknown slug — the test-double catalogue
   // has no producers, which keeps the off-state 404 expectations intact.
   const supabase = await createSupabaseServerClient();
-  const result = await fetchPublishedProducerBySlug(supabase, slug);
+  const result = await getProducer(slug);
   if (result.status !== "ok") notFound();
   const producer = result.producer;
   const products = await fetchProductsByProducer(supabase, producer.id);
