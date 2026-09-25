@@ -45,11 +45,12 @@ export function Producers() {
         </div>
 
         <ul className="mt-16 grid grid-cols-1 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">
-          {producers.map((producer, i) => (
+          {producers.map((producer) => (
+            // Several screens below the fold, under the intro: these load
+            // lazily rather than being preloaded against the hero.
             <ProducerCard
               key={producer.id}
               producer={producer}
-              priority={i < 2}
               variant="secki"
             />
           ))}
