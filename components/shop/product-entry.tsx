@@ -67,7 +67,7 @@ export function ProductEntry({
         </div>
 
         <div className="mt-5 border-t border-ink/10 pt-4">
-          <p className="label text-olive">{[product.categoryName, product.source === "ciftlik" || !product.producerName || product.producerName === product.name ? sourceBadgeLabel(product.source) : product.producerName].filter((part) => part !== "").join(" • ")}</p>
+          <p className="label text-olive">{product.categoryName && <>{product.categoryName} • </>}{product.source === "ciftlik" || !product.producerName || product.producerName === product.name ? sourceBadgeLabel(product.source) : product.producerName}</p>
           {organic && (
             <p className="label mt-2 text-brand">{CERTIFICATION_LABEL[product.certification]}</p>
           )}
