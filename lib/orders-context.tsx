@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
-import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useAuth } from "@/lib/auth-context"
 import type { OrderItemRow, OrderRow } from "@/lib/supabase/rows"
 
@@ -92,7 +92,7 @@ function mapOrder(o: OrderRow): OrderRecord {
 }
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
-  const supabase = createSupabaseBrowserClient()
+  // §8.3: no render-time client — acquired inside async work only.
   const { userId, hydrated: authHydrated } = useAuth()
   const [orders, setOrders] = useState<OrderRecord[]>([])
   const [hydrated, setHydrated] = useState(false)
@@ -102,6 +102,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       setOrders([])
       return
     }
+    const supabase = await getSupabaseBrowserClient()
     // Filtered by user_id explicitly. Administrators can now SELECT every order
     // for the dashboard, so an unfiltered select would hand an admin the whole
     // order book on their own account page.
@@ -111,7 +112,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
     setOrders((data ?? []).map(mapOrder))
-  }, [supabase, userId])
+  }, [userId])
 
   useEffect(() => {
     if (!authHydrated) return
@@ -124,6 +125,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const fetchOrder = useCallback(
     async (orderNumber: string): Promise<OrderRecord | null> => {
       if (!userId) return null
+      const supabase = await getSupabaseBrowserClient()
       const { data } = await supabase
         .from("orders")
         .select("*, order_items(*)")
@@ -132,7 +134,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         .maybeSingle()
       return data ? mapOrder(data) : null
     },
-    [supabase, userId],
+    [userId],
   )
 
   const value = useMemo(

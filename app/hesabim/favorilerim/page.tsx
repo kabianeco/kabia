@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useFavorites } from "@/lib/favorites-context";
 import { fetchProducts } from "@/lib/catalog";
 import { type Product } from "@/lib/products";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ProductEntry } from "@/components/shop/product-entry";
 import { ButtonLink } from "@/components/ui/button";
 import { routes } from "@/lib/site";
@@ -16,12 +16,14 @@ export default function FavoritesPage() {
 
   useEffect(() => {
     let active = true;
-    const supabase = createSupabaseBrowserClient();
-    fetchProducts(supabase).then((list) => {
+    ;(async () => {
+      const supabase = await getSupabaseBrowserClient();
+      if (!active) return;
+      const list = await fetchProducts(supabase);
       if (!active) return;
       setAllProducts(list);
       setLoading(false);
-    });
+    })()
     return () => {
       active = false;
     };

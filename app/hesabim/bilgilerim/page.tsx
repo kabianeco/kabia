@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
 import { useAuth } from "@/lib/auth-context";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[\d\s+()]{10,}$/;
@@ -61,7 +61,7 @@ export default function ProfilePage() {
 
     // Changing the address on file requires Supabase to reconfirm it.
     if (email.trim() !== (user?.email ?? "")) {
-      const supabase = createSupabaseBrowserClient();
+      const supabase = await getSupabaseBrowserClient();
       const { error: emailError } = await supabase.auth.updateUser({
         email: email.trim(),
       });
@@ -89,7 +89,7 @@ export default function ProfilePage() {
     if (Object.keys(errors).length > 0) return;
 
     setSavingPassword(true);
-    const supabase = createSupabaseBrowserClient();
+    const supabase = await getSupabaseBrowserClient();
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setSavingPassword(false);
     if (error) {

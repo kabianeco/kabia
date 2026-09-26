@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import type { User } from "@supabase/supabase-js"
-import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 export interface AuthUser {
   name: string
@@ -51,7 +51,8 @@ function toAuthUser(supabaseUser: User | null, profile: ProfileRow | null): Auth
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const supabase = createSupabaseBrowserClient()
+  // §8.3: no render-time client — the lazily loaded browser client is
+  // acquired inside async work only.
   const [supabaseUser, setSupabaseUser] = useState<User | null>(null)
   // The loaded profile is stored with the id it belongs to, so signing out or
   // switching accounts drops it by derivation instead of needing an effect to
@@ -69,52 +70,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Bootstrap session + subscribe to auth state changes
   useEffect(() => {
     let mounted = true
-    supabase.auth.getSession().then(({ data }) => {
+    let sub: { subscription: { unsubscribe: () => void } } | null = null
+    ;(async () => {
+      const supabase = await getSupabaseBrowserClient()
       if (!mounted) return
-      setSupabaseUser(data.session?.user ?? null)
-      setHydrated(true)
-    })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSupabaseUser(session?.user ?? null)
-    })
+      supabase.auth.getSession().then(({ data }) => {
+        if (!mounted) return
+        setSupabaseUser(data.session?.user ?? null)
+        setHydrated(true)
+      })
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (mounted) setSupabaseUser(session?.user ?? null)
+      })
+      sub = data
+    })()
     return () => {
       mounted = false
-      sub.subscription.unsubscribe()
+      sub?.subscription.unsubscribe()
     }
-  }, [supabase])
+  }, [])
 
   // Load the profile row whenever the auth user changes.
   useEffect(() => {
     const userId = supabaseUser?.id
     if (!userId) return
     let active = true
-    supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (active) setLoadedProfile({ userId, row: data as ProfileRow | null })
-      })
+    ;(async () => {
+      const supabase = await getSupabaseBrowserClient()
+      if (!active) return
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (active) setLoadedProfile({ userId, row: data as ProfileRow | null })
+        })
+    })()
     return () => {
       active = false
     }
-  }, [supabaseUser, supabase])
+  }, [supabaseUser])
 
   const user = useMemo(() => toAuthUser(supabaseUser, profile), [supabaseUser, profile])
 
   const login = useCallback(
     async (email: string, password: string): Promise<AuthResult> => {
+      const supabase = await getSupabaseBrowserClient()
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) return { error: error.message }
       setSupabaseUser(data.user)
       return {}
     },
-    [supabase],
+    [],
   )
 
   const register = useCallback(
     async (data: { name: string; email: string; phone: string; password: string }): Promise<AuthResult> => {
+      const supabase = await getSupabaseBrowserClient()
       const { data: res, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -126,18 +139,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!res.session) return { needsEmailConfirm: true }
       return {}
     },
-    [supabase],
+    [],
   )
 
   const logout = useCallback(async () => {
+    const supabase = await getSupabaseBrowserClient()
     await supabase.auth.signOut()
     setSupabaseUser(null)
     setLoadedProfile(null)
-  }, [supabase])
+  }, [])
 
   const updateProfile = useCallback(
     async (patch: Partial<AuthUser>): Promise<AuthResult> => {
       if (!supabaseUser) return { error: "Not authenticated" }
+      const supabase = await getSupabaseBrowserClient()
       const updates: Record<string, unknown> = {}
       if (patch.name !== undefined) updates.full_name = patch.name
       if (patch.phone !== undefined) updates.phone = patch.phone
@@ -149,7 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       )
       return {}
     },
-    [supabase, supabaseUser],
+    [supabaseUser],
   )
 
   const value: AuthContextValue = useMemo(

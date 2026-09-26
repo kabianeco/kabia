@@ -13,7 +13,7 @@ import {
 import { useCheckout, type SavedAddress } from "@/lib/checkout-context";
 import { useOrders } from "@/lib/orders-context";
 import { useAuth } from "@/lib/auth-context";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { formatTL } from "@/lib/products";
 import { routes } from "@/lib/site";
 import { EASE } from "@/lib/motion";
@@ -116,7 +116,7 @@ export function CheckoutFlow() {
 
     // Order totals and the order number are produced by the `create_order`
     // Postgres function, not by the browser.
-    const submission = await submitOrder(currentItems.current, createSupabaseBrowserClient, {
+    const submission = await submitOrder(currentItems.current, getSupabaseBrowserClient, {
       p_shipping_address: addressSnapshot,
       p_payment_method: payment.method,
       p_card_last4: isCard ? digits.slice(-4) : null,

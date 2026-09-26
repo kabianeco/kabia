@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
-import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useAuth } from "@/lib/auth-context"
 import { isPreviewItem } from "@/lib/preview-identity"
 import type { FavoriteRow } from "@/lib/supabase/rows"
@@ -18,7 +18,7 @@ const FavoritesContext = createContext<FavoritesContextValue | null>(null)
 const STORAGE_KEY = "kabia_favorites"
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
-  const supabase = createSupabaseBrowserClient()
+  // §8.3: no render-time client — acquired inside async work only.
   const { userId, hydrated: authHydrated } = useAuth()
   const [favoriteSlugs, setFavoriteSlugs] = useState<string[]>([])
   const [hydrated, setHydrated] = useState(false)
@@ -27,6 +27,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     if (!authHydrated) return
     let cancelled = false
     ;(async () => {
+      const supabase = await getSupabaseBrowserClient()
       if (userId) {
         // merge guest favorites into DB
         let guest: string[] = []
@@ -62,7 +63,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [userId, authHydrated, supabase])
+  }, [userId, authHydrated])
 
   useEffect(() => {
     if (hydrated && !userId) localStorage.setItem(STORAGE_KEY, JSON.stringify(favoriteSlugs))
@@ -79,6 +80,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       })
       if (userId) {
         ;(async () => {
+          const supabase = await getSupabaseBrowserClient()
           const { data: prod } = await supabase.from("products").select("id").eq("slug", slug).maybeSingle()
           if (!prod) return
           const isFav = favoriteSlugs.includes(slug)
@@ -91,7 +93,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         })()
       }
     },
-    [favoriteSlugs, userId, supabase],
+    [favoriteSlugs, userId],
   )
 
   const value = useMemo(

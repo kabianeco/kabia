@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useAuth } from "@/lib/auth-context"
 import type { AddressRow } from "@/lib/supabase/rows"
 
@@ -95,7 +95,7 @@ function toDbRow(a: Omit<SavedAddress, "id">, uid: string) {
 }
 
 export function CheckoutProvider({ children }: { children: ReactNode }) {
-  const supabase = createSupabaseBrowserClient()
+  // §8.3: no render-time client — acquired inside async work only.
   const { userId, user, hydrated: authHydrated } = useAuth()
   // Contact details and the chosen address are read straight out of
   // localStorage during the first client render. Nothing in this provider
@@ -122,6 +122,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     if (!authHydrated) return
     let cancelled = false
     ;(async () => {
+      const supabase = await getSupabaseBrowserClient()
       if (userId) {
         // merge guest addresses into DB
         let guest: SavedAddress[] = []
@@ -182,7 +183,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [userId, user, authHydrated, supabase])
+  }, [userId, user, authHydrated])
 
   const setContact = useCallback((patch: Partial<ContactInfo>) => {
     setContactState((prev) => ({ ...prev, ...patch }))
@@ -193,6 +194,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const addAddress = useCallback(
     async (address: Omit<SavedAddress, "id">) => {
       if (userId) {
+        const supabase = await getSupabaseBrowserClient()
         const { data } = await supabase.from("addresses").insert({ ...toDbRow(address, userId), is_default: false }).select("*").maybeSingle()
         const mapped = data ? mapAddrRow(data) : null
         setAddresses((prev) => [...prev, ...(mapped ? [mapped] : [])])
@@ -203,7 +205,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         setSelectedAddressId(id)
       }
     },
-    [userId, supabase],
+    [userId],
   )
 
   const updateAddress = useCallback(
@@ -211,25 +213,29 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       if (userId) {
         // S26: scope to the row AND its owner — RLS is the second boundary,
         // not the only one.
+        const supabase = await getSupabaseBrowserClient()
         await supabase.from("addresses").update(toDbRow(patch, userId)).eq("id", id).eq("user_id", userId)
         setAddresses((prev) => prev.map((a) => (a.id === id ? { ...patch, id } : a)))
       } else {
         setAddresses((prev) => prev.map((a) => (a.id === id ? { ...patch, id } : a)))
       }
     },
-    [userId, supabase],
+    [userId],
   )
 
   const removeAddress = useCallback(
     async (id: string) => {
-      if (userId) await supabase.from("addresses").delete().eq("id", id).eq("user_id", userId)
+      if (userId) {
+        const supabase = await getSupabaseBrowserClient()
+        await supabase.from("addresses").delete().eq("id", id).eq("user_id", userId)
+      }
       setAddresses((prev) => {
         const next = prev.filter((a) => a.id !== id)
         return next
       })
       setSelectedAddressId((prev) => (prev === id ? null : prev))
     },
-    [userId, supabase],
+    [userId],
   )
 
   const setDefaultAddress = useCallback(
@@ -237,12 +243,13 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       if (userId) {
         // S26: the default-clear is owner-scoped — without user_id it would
         // touch every row except this id.
+        const supabase = await getSupabaseBrowserClient()
         await supabase.from("addresses").update({ is_default: false }).neq("id", id).eq("user_id", userId)
         await supabase.from("addresses").update({ is_default: true }).eq("id", id).eq("user_id", userId)
       }
       setAddresses((prev) => prev.map((a) => ({ ...a, isDefault: a.id === id })))
     },
-    [userId, supabase],
+    [userId],
   )
 
   // persist guest addresses

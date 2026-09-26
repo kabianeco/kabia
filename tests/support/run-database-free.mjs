@@ -11,7 +11,7 @@ const files = [
   "admin-producer-fields", "producer-story",
   "cart-quantity", "review-privacy", "review-submit", "contact-consent",
   "account-guards", "media-limits", "ownership-scopes", "theme-draft-guard",
-  "producer-convergence", "homepage-intro",
+  "producer-convergence", "homepage-intro", "client-deferral",
 ].map(name => `tests/${name}.test.ts`);
 files.push("tests/client-boundary.test.js");
 const env = { ...process.env };

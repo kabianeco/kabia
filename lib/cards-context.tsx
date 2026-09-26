@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
-import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useAuth } from "@/lib/auth-context"
 import type { PaymentMethodRow } from "@/lib/supabase/rows"
 
@@ -47,7 +47,7 @@ function splitExpiry(expiry: string) {
 }
 
 export function CardsProvider({ children }: { children: ReactNode }) {
-  const supabase = createSupabaseBrowserClient()
+  // §8.3: no render-time client — acquired inside async work only.
   const { userId, hydrated: authHydrated } = useAuth()
   const [cards, setCards] = useState<SavedCard[]>([])
   const [hydrated, setHydrated] = useState(false)
@@ -56,6 +56,7 @@ export function CardsProvider({ children }: { children: ReactNode }) {
     if (!authHydrated) return
     let cancelled = false
     ;(async () => {
+      const supabase = await getSupabaseBrowserClient()
       if (userId) {
         let guest: SavedCard[] = []
         try {
@@ -90,7 +91,7 @@ export function CardsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [userId, authHydrated, supabase])
+  }, [userId, authHydrated])
 
   useEffect(() => {
     if (hydrated && !userId) localStorage.setItem(STORAGE_KEY, JSON.stringify(cards))
@@ -100,6 +101,7 @@ export function CardsProvider({ children }: { children: ReactNode }) {
     async (card: Omit<SavedCard, "id" | "isDefault">) => {
       // Only last4/expiry/brand/cardName ever reach here — full PAN/CVV discarded by the form.
       if (userId) {
+        const supabase = await getSupabaseBrowserClient()
         const { data } = await supabase
           .from("payment_methods")
           .insert({
@@ -117,26 +119,30 @@ export function CardsProvider({ children }: { children: ReactNode }) {
         setCards((prev) => [...prev, { ...card, id, isDefault: prev.length === 0 }])
       }
     },
-    [userId, supabase],
+    [userId],
   )
 
   const removeCard = useCallback(
     async (id: string) => {
-      if (userId) await supabase.from("payment_methods").delete().eq("id", id)
+      if (userId) {
+        const supabase = await getSupabaseBrowserClient()
+        await supabase.from("payment_methods").delete().eq("id", id)
+      }
       setCards((prev) => prev.filter((c) => c.id !== id))
     },
-    [userId, supabase],
+    [userId],
   )
 
   const setDefaultCard = useCallback(
     async (id: string) => {
       if (userId) {
+        const supabase = await getSupabaseBrowserClient()
         await supabase.from("payment_methods").update({ is_default: false }).neq("id", id)
         await supabase.from("payment_methods").update({ is_default: true }).eq("id", id)
       }
       setCards((prev) => prev.map((c) => ({ ...c, isDefault: c.id === id })))
     },
-    [userId, supabase],
+    [userId],
   )
 
   const value = useMemo(

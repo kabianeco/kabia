@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useAuth } from "@/lib/auth-context"
 import type { NotificationPreferencesRow } from "@/lib/supabase/rows"
 
@@ -31,7 +31,7 @@ function mapRow(r: NotificationPreferencesRow): NotificationPrefs {
 }
 
 export function useNotificationPrefs() {
-  const supabase = createSupabaseBrowserClient()
+  // §8.3: no render-time client — acquired inside async work only.
   const { userId, hydrated: authHydrated } = useAuth()
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS)
   const [hydrated, setHydrated] = useState(false)
@@ -40,6 +40,7 @@ export function useNotificationPrefs() {
     if (!authHydrated) return
     let cancelled = false
     ;(async () => {
+      const supabase = await getSupabaseBrowserClient()
       if (userId) {
         const { data } = await supabase.from("notification_preferences").select("*").eq("user_id", userId).maybeSingle()
         if (!cancelled) setPrefs(data ? mapRow(data) : DEFAULT_PREFS)
@@ -56,7 +57,7 @@ export function useNotificationPrefs() {
     return () => {
       cancelled = true
     }
-  }, [userId, authHydrated, supabase])
+  }, [userId, authHydrated])
 
   useEffect(() => {
     if (hydrated && !userId) localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
@@ -71,10 +72,12 @@ export function useNotificationPrefs() {
             : key === "orderStatus" ? "order_status"
               : key === "sms" ? "sms"
                 : "stock_alerts"
-        supabase.from("notification_preferences").update({ [col]: value }).eq("user_id", userId).then(() => {})
+        getSupabaseBrowserClient().then((supabase) => {
+          supabase.from("notification_preferences").update({ [col]: value }).eq("user_id", userId).then(() => {})
+        })
       }
     },
-    [userId, supabase],
+    [userId],
   )
 
   return { prefs, setPref, hydrated }

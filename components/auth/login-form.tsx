@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox, TextField } from "@/components/ui/field";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { routes } from "@/lib/site";
 import { ACTION_IDLE, type ActionState } from "@/lib/admin/errors";
 import { customerLoginAction, customerResetPasswordAction } from "@/app/auth/actions";
@@ -50,7 +50,7 @@ export function LoginForm() {
   }, [loginState, router]);
 
   const handleSocialLogin = async (provider: "google" | "apple") => {
-    const supabase = createSupabaseBrowserClient();
+    const supabase = await getSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: `${window.location.origin}${next}` },

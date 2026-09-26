@@ -14,7 +14,7 @@ import { routes } from "@/lib/site";
 import { useRecentlyViewed } from "@/lib/recently-viewed";
 import { useHydrated } from "@/lib/use-hydrated";
 import { fetchProducts } from "@/lib/catalog";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { type Product } from "@/lib/products";
 
 function EmptyRecentlyViewed() {
@@ -43,10 +43,12 @@ function RecentlyViewed() {
 
   useEffect(() => {
     let active = true;
-    const supabase = createSupabaseBrowserClient();
-    fetchProducts(supabase).then((all) => {
+    ;(async () => {
+      const supabase = await getSupabaseBrowserClient();
+      if (!active) return;
+      const all = await fetchProducts(supabase);
       if (active) setCatalogue(all);
-    });
+    })()
     return () => {
       active = false;
     };
