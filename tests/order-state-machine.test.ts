@@ -147,3 +147,45 @@ describe("S13 — strict matrix converged, override stays in the audited RPC", (
     assert.ok(!src.includes("allow_order_write"), "converge changes no bypass flags")
   })
 })
+
+describe("order SQL migrations pin their guarantees", () => {
+  it("create_order hardens the whole path (S1/S2/S4/S5/S6/S12)", async () => {
+    const { readFileSync } = await import("node:fs")
+    const src = readFileSync("supabase/migrations/20260926000300_create_order_integrity.sql", "utf8")
+    assert.match(src, /pv\.product_id = ci\.product_id/)
+    assert.match(src, /variant_product_id is distinct from/)
+    assert.match(src, /setting_bool_privileged\('store_open'/)
+    assert.match(src, /setting_number_privileged\('free_shipping_threshold'/)
+    assert.match(src, /v_attempts/)
+    assert.match(src, /stock_quantity = stock_quantity - v_item\.quantity/)
+    assert.match(src, /'order\.commit'/)
+    assert.match(src, /p_consented_sales boolean default null/)
+    assert.match(src, /quantity < 1 or v_item\.quantity > 99/)
+    assert.match(src, /p_payment_method is distinct from 'card'/)
+    assert.match(src, /drop function if exists\s+public\.create_order\(jsonb, text, text, text, text, text, text, text\)/)
+  })
+
+  it("cancel restocks committed stock exactly once (S2)", async () => {
+    const { readFileSync } = await import("node:fs")
+    const src = readFileSync("supabase/migrations/20260926000400_order_cancel_restock.sql", "utf8")
+    assert.match(src, /function public\.admin_update_order_status/)
+    assert.match(src, /function public\.admin_override_order_status/)
+    assert.ok((src.match(/'order\.cancel'/g) ?? []).length >= 2, "both status RPCs restock")
+    assert.match(src, /stock_committed = false where id = p_order_id/)
+    assert.match(src, /coalesce\(v_committed, false\)/)
+  })
+
+  it("history is append-only (S11)", async () => {
+    const { readFileSync } = await import("node:fs")
+    const src = readFileSync("supabase/migrations/20260926000800_history_insert_lockdown.sql", "utf8")
+    assert.match(src, /drop policy if exists osh_admin_insert/)
+  })
+
+  it("public child reads require active parents (S16)", async () => {
+    const { readFileSync } = await import("node:fs")
+    const src = readFileSync("supabase/migrations/20260926001000_public_child_reads.sql", "utf8")
+    for (const table of ["product_variants", "product_images", "nutrition_facts"]) {
+      assert.match(src, new RegExp(`p\\.id = ${table}\\.product_id and p\\.is_active`))
+    }
+  })
+})
