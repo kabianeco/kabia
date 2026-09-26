@@ -97,6 +97,26 @@ export async function fetchPublicProducers(
 }
 
 /**
+ * One line (secki or mutfak) in curated order. Same honest-error contract as
+ * `fetchPublicProducers`: a failed read is an outage, never an empty shelf.
+ */
+export async function fetchProducersBySource(
+  client: SupabaseClient,
+  source: ProductSource,
+): Promise<PublicProducersResult> {
+  const { data, error } = await client
+    .from("producers")
+    .select(PRODUCER_SELECT)
+    .eq("is_published", true)
+    .eq("source", source)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false })
+
+  if (error || !data) return { status: "error" }
+  return { status: "ok", producers: (data as unknown as ProducerRow[]).map(mapProducer) }
+}
+
+/**
  * The Seçki line in curated order. Same honest-error contract as
  * `fetchPublicProducers`: a failed read is an outage, never an empty shelf.
  */

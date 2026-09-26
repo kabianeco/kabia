@@ -1,7 +1,11 @@
 import { ProducerCard } from "@/components/producers/producer-card";
+import type { CardProducer } from "@/components/producers/producer-card";
 import { Reveal } from "@/components/motion/reveal";
 import { ArrowLink } from "@/components/ui/button";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { fetchSeckiProducers } from "@/lib/producers";
 import { producerCollections } from "@/content/producers";
+import { isBrandPreview } from "@/lib/brand-preview";
 import { routes } from "@/lib/site";
 
 /**
@@ -11,9 +15,21 @@ import { routes } from "@/lib/site";
  * first and shop second), so the homepage carries the 3000 soul: the story
  * sells, then the product. The Mutfak line stays product-led on its own
  * page; here only the four Seçki producers appear.
+ *
+ * Reads the database in curated order (single source of truth since
+ * convergence); preview keeps the static file. A failed read is a small
+ * outage note in place — never a silently missing section — and an empty
+ * line hides the section the way BestSellers does.
  */
-export function Producers() {
-  const producers = producerCollections.secki;
+export async function Producers() {
+  let producers: CardProducer[] | "error" = "error";
+  if (isBrandPreview()) {
+    producers = [...producerCollections.secki];
+  } else {
+    const result = await fetchSeckiProducers(await createSupabaseServerClient());
+    producers = result.status === "ok" ? result.producers : "error";
+  }
+  if (producers !== "error" && producers.length === 0) return null;
 
   return (
     <section
@@ -44,17 +60,23 @@ export function Producers() {
           </Reveal>
         </div>
 
-        <ul className="mt-16 grid grid-cols-1 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">
-          {producers.map((producer) => (
-            // Several screens below the fold, under the intro: these load
-            // lazily rather than being preloaded against the hero.
-            <ProducerCard
-              key={producer.id}
-              producer={producer}
-              variant="secki"
-            />
-          ))}
-        </ul>
+        {producers === "error" ? (
+          <p role="alert" className="mt-16 text-sm text-clay">
+            Üreticiler şu anda yüklenemiyor. Lütfen daha sonra yeniden deneyin.
+          </p>
+        ) : (
+          <ul className="mt-16 grid grid-cols-1 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">
+            {producers.map((producer) => (
+              // Several screens below the fold, under the intro: these load
+              // lazily rather than being preloaded against the hero.
+              <ProducerCard
+                key={producer.id}
+                producer={producer}
+                variant="secki"
+              />
+            ))}
+          </ul>
+        )}
 
         <Reveal className="mt-14 border-t border-ink/10 pt-7">
           <ArrowLink href={routes.producers}>Tüm üreticiler</ArrowLink>

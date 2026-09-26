@@ -2,33 +2,16 @@ import type { Metadata } from "next"
 import { pageMetadata } from "@/lib/seo"
 import { PageShell } from "@/components/layout/page-shell"
 import { ProducerCard } from "@/components/producers/producer-card"
+import type { CardProducer } from "@/components/producers/producer-card"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
-import { fetchPublicProducers, type Producer } from "@/lib/producers"
+import { fetchPublicProducers } from "@/lib/producers"
 import { sourceProducers } from "@/content/producers"
 import { isBrandPreview } from "@/lib/brand-preview"
 
 /**
- * Elle dizilim: badem → ceviz → fındık → bal → ıhlamur → salça →
- * alıç → elma → erişte → tarhana. (Ihlamur listede yoktu, baldan
- * sonra Seçki grubuna eklendi.) Listede olmayanlar en sonda.
+ * Display order is the database sort_order (curated, ascending) — the single
+ * source of truth since convergence. The old hardcoded ORDER list is gone.
  */
-const ORDER = [
-  "kabia-ciftligi",
-  "ege-ceviz",
-  "geyce-setce-findik",
-  "anadolu-bal",
-  "akinci-ihlamur",
-  "domates-salcasi",
-  "alic-sirkesi",
-  "elma-sirkesi",
-  "eriste",
-  "tarhana",
-]
-const orderOf = (slug: string): number => {
-  const i = ORDER.indexOf(slug)
-  return i === -1 ? ORDER.length : i
-}
-
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
     title: "Üreticiler",
@@ -37,15 +20,6 @@ export async function generateMetadata(): Promise<Metadata> {
     path: "/ureticiler",
   })
 }
-
-type GridProducer = Omit<Producer, "createdAt" | "tagline" | "sortOrder"> & {
-  desc?: string
-  tagline?: string | null
-}
-
-/** The curated ORDER above, applied to whichever source the page read from. */
-const inCuratedOrder = <T extends { slug: string }>(list: readonly T[]): T[] =>
-  [...list].sort((a, b) => orderOf(a.slug) - orderOf(b.slug))
 
 /** The page heading, shared by every state so the page reads the same either way. */
 function Heading() {
@@ -63,7 +37,7 @@ function Heading() {
   )
 }
 
-function ProducersGrid({ producers }: { producers: readonly GridProducer[] }) {
+function ProducersGrid({ producers }: { producers: readonly CardProducer[] }) {
   return (
     <PageShell>
       <section aria-labelledby="producers-heading">
@@ -117,10 +91,12 @@ function ProducersOutage() {
 }
 
 export default async function ProducersPage() {
-  if (isBrandPreview()) return <ProducersGrid producers={inCuratedOrder(sourceProducers)} />
+  // Preview keeps the static file (in file order); production reads the
+  // database in curated sort_order.
+  if (isBrandPreview()) return <ProducersGrid producers={sourceProducers} />
 
   const result = await fetchPublicProducers(await createSupabaseServerClient())
   if (result.status === "error") return <ProducersOutage />
 
-  return <ProducersGrid producers={inCuratedOrder(result.producers)} />
+  return <ProducersGrid producers={result.producers} />
 }

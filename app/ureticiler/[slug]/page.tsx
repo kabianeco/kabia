@@ -6,12 +6,13 @@ import Link from "next/link"
 import { PageShell } from "@/components/layout/page-shell"
 import { ProductEntry } from "@/components/shop/product-entry"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
-import { fetchPublishedProducerBySlug, type Producer } from "@/lib/producers"
+import { fetchPublishedProducerBySlug, splitStoryParagraphs, type Producer } from "@/lib/producers"
 import { fetchProductsByProducer } from "@/lib/catalog"
 import type { Product } from "@/lib/products"
 import { sourceProducers } from "@/content/producers"
 import { previewProducts } from "@/content/preview-products"
 import { isBrandPreview } from "@/lib/brand-preview"
+import { isAllowedImageUrl } from "@/lib/shop-banner"
 import { routes } from "@/lib/site"
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo"
 
@@ -31,9 +32,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (result.status !== "ok") return { title: "Üretici" }
 
   const producer = result.producer
+  // §8.2: the administered tagline surfaces invisibly in the meta
+  // description (magaza shelf pattern); preview rows carry desc instead.
+  const tagline = "tagline" in producer && typeof producer.tagline === "string" ? producer.tagline : null
+  const storyFallback = `${producer.name} — Kabia'nın güvendiği üreticilerden.`
   const metadata = await pageMetadata({
     title: producer.name,
-    description: producer.story ?? `${producer.name} — Kabia'nın güvendiği üreticilerden.`,
+    description: tagline ? `${producer.story ?? storyFallback} ${tagline}` : (producer.story ?? storyFallback),
     path: routes.producer(producer.slug),
     image: producer.photoUrl ? { url: producer.photoUrl, alt: producer.name } : undefined,
     type: "article",
@@ -105,8 +110,8 @@ export default async function ProducerDetailPage({ params }: { params: Promise<{
 
   if (result.status !== "ok") notFound()
   // Database rows carry the administered tagline/sortOrder; the preview
-  // content file carries desc instead. The page reads neither — only the
-  // fields both shapes share.
+  // content file carries desc instead. Only the shared fields render visibly;
+  // the tagline additionally feeds the meta description above.
   const producer: Omit<Producer, "createdAt" | "tagline" | "sortOrder"> = result.producer
   const products: Product[] = isBrandPreview()
     ? previewProducts.filter((product) => product.producerSlug === producer.slug)
@@ -123,14 +128,24 @@ export default async function ProducerDetailPage({ params }: { params: Promise<{
           {producer.region && <p className="mt-6 text-lg leading-relaxed text-ink/65">{producer.region}</p>}
         </div>
 
-        {producer.photoUrl && (
+        {producer.photoUrl && isAllowedImageUrl(producer.photoUrl) && (
           <div className="relative mx-auto mt-10 aspect-[16/9] max-w-4xl overflow-hidden rounded-media bg-paper md:mt-14">
             <Image src={producer.photoUrl} alt={producer.name} fill sizes="(min-width: 1024px) 56rem, 100vw" className="object-cover" />
           </div>
         )}
 
         <div className="mx-auto mt-10 max-w-[42rem] md:mt-14">
-          {producer.story && <p className="text-base leading-relaxed text-ink/70 md:text-lg">{producer.story}</p>}
+          {/* §5.7: stored blank-line-separated paragraphs render as
+              paragraphs, in the existing text style. */}
+          {producer.story && (
+            <div className="space-y-6">
+              {splitStoryParagraphs(producer.story).map((paragraph, i) => (
+                <p key={i} className="text-base leading-relaxed text-ink/70 md:text-lg">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          )}
 
           <dl>
             <Field label="Üretim yeri" value={producer.productionPlace} />
