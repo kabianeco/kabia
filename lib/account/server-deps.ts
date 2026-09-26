@@ -135,7 +135,7 @@ export async function collectExport(client: SupabaseClient, user: SessionUser) {
   const { data: auth } = await client.auth.getUser()
   if (!auth.user || auth.user.id !== user.id) return null
   const [profile, addresses, prefs, consents, favorites, cards, orders] = await Promise.all([
-    client.from("profiles").select("full_name, phone, birth_date, created_at").eq("id", user.id).maybeSingle(),
+    client.from("profiles").select("full_name, phone, birth_date, created_at, customer_number").eq("id", user.id).maybeSingle(),
     client.from("addresses").select("label, full_name, phone, address_line1, address_line2, city, district, postal_code, is_default, created_at").eq("user_id", user.id),
     client.from("notification_preferences").select("campaign_emails, order_status, sms, stock_alerts").eq("user_id", user.id).maybeSingle(),
     client.from("customer_consents").select("kind, granted, document_version, source, recorded_at").eq("user_id", user.id).order("recorded_at"),

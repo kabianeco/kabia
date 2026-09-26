@@ -27,7 +27,7 @@ export default async function CustomerDetailPage({
 
   const { data, error } = await supabase
     .from("admin_customer_overview")
-    .select("id, full_name, phone, created_at, order_count, cancelled_count, total_spent, last_order_at")
+    .select("id, full_name, phone, customer_number, created_at, order_count, cancelled_count, total_spent, last_order_at")
     .eq("id", customerId)
     .maybeSingle()
 
@@ -38,6 +38,7 @@ export default async function CustomerDetailPage({
     id: string
     full_name: string
     phone: string | null
+    customer_number: string | null
     created_at: string
     order_count: number
     cancelled_count: number
@@ -57,7 +58,7 @@ export default async function CustomerDetailPage({
     <>
       <PageHeader
         title={customer.full_name}
-        description={`Kayıt tarihi: ${formatDate(customer.created_at)}`}
+        description={`Kayıt tarihi: ${formatDate(customer.created_at)}${customer.customer_number ? ` · Müşteri no: ${customer.customer_number}` : ""}`}
         breadcrumbs={[
           { label: "Yönetim", href: "/admin" },
           { label: "Müşteriler", href: "/admin/customers" },
@@ -162,6 +163,10 @@ export default async function CustomerDetailPage({
                 <div>
                   <dt className="label text-olive">Ad soyad</dt>
                   <dd className="mt-0.5 text-ink">{customer.full_name}</dd>
+                </div>
+                <div>
+                  <dt className="label text-olive">Müşteri no</dt>
+                  <dd className="figure mt-0.5 text-ink">{customer.customer_number ?? "—"}</dd>
                 </div>
                 <div>
                   <dt className="label text-olive">E-posta</dt>

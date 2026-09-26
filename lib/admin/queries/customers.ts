@@ -79,6 +79,7 @@ export interface CustomerRow {
   id: string
   fullName: string
   phone: string | null
+  customerNumber: string | null
   createdAt: string
   orderCount: number
   cancelledCount: number

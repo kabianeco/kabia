@@ -54,6 +54,14 @@ export default function ProfilePage() {
 
       <div className="mt-14 flex flex-wrap items-baseline justify-between gap-4 border-t border-ink/10 pt-8">
         <div className="min-w-0">
+          <p className="label text-olive">Müşteri numarası</p>
+          <p className="figure mt-2 text-base text-ink">{user?.customerNumber ?? "—"}</p>
+          <p className="mt-1 text-xs text-ink/45">Siparişlerinizde ve destek taleplerinizde bu numarayı kullanın.</p>
+        </div>
+      </div>
+
+      <div className="mt-8 flex flex-wrap items-baseline justify-between gap-4 border-t border-ink/10 pt-8">
+        <div className="min-w-0">
           <p className="label text-olive">E-posta</p>
           <p className="mt-2 break-all text-base text-ink">{user?.email}</p>
         </div>

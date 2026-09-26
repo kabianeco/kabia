@@ -10,6 +10,8 @@ export interface AuthUser {
   phone: string
   memberSince: string // ISO date
   birthDate?: string
+  /** Müşteri numarası (KE-######). Profil satırı gelene kadar tanımsız. */
+  customerNumber?: string
 }
 
 interface AuthResult {
@@ -27,7 +29,7 @@ interface AuthContextValue {
   logout: () => Promise<void>
   updateProfile: (patch: Partial<AuthUser>) => Promise<AuthResult>
   /** Reflects a profile saved on the server (updateProfileAction) without a refetch. */
-  applyProfile: (row: { full_name: string; phone: string | null; birth_date: string | null }) => void
+  applyProfile: (row: { full_name: string; phone: string | null; birth_date: string | null; customer_number?: string | null }) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -39,6 +41,7 @@ export interface ProfileRow {
   phone: string | null
   birth_date: string | null
   created_at: string | null
+  customer_number: string | null
 }
 
 function toAuthUser(supabaseUser: User | null, profile: ProfileRow | null): AuthUser | null {
@@ -49,6 +52,7 @@ function toAuthUser(supabaseUser: User | null, profile: ProfileRow | null): Auth
     phone: profile?.phone ?? "",
     memberSince: profile?.created_at ?? supabaseUser.created_at ?? new Date().toISOString(),
     birthDate: profile?.birth_date ?? undefined,
+    customerNumber: profile?.customer_number ?? undefined,
   }
 }
 
@@ -172,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const applyProfile = useCallback(
-    (row: { full_name: string; phone: string | null; birth_date: string | null }) => {
+    (row: { full_name: string; phone: string | null; birth_date: string | null; customer_number?: string | null }) => {
       setLoadedProfile((prev) => (prev && prev.row ? { ...prev, row: { ...prev.row, ...row } } : prev))
     },
     [],

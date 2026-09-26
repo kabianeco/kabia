@@ -77,8 +77,8 @@ export default async function AdminSearchPage({
     canCustomers
       ? supabase
           .from("admin_customer_overview")
-          .select("id, full_name, phone, order_count, total_spent, created_at")
-          .or(`full_name.ilike.%${term}%,phone.ilike.%${term}%`)
+          .select("id, full_name, phone, customer_number, order_count, total_spent, created_at")
+          .or(`full_name.ilike.%${term}%,phone.ilike.%${term}%,customer_number.ilike.%${term}%`)
           .limit(LIMIT)
       : Promise.resolve({ data: [], error: null }),
   ])
@@ -107,6 +107,7 @@ export default async function AdminSearchPage({
     id: string
     full_name: string
     phone: string | null
+    customer_number: string | null
     order_count: number
     total_spent: number | string
     created_at: string
@@ -218,7 +219,7 @@ export default async function AdminSearchPage({
                             {customer.full_name}
                           </span>
                           <span className="block truncate text-xs text-ink/45">
-                            {customer.phone ?? "—"} · {formatDate(customer.created_at)}
+                            {customer.customer_number ?? customer.phone ?? "—"} · {formatDate(customer.created_at)}
                           </span>
                         </span>
                         <span className="shrink-0 text-right">

@@ -52,13 +52,13 @@ export default async function CustomersPage({
 
   let query = supabase
     .from("admin_customer_overview")
-    .select("id, full_name, phone, created_at, order_count, cancelled_count, total_spent, last_order_at", {
+    .select("id, full_name, phone, customer_number, created_at, order_count, cancelled_count, total_spent, last_order_at", {
       count: "exact",
     })
 
   const term = sanitizeSearch(q)
   if (term.length >= 2) {
-    query = query.or(`full_name.ilike.%${term}%,phone.ilike.%${term}%`)
+    query = query.or(`full_name.ilike.%${term}%,phone.ilike.%${term}%,customer_number.ilike.%${term}%`)
   }
   if (activity === "siparisli") query = query.gt("order_count", 0)
   if (activity === "siparissiz") query = query.eq("order_count", 0)
@@ -74,6 +74,7 @@ export default async function CustomersPage({
     id: string
     full_name: string
     phone: string | null
+    customer_number: string | null
     created_at: string
     order_count: number
     cancelled_count: number
@@ -85,6 +86,7 @@ export default async function CustomersPage({
     id: row.id,
     fullName: row.full_name,
     phone: row.phone,
+    customerNumber: row.customer_number,
     createdAt: row.created_at,
     orderCount: row.order_count,
     cancelledCount: row.cancelled_count,
@@ -117,7 +119,7 @@ export default async function CustomersPage({
       )}
 
       <FilterBar>
-        <SearchField label="Ara" placeholder="Ad soyad veya telefon" hint="En az 2 karakter" />
+        <SearchField label="Ara" placeholder="Ad soyad, telefon veya müşteri no (KE-…)" hint="En az 2 karakter" />
         <FilterSelect
           label="Sipariş"
           paramName="durum"
@@ -157,6 +159,7 @@ export default async function CustomersPage({
                         Müşteri
                       </SortableTh>
                       <Th>E-posta</Th>
+                      <Th>Müşteri no</Th>
                       <SortableTh
                         field="created_at"
                         activeField={sort}
@@ -216,6 +219,11 @@ export default async function CustomersPage({
                             {emails.get(customer.id) ?? "—"}
                           </span>
                         </Td>
+                        <Td>
+                          <span className="figure text-xs text-ink/70">
+                            {customer.customerNumber ?? "—"}
+                          </span>
+                        </Td>
                         <Td>{formatDate(customer.createdAt)}</Td>
                         <Td align="right" numeric>
                           {formatInteger(customer.orderCount)}
@@ -238,8 +246,9 @@ export default async function CustomersPage({
                     key={customer.id}
                     href={`/admin/customers/${customer.id}`}
                     title={customer.fullName}
-                    meta={emails.get(customer.id) ?? customer.phone ?? undefined}
+                    meta={customer.customerNumber ?? emails.get(customer.id) ?? customer.phone ?? undefined}
                   >
+                    <RecordField label="Müşteri no">{customer.customerNumber ?? "—"}</RecordField>
                     <RecordField label="Sipariş" numeric>
                       {formatInteger(customer.orderCount)}
                     </RecordField>
