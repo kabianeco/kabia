@@ -13,6 +13,7 @@ import { ProductPurchase } from "@/components/shop/product-purchase";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
 import { isPreviewItem } from "@/lib/preview-identity";
+import { submitReviewAction } from "@/lib/reviews/actions";
 import {
   formatTL,
   sourceBadgeLabel,
@@ -20,7 +21,6 @@ import {
   isOrganicCertified,
   type Product,
 } from "@/lib/products";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { routes } from "@/lib/site";
 import { recordProductView } from "@/lib/recently-viewed";
 import { EASE } from "@/lib/motion";
@@ -591,26 +591,20 @@ function ReviewsPanel({ product }: { product: Product }) {
     if (Object.keys(nextErrors).length > 0) return;
 
     setSubmitting(true);
-    const supabase = createSupabaseBrowserClient();
-    const { data: udata } = await supabase.auth.getUser();
-    if (!udata.user) {
-      setSubmitting(false);
-      toast.error("Değerlendirme yazmak için giriş yapın.");
-      return;
-    }
-    const { error } = await supabase.from("reviews").insert({
+    // S18: validated, rate-limited server action — the browser never writes
+    // reviews directly. Copy below is unchanged from the direct-insert path.
+    const result = await submitReviewAction({
       product_id: product.id,
-      user_id: udata.user.id,
       reviewer_name: reviewerName,
       rating: formRating,
       review_text: reviewText,
     });
     setSubmitting(false);
-    if (error) {
-      toast.error("Değerlendirme kaydedilemedi. Lütfen tekrar deneyin.");
+    if (!result.ok) {
+      toast.error(result.message);
       return;
     }
-    toast.success("Değerlendirmeniz için teşekkürler.");
+    toast.success(result.message);
     setSubmitted(true);
     setShowForm(false);
   };

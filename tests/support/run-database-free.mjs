@@ -9,7 +9,7 @@ const files = [
   "affected-route-contracts",
   "admin-product-fields", "admin-product-schema",
   "admin-producer-fields", "producer-story",
-  "cart-quantity", "review-privacy",
+  "cart-quantity", "review-privacy", "review-submit",
 ].map(name => `tests/${name}.test.ts`);
 files.push("tests/client-boundary.test.js");
 const env = { ...process.env };
