@@ -181,17 +181,35 @@ function StageBackdrop({ active }: { active: boolean }) {
     return () => window.removeEventListener("load", syncFromReadyState);
   }, []);
 
+  // Idle-start: the footage waits for a quiet main thread after load (with a
+  // timeout backstop), so its multi-megabyte range request never shares the
+  // pipe with fonts and the H1. The poster holds the frame until then.
+  const [idle, setIdle] = useState(false);
+  useEffect(() => {
+    if (!pageLoaded) return;
+    const w = window as unknown as {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(() => setIdle(true), { timeout: 2500 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = window.setTimeout(() => setIdle(true), 1200);
+    return () => window.clearTimeout(t);
+  }, [pageLoaded]);
+
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
-    if (active && pageLoaded) {
+    if (active && pageLoaded && idle) {
       // Autoplay can still be refused (low power mode, a browser setting).
       // The poster stays behind the element, so a rejection is invisible.
       void el.play().catch(() => {});
     } else {
       el.pause();
     }
-  }, [active, pageLoaded]);
+  }, [active, pageLoaded, idle]);
 
   return (
     <div aria-hidden="true" className="absolute inset-0 z-0 overflow-hidden">
@@ -202,7 +220,7 @@ function StageBackdrop({ active }: { active: boolean }) {
         muted
         loop
         playsInline
-        preload="metadata"
+        preload="none"
         disablePictureInPicture
       >
         {/* AV1 first, H.264 as the fallback, per breakpoint: a browser that
