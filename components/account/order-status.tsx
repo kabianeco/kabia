@@ -21,11 +21,11 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   );
 }
 
-const STEPS = [
-  "Sipariş alındı",
-  "Hazırlanıyor",
-  "Kargoya verildi",
-  "Teslim edildi",
+const STEPS: { label: string; status: OrderStatus | "alindi" }[] = [
+  { label: "Sipariş alındı", status: "alindi" },
+  { label: "Hazırlanıyor", status: "hazirlaniyor" },
+  { label: "Kargoya verildi", status: "kargoda" },
+  { label: "Teslim edildi", status: "teslim-edildi" },
 ];
 
 const STATUS_TO_STEP: Record<Exclude<OrderStatus, "iptal-edildi">, number> = {
@@ -34,11 +34,32 @@ const STATUS_TO_STEP: Record<Exclude<OrderStatus, "iptal-edildi">, number> = {
   "teslim-edildi": 3,
 };
 
-export function OrderStatusTimeline({ status }: { status: OrderStatus }) {
+function shortDate(iso: string) {
+  return new Date(iso).toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
+}
+
+/**
+ * The order's progress. Dates come from the recorded status history (the
+ * first time each status was reached); a step without a record shows none
+ * rather than an invented one. Stacks vertically on narrow screens.
+ */
+export function OrderStatusTimeline({
+  status,
+  placedAt,
+  history = [],
+}: {
+  status: OrderStatus;
+  placedAt?: string;
+  history?: { status: OrderStatus; at: string }[];
+}) {
+  const reachedAt = (step: OrderStatus | "alindi") =>
+    step === "alindi" ? placedAt : history.find((h) => h.status === step)?.at;
+
   if (status === "iptal-edildi") {
+    const cancelledAt = reachedAt("iptal-edildi");
     return (
       <p className="border-l-2 border-clay py-3 pl-5 text-sm text-clay">
-        Bu sipariş iptal edildi.
+        Bu sipariş iptal edildi{cancelledAt ? ` (${shortDate(cancelledAt)})` : ""}.
       </p>
     );
   }
@@ -46,25 +67,27 @@ export function OrderStatusTimeline({ status }: { status: OrderStatus }) {
   const currentStep = STATUS_TO_STEP[status];
 
   return (
-    <ol className="grid grid-cols-4 border-t border-ink/10">
-      {STEPS.map((label, i) => {
+    <ol className="grid border-t border-ink/10 sm:grid-cols-4">
+      {STEPS.map((step, i) => {
         const done = i <= currentStep;
         const isCurrent = i === currentStep;
+        const at = done ? reachedAt(step.status) : undefined;
         return (
           <li
-            key={label}
-            className={`border-t-2 pr-3 pt-4 transition-colors duration-300 ${
-              done ? "border-brand" : "border-transparent"
+            key={step.label}
+            className={`flex items-baseline gap-4 border-b border-ink/10 py-3 transition-colors duration-300 sm:block sm:border-b-0 sm:border-t-2 sm:pr-3 sm:pt-4 ${
+              done ? "sm:border-brand" : "sm:border-transparent"
             }`}
           >
-            <span className="font-serif text-lg text-shell">0{i + 1}</span>
+            <span className={`font-serif text-lg ${done ? "text-brand" : "text-shell"}`}>0{i + 1}</span>
             <span
-              className={`mt-1 block text-xs leading-snug ${
+              className={`block text-xs leading-snug sm:mt-1 ${
                 isCurrent ? "text-ink" : done ? "text-ink/60" : "text-ink/35"
               }`}
             >
-              {label}
+              {step.label}
               {isCurrent && <span className="sr-only"> — güncel durum</span>}
+              {at && <span className="block text-ink/45">{shortDate(at)}</span>}
             </span>
           </li>
         );

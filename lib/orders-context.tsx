@@ -42,13 +42,20 @@ export interface OrderRecord {
   email: string
   address: OrderAddress
   paymentLabel: string
+  /** Recorded status changes, oldest first (order_status_history). */
+  history: { status: OrderStatus; at: string }[]
 }
+
+/** A single-order read: the order, "not found", or a failed read. */
+export type OrderLookup = { status: "found"; order: OrderRecord } | { status: "missing" } | { status: "error" }
 
 interface OrdersContextValue {
   orders: OrderRecord[]
-  fetchOrder: (orderNumber: string) => Promise<OrderRecord | null>
+  fetchOrder: (orderNumber: string) => Promise<OrderLookup>
   refresh: () => Promise<void>
   hydrated: boolean
+  /** True when the last list read failed — distinct from "no orders". */
+  error: boolean
 }
 
 const OrdersContext = createContext<OrdersContextValue | null>(null)
@@ -88,30 +95,38 @@ function mapOrder(o: OrderRow): OrderRecord {
       label: "", recipientName: "", phone: "", addressLine1: "", addressLine2: "", city: "", district: "", postalCode: "",
     },
     paymentLabel: o.payment_method_snapshot?.label ?? "",
+    history: (o.order_status_history ?? [])
+      .map((h) => ({ status: mapStatus(h.status), at: h.changed_at }))
+      .sort((a, b) => a.at.localeCompare(b.at)),
   }
 }
+
+const ORDER_SELECT = "*, order_items(*), order_status_history(status, changed_at)"
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
   // §8.3: no render-time client — acquired inside async work only.
   const { userId, hydrated: authHydrated } = useAuth()
   const [orders, setOrders] = useState<OrderRecord[]>([])
   const [hydrated, setHydrated] = useState(false)
+  const [error, setError] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!userId) {
       setOrders([])
+      setError(false)
       return
     }
     const supabase = await getSupabaseBrowserClient()
     // Filtered by user_id explicitly. Administrators can now SELECT every order
     // for the dashboard, so an unfiltered select would hand an admin the whole
     // order book on their own account page.
-    const { data } = await supabase
+    const { data, error: readError } = await supabase
       .from("orders")
-      .select("*, order_items(*)")
+      .select(ORDER_SELECT)
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-    setOrders((data ?? []).map(mapOrder))
+    setError(!!readError)
+    if (!readError) setOrders((data ?? []).map(mapOrder))
   }, [userId])
 
   useEffect(() => {
@@ -123,23 +138,24 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   }, [authHydrated, refresh])
 
   const fetchOrder = useCallback(
-    async (orderNumber: string): Promise<OrderRecord | null> => {
-      if (!userId) return null
+    async (orderNumber: string): Promise<OrderLookup> => {
+      if (!userId) return { status: "missing" }
       const supabase = await getSupabaseBrowserClient()
-      const { data } = await supabase
+      const { data, error: readError } = await supabase
         .from("orders")
-        .select("*, order_items(*)")
+        .select(ORDER_SELECT)
         .eq("order_number", orderNumber)
         .eq("user_id", userId)
         .maybeSingle()
-      return data ? mapOrder(data) : null
+      if (readError) return { status: "error" }
+      return data ? { status: "found", order: mapOrder(data) } : { status: "missing" }
     },
     [userId],
   )
 
   const value = useMemo(
-    () => ({ orders, fetchOrder, refresh, hydrated }),
-    [orders, fetchOrder, refresh, hydrated],
+    () => ({ orders, fetchOrder, refresh, hydrated, error }),
+    [orders, fetchOrder, refresh, hydrated, error],
   )
 
   return <OrdersContext.Provider value={value}>{children}</OrdersContext.Provider>

@@ -166,6 +166,7 @@ export interface OrderRow {
   } | null;
   payment_method_snapshot: { label?: string } | null;
   order_items: OrderItemRow[] | null;
+  order_status_history?: { status: string; changed_at: string }[] | null;
 }
 
 export interface FavoriteRow {

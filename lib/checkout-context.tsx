@@ -30,12 +30,15 @@ interface CheckoutContextValue extends ContactInfo {
   selectedAddressId: string | null
   defaultAddressId: string | null
   selectAddress: (id: string) => void
-  addAddress: (address: Omit<SavedAddress, "id">) => Promise<void>
-  updateAddress: (id: string, patch: Omit<SavedAddress, "id">) => Promise<void>
-  removeAddress: (id: string) => Promise<void>
-  setDefaultAddress: (id: string) => Promise<void>
+  /** Each write resolves false when the database rejected it; state is unchanged then. */
+  addAddress: (address: Omit<SavedAddress, "id">) => Promise<boolean>
+  updateAddress: (id: string, patch: Omit<SavedAddress, "id">) => Promise<boolean>
+  removeAddress: (id: string) => Promise<boolean>
+  setDefaultAddress: (id: string) => Promise<boolean>
   getSelectedAddress: () => SavedAddress | null
   hydrated: boolean
+  /** True when the signed-in address list could not be read — distinct from "none". */
+  loadError: boolean
 }
 
 const CheckoutContext = createContext<CheckoutContextValue | null>(null)
@@ -107,6 +110,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     readStoredSelectedAddress,
   )
   const [hydrated, setHydrated] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const contactSeeded = useRef(false)
 
   useEffect(() => {
@@ -140,13 +144,14 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         // do it. Administrators can now SELECT every address for the customer
         // screens, so "whatever the policy returns" is no longer the same thing
         // as "this account's addresses".
-        const { data } = await supabase
+        const { data, error: readError } = await supabase
           .from("addresses")
           .select("*")
           .eq("user_id", userId)
           .order("created_at", { ascending: false })
         const mapped = (data ?? []).map(mapAddrRow)
-        if (!cancelled) {
+        if (!cancelled) setLoadError(!!readError)
+        if (!cancelled && !readError) {
           setAddresses(mapped)
           const def = mapped.find((a) => a.isDefault)?.id ?? mapped[0]?.id ?? null
           setSelectedAddressId((prev) => prev ?? def)
@@ -195,15 +200,17 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     async (address: Omit<SavedAddress, "id">) => {
       if (userId) {
         const supabase = await getSupabaseBrowserClient()
-        const { data } = await supabase.from("addresses").insert({ ...toDbRow(address, userId), is_default: false }).select("*").maybeSingle()
-        const mapped = data ? mapAddrRow(data) : null
-        setAddresses((prev) => [...prev, ...(mapped ? [mapped] : [])])
-        setSelectedAddressId(mapped?.id ?? null)
+        const { data, error } = await supabase.from("addresses").insert({ ...toDbRow(address, userId), is_default: false }).select("*").maybeSingle()
+        if (error || !data) return false
+        const mapped = mapAddrRow(data)
+        setAddresses((prev) => [...prev, mapped])
+        setSelectedAddressId(mapped.id)
       } else {
         const id = `addr_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
         setAddresses((prev) => [...prev, { ...address, id }])
         setSelectedAddressId(id)
       }
+      return true
     },
     [userId],
   )
@@ -214,11 +221,11 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         // S26: scope to the row AND its owner — RLS is the second boundary,
         // not the only one.
         const supabase = await getSupabaseBrowserClient()
-        await supabase.from("addresses").update(toDbRow(patch, userId)).eq("id", id).eq("user_id", userId)
-        setAddresses((prev) => prev.map((a) => (a.id === id ? { ...patch, id } : a)))
-      } else {
-        setAddresses((prev) => prev.map((a) => (a.id === id ? { ...patch, id } : a)))
+        const { error } = await supabase.from("addresses").update(toDbRow(patch, userId)).eq("id", id).eq("user_id", userId)
+        if (error) return false
       }
+      setAddresses((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch, id } : a)))
+      return true
     },
     [userId],
   )
@@ -227,13 +234,15 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     async (id: string) => {
       if (userId) {
         const supabase = await getSupabaseBrowserClient()
-        await supabase.from("addresses").delete().eq("id", id).eq("user_id", userId)
+        const { error } = await supabase.from("addresses").delete().eq("id", id).eq("user_id", userId)
+        if (error) return false
       }
       setAddresses((prev) => {
         const next = prev.filter((a) => a.id !== id)
         return next
       })
       setSelectedAddressId((prev) => (prev === id ? null : prev))
+      return true
     },
     [userId],
   )
@@ -244,10 +253,18 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         // S26: the default-clear is owner-scoped — without user_id it would
         // touch every row except this id.
         const supabase = await getSupabaseBrowserClient()
-        await supabase.from("addresses").update({ is_default: false }).neq("id", id).eq("user_id", userId)
-        await supabase.from("addresses").update({ is_default: true }).eq("id", id).eq("user_id", userId)
+        // Two writes (no RPC for this yet): a failure between them leaves no
+        // default at all, never two — the safer half-state.
+        const cleared = await supabase.from("addresses").update({ is_default: false }).neq("id", id).eq("user_id", userId)
+        if (cleared.error) return false
+        const set = await supabase.from("addresses").update({ is_default: true }).eq("id", id).eq("user_id", userId)
+        if (set.error) {
+          setAddresses((prev) => prev.map((a) => ({ ...a, isDefault: false })))
+          return false
+        }
       }
       setAddresses((prev) => prev.map((a) => ({ ...a, isDefault: a.id === id })))
+      return true
     },
     [userId],
   )
@@ -283,8 +300,9 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       setDefaultAddress,
       getSelectedAddress,
       hydrated,
+      loadError,
     }),
-    [contact, setContact, addresses, selectedAddressId, defaultAddressId, selectAddress, addAddress, updateAddress, removeAddress, setDefaultAddress, getSelectedAddress, hydrated],
+    [contact, setContact, addresses, selectedAddressId, defaultAddressId, selectAddress, addAddress, updateAddress, removeAddress, setDefaultAddress, getSelectedAddress, hydrated, loadError],
   )
 
   return <CheckoutContext.Provider value={value}>{children}</CheckoutContext.Provider>

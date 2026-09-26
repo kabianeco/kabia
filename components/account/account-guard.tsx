@@ -40,7 +40,10 @@ export function AccountGuard({ children }: { children: React.ReactNode }) {
   return (
     <div className="wrap page-top pb-24 md:pb-32">
       <div className="grid gap-10 lg:grid-cols-12 lg:gap-16">
-        <div className="lg:col-span-3">
+        {/* min-w-0: without it the sideways-scrolling mobile menu sizes this
+            grid cell to its full width and pushes the whole page wider than
+            the screen instead of scrolling inside it. */}
+        <div className="min-w-0 lg:col-span-3">
           <AccountNav />
         </div>
         <div className="min-w-0 lg:col-span-8 lg:col-start-5">{children}</div>

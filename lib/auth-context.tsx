@@ -26,6 +26,8 @@ interface AuthContextValue {
   register: (data: { name: string; email: string; phone: string; password: string }) => Promise<AuthResult>
   logout: () => Promise<void>
   updateProfile: (patch: Partial<AuthUser>) => Promise<AuthResult>
+  /** Reflects a profile saved on the server (updateProfileAction) without a refetch. */
+  applyProfile: (row: { full_name: string; phone: string | null; birth_date: string | null }) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -142,9 +144,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  // "Çıkış yap" ends this browser's session only. Signing out every device is
+  // a separate, password-confirmed action on /hesabim/guvenlik.
   const logout = useCallback(async () => {
     const supabase = await getSupabaseBrowserClient()
-    await supabase.auth.signOut()
+    await supabase.auth.signOut({ scope: "local" })
     setSupabaseUser(null)
     setLoadedProfile(null)
   }, [])
@@ -167,6 +171,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [supabaseUser],
   )
 
+  const applyProfile = useCallback(
+    (row: { full_name: string; phone: string | null; birth_date: string | null }) => {
+      setLoadedProfile((prev) => (prev && prev.row ? { ...prev, row: { ...prev.row, ...row } } : prev))
+    },
+    [],
+  )
+
   const value: AuthContextValue = useMemo(
     () => ({
       isLoggedIn: !!supabaseUser,
@@ -177,8 +188,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       updateProfile,
+      applyProfile,
     }),
-    [supabaseUser, user, hydrated, login, register, logout, updateProfile],
+    [supabaseUser, user, hydrated, login, register, logout, updateProfile, applyProfile],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

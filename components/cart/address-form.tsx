@@ -20,6 +20,7 @@ interface AddressFormProps {
 export function AddressForm({ editing, onSaved, onCancel }: AddressFormProps) {
   const { addAddress, updateAddress } = useCheckout();
   const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [fields, setFields] = useState<NewAddressFields>(
     editing
       ? {
@@ -46,14 +47,16 @@ export function AddressForm({ editing, onSaved, onCancel }: AddressFormProps) {
     e.preventDefault();
     if (!valid || saving) return;
     setSaving(true);
+    setFailed(false);
     const payload = { ...fields, label: fields.label.trim() || "Adresim" };
-    if (editing) {
-      await updateAddress(editing.id, payload);
-    } else {
-      await addAddress(payload);
-      setFields(EMPTY_NEW_ADDRESS);
-    }
+    const ok = editing ? await updateAddress(editing.id, payload) : await addAddress(payload);
     setSaving(false);
+    if (!ok) {
+      // Keep what was typed; say so next to the button.
+      setFailed(true);
+      return;
+    }
+    if (!editing) setFields(EMPTY_NEW_ADDRESS);
     onSaved?.();
   };
 
@@ -144,6 +147,11 @@ export function AddressForm({ editing, onSaved, onCancel }: AddressFormProps) {
           </button>
         )}
       </div>
+      {failed && (
+        <p role="alert" className="mt-4 text-sm text-clay">
+          Adres kaydedilemedi. Lütfen tekrar deneyin.
+        </p>
+      )}
     </form>
   );
 }

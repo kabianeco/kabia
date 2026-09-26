@@ -11,11 +11,13 @@ export function Switch({
   description,
   checked,
   onCheckedChange,
+  disabled,
 }: {
   label: string;
   description?: string;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
+  disabled?: boolean;
 }) {
   const id = useId();
   const descId = description ? `${id}-desc` : undefined;
@@ -33,12 +35,13 @@ export function Switch({
         )}
       </div>
 
-      <label className="relative inline-flex h-11 shrink-0 cursor-pointer items-center">
+      <label className="relative inline-flex h-11 shrink-0 cursor-pointer items-center has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-55">
         <input
           id={id}
           type="checkbox"
           role="switch"
           checked={checked}
+          disabled={disabled}
           aria-describedby={descId}
           onChange={(e) => onCheckedChange(e.target.checked)}
           className="peer sr-only"

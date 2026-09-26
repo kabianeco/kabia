@@ -1,192 +1,66 @@
 "use client";
 
-import type React from "react";
-import { useState } from "react";
-import { toast } from "sonner";
+import { useActionState, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
+import { AccountHeading } from "@/components/account/account-states";
 import { useAuth } from "@/lib/auth-context";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_RE = /^[\d\s+()]{10,}$/;
+import { ACTION_IDLE } from "@/lib/admin/errors";
+import { updateProfileAction } from "@/app/hesabim/actions";
+import { routes } from "@/lib/site";
 
 export default function ProfilePage() {
-  const { user, updateProfile } = useAuth();
+  const { user, applyProfile } = useAuth();
+  // Fields show the loaded profile until edited; the profile row may arrive
+  // after this page mounts.
+  const [edits, setEdits] = useState<{ name?: string; phone?: string; birthDate?: string }>({});
+  const name = edits.name ?? user?.name ?? "";
+  const phone = edits.phone ?? user?.phone ?? "";
+  const birthDate = edits.birthDate ?? user?.birthDate ?? "";
+  const edit = (key: "name" | "phone" | "birthDate") => (e: { target: { value: string } }) =>
+    setEdits((prev) => ({ ...prev, [key]: e.target.value }));
+  const [state, action, pending] = useActionState(updateProfileAction, ACTION_IDLE);
+  const applied = useRef<typeof state | null>(null);
 
-  const [name, setName] = useState(user?.name ?? "");
-  const [email, setEmail] = useState(user?.email ?? "");
-  const [phone, setPhone] = useState(user?.phone ?? "");
-  const [birthDate, setBirthDate] = useState(user?.birthDate ?? "");
-  const [profileErrors, setProfileErrors] = useState<{
-    name?: string;
-    email?: string;
-    phone?: string;
-  }>({});
-  const [savingProfile, setSavingProfile] = useState(false);
+  useEffect(() => {
+    if (state === ACTION_IDLE || !state.ok || applied.current === state) return;
+    applied.current = state;
+    const saved = (state as { profile?: { full_name: string; phone: string | null; birth_date: string | null } }).profile;
+    if (saved) applyProfile(saved);
+  }, [state, applyProfile]);
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [newPasswordRepeat, setNewPasswordRepeat] = useState("");
-  const [passwordErrors, setPasswordErrors] = useState<{
-    current?: string;
-    next?: string;
-    repeat?: string;
-  }>({});
-  const [savingPassword, setSavingPassword] = useState(false);
-
-  const handleProfileSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errors: typeof profileErrors = {};
-    if (name.trim().length < 2) errors.name = "Ad soyad girin.";
-    if (!EMAIL_RE.test(email.trim()))
-      errors.email = "Geçerli bir e-posta adresi girin.";
-    if (!PHONE_RE.test(phone.trim()))
-      errors.phone = "Geçerli bir telefon numarası girin.";
-    setProfileErrors(errors);
-    if (Object.keys(errors).length > 0) return;
-
-    setSavingProfile(true);
-    const { error } = await updateProfile({
-      name: name.trim(),
-      phone: phone.trim(),
-      birthDate: birthDate || undefined,
-    });
-
-    if (error) {
-      toast.error("Bilgiler kaydedilemedi. Lütfen tekrar deneyin.");
-      setSavingProfile(false);
-      return;
-    }
-
-    // Changing the address on file requires Supabase to reconfirm it.
-    if (email.trim() !== (user?.email ?? "")) {
-      const supabase = await getSupabaseBrowserClient();
-      const { error: emailError } = await supabase.auth.updateUser({
-        email: email.trim(),
-      });
-      if (emailError) {
-        toast.error("E-posta güncellenemedi. Adresi kontrol edin.");
-      } else {
-        toast.success("E-posta değişikliği için onay bağlantısı gönderildi.");
-      }
-    } else {
-      toast.success("Bilgileriniz güncellendi.");
-    }
-    setSavingProfile(false);
-  };
-
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errors: typeof passwordErrors = {};
-    if (currentPassword.trim().length === 0)
-      errors.current = "Mevcut şifrenizi girin.";
-    if (newPassword.length < 6)
-      errors.next = "Yeni şifre en az 6 karakter olmalı.";
-    if (newPasswordRepeat !== newPassword)
-      errors.repeat = "Şifreler eşleşmiyor.";
-    setPasswordErrors(errors);
-    if (Object.keys(errors).length > 0) return;
-
-    setSavingPassword(true);
-    const supabase = await getSupabaseBrowserClient();
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    setSavingPassword(false);
-    if (error) {
-      toast.error("Şifre güncellenemedi. Lütfen tekrar deneyin.");
-      return;
-    }
-    setCurrentPassword("");
-    setNewPassword("");
-    setNewPasswordRepeat("");
-    toast.success("Şifreniz güncellendi.");
-  };
+  const fieldErrors = state !== ACTION_IDLE && !state.ok ? state.fieldErrors ?? {} : {};
+  const formError = state !== ACTION_IDLE && !state.ok && !state.fieldErrors ? state.message : undefined;
 
   return (
     <div className="max-w-xl">
-      <h1 className="text-3xl tracking-tight md:text-4xl">Bilgilerim</h1>
+      <AccountHeading title="Bilgilerim" />
 
-      <form onSubmit={handleProfileSubmit} noValidate className="mt-12 space-y-7">
-        <TextField
-          label="Ad soyad"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          autoComplete="name"
-          error={profileErrors.name}
-        />
-        <TextField
-          label="E-posta"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
-          hint="Değiştirirseniz yeni adrese onay bağlantısı göndeririz."
-          error={profileErrors.email}
-        />
-        <TextField
-          label="Telefon"
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          autoComplete="tel"
-          error={profileErrors.phone}
-        />
-        <TextField
-          label="Doğum tarihi"
-          type="date"
-          value={birthDate}
-          onChange={(e) => setBirthDate(e.target.value)}
-          hint="İsteğe bağlı"
-        />
-        <Button type="submit" disabled={savingProfile}>
-          {savingProfile ? "Kaydediliyor…" : "Kaydet"}
-        </Button>
+      <form action={action} noValidate className="mt-12 space-y-7">
+        <TextField label="Ad soyad" name="name" value={name} onChange={edit("name")} autoComplete="name" error={fieldErrors.name} />
+        <TextField label="Telefon" type="tel" name="phone" value={phone} onChange={edit("phone")} autoComplete="tel" placeholder="05XX XXX XX XX" error={fieldErrors.phone} />
+        <TextField label="Doğum tarihi" type="date" name="birthDate" value={birthDate} onChange={edit("birthDate")} hint="İsteğe bağlı" error={fieldErrors.birthDate} />
+
+        <div className="flex flex-wrap items-center gap-6">
+          <Button type="submit" disabled={pending}>
+            {pending ? "Kaydediliyor…" : "Kaydet"}
+          </Button>
+          <p role="status" aria-live="polite" className={`text-sm ${formError ? "text-clay" : "text-ink/60"}`}>
+            {state === ACTION_IDLE || pending ? "" : state.ok ? state.message : formError}
+          </p>
+        </div>
       </form>
 
-      <section
-        aria-labelledby="password-heading"
-        className="mt-16 border-t border-ink/10 pt-12"
-      >
-        <h2 id="password-heading" className="text-2xl tracking-tight">
-          Şifre değiştir
-        </h2>
-        <form
-          onSubmit={handlePasswordSubmit}
-          noValidate
-          className="mt-8 space-y-7"
-        >
-          <TextField
-            label="Mevcut şifre"
-            type="password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            autoComplete="current-password"
-            error={passwordErrors.current}
-          />
-          <div className="grid gap-7 sm:grid-cols-2">
-            <TextField
-              label="Yeni şifre"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-              hint="En az 6 karakter"
-              error={passwordErrors.next}
-            />
-            <TextField
-              label="Yeni şifre tekrar"
-              type="password"
-              value={newPasswordRepeat}
-              onChange={(e) => setNewPasswordRepeat(e.target.value)}
-              autoComplete="new-password"
-              error={passwordErrors.repeat}
-            />
-          </div>
-          <Button type="submit" variant="outline" disabled={savingPassword}>
-            {savingPassword ? "Güncelleniyor…" : "Şifreyi güncelle"}
-          </Button>
-        </form>
-      </section>
+      <div className="mt-14 flex flex-wrap items-baseline justify-between gap-4 border-t border-ink/10 pt-8">
+        <div className="min-w-0">
+          <p className="label text-olive">E-posta</p>
+          <p className="mt-2 break-all text-base text-ink">{user?.email}</p>
+        </div>
+        <Link href={`${routes.accountSecurity}#eposta`} className="inline-flex min-h-11 items-center text-sm text-brand transition-colors duration-300 hover:text-forest">
+          Değiştir
+        </Link>
+      </div>
     </div>
   );
 }

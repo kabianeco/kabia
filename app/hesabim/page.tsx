@@ -111,17 +111,20 @@ function RecentlyViewed() {
 
 export default function AccountOverviewPage() {
   const { user } = useAuth();
-  const { orders } = useOrders();
-  const { addresses } = useCheckout();
-  const { favoriteSlugs } = useFavorites();
+  const { orders, hydrated: ordersReady, error: ordersError } = useOrders();
+  const { addresses, hydrated: addressesReady, loadError: addressesError } = useCheckout();
+  const { favoriteSlugs, hydrated: favoritesReady, error: favoritesError } = useFavorites();
 
   const lastOrder = orders[0];
   const firstName = user?.name?.split(" ")[0] || "Merhaba";
 
+  // A count is shown only once its list has actually loaded; until then (or
+  // if the read failed) the figure is a dash, never a misleading zero.
+  const count = (ready: boolean, failed: boolean, n: number) => (ready && !failed ? String(n) : "—");
   const stats = [
-    { value: orders.length, label: "Sipariş" },
-    { value: favoriteSlugs.length, label: "Favori" },
-    { value: addresses.length, label: "Adres" },
+    { value: count(ordersReady, ordersError, orders.length), label: "Sipariş" },
+    { value: count(favoritesReady, favoritesError, favoriteSlugs.length), label: "Favori" },
+    { value: count(addressesReady, addressesError, addresses.length), label: "Adres" },
   ];
 
   return (
@@ -149,7 +152,18 @@ export default function AccountOverviewPage() {
           )}
         </div>
 
-        {lastOrder ? (
+        {!ordersReady ? (
+          <div role="status" aria-busy="true" className="mt-6 h-24 border-y border-ink/10">
+            <span className="sr-only">Son siparişiniz yükleniyor</span>
+          </div>
+        ) : ordersError ? (
+          <p role="alert" className="mt-6 border-t border-ink/10 pt-6 text-sm text-ink/60">
+            Siparişleriniz şu anda yüklenemedi.{" "}
+            <Link href={routes.accountOrders} className="text-brand transition-colors duration-300 hover:text-forest">
+              Siparişlerime git
+            </Link>
+          </p>
+        ) : lastOrder ? (
           <Link
             href={`${routes.accountOrders}/${lastOrder.id}`}
             className="mt-6 flex flex-wrap items-center gap-5 border-y border-ink/10 py-6 transition-colors duration-300 hover:bg-paper/60"

@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useOrders, type OrderRecord } from "@/lib/orders-context";
+import { useOrders, type OrderLookup } from "@/lib/orders-context";
 import { useCart } from "@/lib/cart-context";
 import { formatTL } from "@/lib/products";
 import {
@@ -14,32 +14,51 @@ import {
   OrderStatusTimeline,
 } from "@/components/account/order-status";
 import { routes } from "@/lib/site";
+import { reorderMessage } from "@/lib/account/reorder";
+import { AccountError, AccountLoading } from "@/components/account/account-states";
 
 export default function OrderDetailClient() {
   const params = useParams<{ orderId: string }>();
   const { fetchOrder, hydrated } = useOrders();
   const { addItem } = useCart();
-  const [order, setOrder] = useState<OrderRecord | null | undefined>(undefined);
+  const [lookup, setLookup] = useState<OrderLookup | undefined>(undefined);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
-    fetchOrder(params.orderId).then((o) => {
-      if (active) setOrder(o ?? null);
+    fetchOrder(params.orderId).then((result) => {
+      if (active) setLookup(result);
     });
     return () => {
       active = false;
     };
-  }, [params.orderId, fetchOrder]);
+  }, [params.orderId, fetchOrder, attempt]);
 
-  if (!hydrated || order === undefined) {
+  if (!hydrated || lookup === undefined) {
+    return <AccountLoading label="Sipariş yükleniyor" rows={4} />;
+  }
+
+  if (lookup.status === "error") {
     return (
-      <div className="min-h-[40vh]" aria-busy="true">
-        <span className="sr-only">Sipariş yükleniyor</span>
+      <div>
+        <Link
+          href={routes.accountOrders}
+          className="inline-flex min-h-11 items-center text-sm text-ink/55 transition-colors hover:text-ink"
+        >
+          ← Siparişlerime dön
+        </Link>
+        <AccountError
+          message="Sipariş şu anda yüklenemedi."
+          onRetry={() => {
+            setLookup(undefined);
+            setAttempt((n) => n + 1);
+          }}
+        />
       </div>
     );
   }
 
-  if (!order) {
+  if (lookup.status === "missing") {
     return (
       <div>
         <h1 className="text-3xl tracking-tight md:text-4xl">
@@ -58,6 +77,8 @@ export default function OrderDetailClient() {
     );
   }
 
+  const order = lookup.order;
+
   const handleReorder = () => {
     // Items whose product or variant has since been removed can no longer be
     // added back to the cart — the cart is keyed on live database ids.
@@ -65,12 +86,13 @@ export default function OrderDetailClient() {
       (i): i is typeof i & { variantId: string; productId: string } =>
         !!i.variantId && !!i.productId,
     );
-    if (reorderable.length === 0) {
-      toast.error("Bu siparişteki ürünler artık satışta değil.");
+    const result = reorderMessage(order.items.length, reorderable.length);
+    if (!result.ok) {
+      toast.error(result.text);
       return;
     }
     reorderable.forEach((item) => addItem(item));
-    toast.success("Ürünler sepete eklendi.", {
+    toast.success(result.text, {
       action: {
         label: "Sepete git",
         onClick: () => (window.location.href = routes.cart),
@@ -100,7 +122,7 @@ export default function OrderDetailClient() {
       </p>
 
       <div className="mt-12">
-        <OrderStatusTimeline status={order.status} />
+        <OrderStatusTimeline status={order.status} placedAt={order.date} history={order.history} />
       </div>
 
       <section aria-labelledby="order-items" className="mt-14">

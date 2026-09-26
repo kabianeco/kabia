@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
@@ -7,21 +8,27 @@ import { routes } from "@/lib/site";
 
 const SECTIONS = [
   { href: routes.account, label: "Özet", exact: true },
-  { href: `${routes.account}/siparislerim`, label: "Siparişlerim" },
+  { href: routes.accountOrders, label: "Siparişlerim" },
   { href: `${routes.account}/adreslerim`, label: "Adreslerim" },
   { href: `${routes.account}/favorilerim`, label: "Favorilerim" },
-  { href: `${routes.account}/kart-bilgilerim`, label: "Kartlarım" },
-  { href: `${routes.account}/bilgilerim`, label: "Bilgilerim" },
+  { href: routes.accountProfile, label: "Bilgilerim" },
   { href: `${routes.account}/bildirimler`, label: "Bildirimler" },
+  { href: routes.accountSecurity, label: "Güvenlik" },
 ];
 
 export function AccountNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const current = useRef<HTMLAnchorElement>(null);
 
   const isActive = (href: string, exact?: boolean) =>
-    exact ? pathname === href : pathname.startsWith(href);
+    exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+
+  // On narrow screens the menu scrolls sideways; keep the current section in view.
+  useEffect(() => {
+    current.current?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -37,17 +44,19 @@ export function AccountNav() {
         </div>
       )}
 
-      {/* Scrolls horizontally on small screens, stacks as a ledger on desktop. */}
-      <ul className="-mx-6 flex gap-6 overflow-x-auto px-6 pb-2 lg:mx-0 lg:mt-8 lg:flex-col lg:gap-0 lg:overflow-visible lg:border-t lg:border-ink/10 lg:px-0 lg:pb-0">
+      {/* Scrolls sideways on small screens — the faded right edge says there
+          is more — and stacks as a ledger on desktop. */}
+      <ul className="-mx-6 flex gap-6 overflow-x-auto px-6 pb-2 [mask-image:linear-gradient(to_right,black_85%,transparent)] md:-mx-10 md:px-10 lg:mx-0 lg:mt-8 lg:flex-col lg:gap-0 lg:overflow-visible lg:border-t lg:border-ink/10 lg:px-0 lg:pb-0 lg:[mask-image:none]">
         {SECTIONS.map((section) => {
           const active = isActive(section.href, section.exact);
           return (
             <li key={section.href} className="shrink-0 lg:border-b lg:border-ink/10">
               <Link
                 href={section.href}
+                ref={active ? current : undefined}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-11 items-center whitespace-nowrap text-sm transition-colors duration-300 lg:min-h-0 lg:py-3.5 ${
-                  active ? "text-brand" : "text-ink/55 hover:text-ink"
+                className={`flex min-h-11 items-center whitespace-nowrap border-b text-sm transition-colors duration-300 lg:min-h-0 lg:border-b-0 lg:py-3.5 ${
+                  active ? "border-brand text-brand" : "border-transparent text-ink/55 hover:text-ink"
                 }`}
               >
                 {section.label}
@@ -55,7 +64,7 @@ export function AccountNav() {
             </li>
           );
         })}
-        <li className="shrink-0 lg:mt-6">
+        <li className="shrink-0 pr-6 lg:mt-6 lg:pr-0">
           <button
             type="button"
             onClick={handleLogout}

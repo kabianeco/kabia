@@ -3,82 +3,46 @@
 import { useCallback, useEffect, useState } from "react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useAuth } from "@/lib/auth-context"
-import type { NotificationPreferencesRow } from "@/lib/supabase/rows"
 
-export interface NotificationPrefs {
-  campaignEmails: boolean
-  orderStatus: boolean
-  sms: boolean
-  stockAlerts: boolean
-}
-
-const STORAGE_KEY = "kabia_notification_prefs"
-
-const DEFAULT_PREFS: NotificationPrefs = {
-  campaignEmails: true,
-  orderStatus: true,
-  sms: false,
-  stockAlerts: true,
-}
-
-function mapRow(r: NotificationPreferencesRow): NotificationPrefs {
-  return {
-    campaignEmails: r.campaign_emails ?? true,
-    orderStatus: r.order_status ?? true,
-    sms: r.sms ?? false,
-    stockAlerts: r.stock_alerts ?? true,
-  }
-}
-
-export function useNotificationPrefs() {
-  // §8.3: no render-time client — acquired inside async work only.
+/**
+ * The signed-in customer's campaign e-mail consent, read through RLS.
+ *
+ * Only campaign e-mail is a live preference: it is a recorded consent
+ * (public.set_marketing_email_consent). Order-status, SMS and stock-alert
+ * messages have no sending pipeline yet, so they are not offered as switches.
+ * Missing row or unknown value means "off" — campaign e-mail is opt-in.
+ */
+export function useCampaignConsent() {
   const { userId, hydrated: authHydrated } = useAuth()
-  const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS)
+  const [granted, setGranted] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const [error, setError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
-    if (!authHydrated) return
+    if (!authHydrated || !userId) return
     let cancelled = false
     ;(async () => {
       const supabase = await getSupabaseBrowserClient()
-      if (userId) {
-        const { data } = await supabase.from("notification_preferences").select("*").eq("user_id", userId).maybeSingle()
-        if (!cancelled) setPrefs(data ? mapRow(data) : DEFAULT_PREFS)
-      } else {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY)
-          if (!cancelled) setPrefs(raw ? { ...DEFAULT_PREFS, ...JSON.parse(raw) } : DEFAULT_PREFS)
-        } catch {
-          if (!cancelled) setPrefs(DEFAULT_PREFS)
-        }
-      }
-      if (!cancelled) setHydrated(true)
+      const { data, error: readError } = await supabase
+        .from("notification_preferences")
+        .select("campaign_emails")
+        .eq("user_id", userId)
+        .maybeSingle()
+      if (cancelled) return
+      setError(!!readError)
+      setGranted(data?.campaign_emails === true)
+      setHydrated(true)
     })()
     return () => {
       cancelled = true
     }
-  }, [userId, authHydrated])
+  }, [userId, authHydrated, attempt])
 
-  useEffect(() => {
-    if (hydrated && !userId) localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
-  }, [prefs, hydrated, userId])
+  const retry = useCallback(() => {
+    setHydrated(false)
+    setAttempt((n) => n + 1)
+  }, [])
 
-  const setPref = useCallback(
-    (key: keyof NotificationPrefs, value: boolean) => {
-      setPrefs((prev) => ({ ...prev, [key]: value }))
-      if (userId) {
-        const col =
-          key === "campaignEmails" ? "campaign_emails"
-            : key === "orderStatus" ? "order_status"
-              : key === "sms" ? "sms"
-                : "stock_alerts"
-        getSupabaseBrowserClient().then((supabase) => {
-          supabase.from("notification_preferences").update({ [col]: value }).eq("user_id", userId).then(() => {})
-        })
-      }
-    },
-    [userId],
-  )
-
-  return { prefs, setPref, hydrated }
+  return { granted, setGranted, hydrated, error, retry }
 }
