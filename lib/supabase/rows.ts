@@ -45,7 +45,9 @@ export interface NutritionFactsRow {
 
 export interface ReviewRow {
   reviewer_name: string | null;
-  /** Set when the review was written through an account; null on seeded rows. */
+  /** S17: set for view-shaped rows (public_reviews); absent on legacy rows. */
+  account_backed?: boolean | null;
+  /** Legacy shape only — no public read in this branch selects it anymore. */
   user_id?: string | null;
   rating: number;
   review_text: string;

@@ -70,7 +70,9 @@ export function mapReview(r: ReviewRow): ProductReview {
     rating: r.rating,
     text: r.review_text,
     verified: r.is_verified_purchase ?? false,
-    accountBacked: r.user_id != null,
+    // S17: the view supplies account_backed; the legacy user_id shape is kept
+    // only so older mapped rows still classify correctly in tests.
+    accountBacked: r.account_backed ?? r.user_id != null,
   }
 }
 
@@ -304,12 +306,9 @@ export async function fetchProductBySlug(
 ): Promise<Product | null> {
   const { data, error } = await client
     .from("products")
-    .select(
-      `${PRODUCT_SELECT}, reviews(id, reviewer_name, user_id, rating, review_text, is_verified_purchase, created_at)`,
-    )
+    .select(PRODUCT_SELECT)
     .eq("slug", slug)
     .eq("is_active", true)
-    .order("created_at", { referencedTable: "reviews", ascending: false })
     .maybeSingle()
   // No row is "no such product" (the page 404s). A failed read is not: it
   // throws, so the route's error boundary tells the visitor the page could
@@ -317,7 +316,16 @@ export async function fetchProductBySlug(
   // stays in the server log; the boundary never shows it.
   if (error) throw new Error(`[catalog] product read failed for "${slug}": ${error.message}`)
   if (!data) return null
-  return mapProduct(data as unknown as ProductRow, true)
+  // S17: reviews come from the public_reviews view (no user_id column), not
+  // the base table — a separate keyed read keeps the shape mapProduct expects.
+  const productId = (data as { id: string }).id
+  const { data: reviewRows, error: reviewError } = await client
+    .from("public_reviews")
+    .select("id, reviewer_name, rating, review_text, is_verified_purchase, created_at, account_backed")
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false })
+  if (reviewError) throw new Error(`[catalog] review read failed for "${slug}": ${reviewError.message}`)
+  return mapProduct({ ...(data as object), reviews: reviewRows ?? [] } as unknown as ProductRow, true)
 }
 
 export async function fetchRelatedProducts(
