@@ -20,7 +20,9 @@ export async function changeAdminPasswordAction(
   let shouldRedirect = false
 
   try {
-    await requireAdmin()
+    // S8 allowlist: the password change itself must stay reachable for an
+    // administrator owing a rotation; every other action denies by default.
+    await requireAdmin({ allowPasswordOwed: true })
 
     const parsed = passwordChangeSchema.safeParse({
       password: formData.get("password"),

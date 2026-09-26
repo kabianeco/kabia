@@ -252,3 +252,26 @@ describe("the redirect graph has no cycle", () => {
     }
   })
 })
+
+describe("S8 — forced rotation enforced in server actions", () => {
+  it("requireAdmin denies password-owed sessions by default", async () => {
+    const src = (await import("node:fs")).readFileSync("lib/admin/auth.ts", "utf8")
+    assert.match(src, /mustChangePassword && !opts\?\.allowPasswordOwed/)
+    assert.match(src, /throw new AdminAuthError\("password_change_required"\)/)
+  })
+
+  it("the allowlist is exactly the password change (sign-out is unguarded)", async () => {
+    const { execSync } = await import("node:child_process")
+    const hits = execSync("grep -rn 'allowPasswordOwed: true' app lib --include='*.ts' --include='*.tsx' | grep -v 'lib/admin/auth.ts'")
+      .toString()
+      .trim()
+      .split("\n")
+    assert.deepEqual(hits.map((l) => l.split(":")[0]), ["app/admin/sifre-degistir/actions.ts"])
+  })
+
+  it("password_change_required maps to a Turkish operator message", async () => {
+    const { AdminAuthError } = await import("../lib/admin/errors.ts")
+    const err = new AdminAuthError("password_change_required")
+    assert.match(err.message, /parolanızı yenileyin/)
+  })
+})

@@ -97,22 +97,35 @@ export async function getAdminSession(): Promise<AdminSession | null> {
 /**
  * For server actions. Throws rather than redirecting, so the caller can turn it
  * into a form error instead of a navigation.
+ *
+ * S8: forced password rotation is enforced here, not just on the page path.
+ * An administrator owing a password change cannot mutate through ANY action
+ * (including the ported producer admin actions, which all funnel through
+ * adminContext -> requireAdmin/requirePermission). The only allowlisted
+ * action is the password change itself ({ allowPasswordOwed: true });
+ * sign-out stays allowed because it never checks a session at all.
  */
-export async function requireAdmin(): Promise<AdminSession> {
+export async function requireAdmin(opts?: { allowPasswordOwed?: boolean }): Promise<AdminSession> {
   const access = await resolveAdminAccess()
   if (access.status === "unavailable") throw new AdminAuthUnavailableError(access.reason)
   if (access.status !== "admin") throw new AdminAuthError("unauthenticated")
+  if (access.session.mustChangePassword && !opts?.allowPasswordOwed) {
+    throw new AdminAuthError("password_change_required")
+  }
   return access.session
 }
 
-export async function requireSuperAdmin(): Promise<AdminSession> {
-  const session = await requireAdmin()
+export async function requireSuperAdmin(opts?: { allowPasswordOwed?: boolean }): Promise<AdminSession> {
+  const session = await requireAdmin(opts)
   if (session.role !== "super_admin") throw new AdminAuthError("forbidden")
   return session
 }
 
-export async function requirePermission(permission: Permission): Promise<AdminSession> {
-  const session = await requireAdmin()
+export async function requirePermission(
+  permission: Permission,
+  opts?: { allowPasswordOwed?: boolean },
+): Promise<AdminSession> {
+  const session = await requireAdmin(opts)
   if (!can(session.role, permission)) throw new AdminAuthError("forbidden")
   return session
 }
@@ -166,8 +179,11 @@ export async function adminClient(): Promise<SupabaseClient> {
 }
 
 /** Both together, since almost every action needs the pair. */
-export async function adminContext(permission?: Permission) {
-  const session = permission ? await requirePermission(permission) : await requireAdmin()
+export async function adminContext(
+  permission?: Permission,
+  opts?: { allowPasswordOwed?: boolean },
+) {
+  const session = permission ? await requirePermission(permission, opts) : await requireAdmin(opts)
   const supabase = await createSupabaseServerClient()
   return { session, supabase }
 }

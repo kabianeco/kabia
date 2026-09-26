@@ -6,10 +6,14 @@
  * `server-only` — importing it from a client bundle is a build error.
  */
 export class AdminAuthError extends Error {
-  readonly kind: "unauthenticated" | "forbidden"
-  constructor(kind: "unauthenticated" | "forbidden") {
+  readonly kind: "unauthenticated" | "forbidden" | "password_change_required"
+  constructor(kind: "unauthenticated" | "forbidden" | "password_change_required") {
     super(
-      kind === "unauthenticated" ? "Oturum bulunamadı." : "Bu işlem için yetkiniz yok.",
+      kind === "unauthenticated"
+        ? "Oturum bulunamadı."
+        : kind === "password_change_required"
+          ? "Önce parolanızı yenileyin. Zorunlu parola değişikliği bekleyen hesaplar işlem yapamaz."
+          : "Bu işlem için yetkiniz yok.",
     )
     this.name = "AdminAuthError"
     this.kind = kind
