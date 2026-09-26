@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 // Explicitly reviewed pure/mocked suites. Existing npm test/config is untouched.
 const files = [
   "admin-access", "admin-authorization", "admin-logging", "admin-url-settings",
-  "auth-rate-limit", "order-state-machine", "security-headers", "shop-banner",
+  "auth-rate-limit", "customer-auth-flow", "order-state-machine", "security-headers", "shop-banner",
   "theme-engine-resolver", "theme-preview-cookie", "theme-editor-ui",
   "farm-content", "admin-nav", "brand-preview", "preview-identity", "preview-order-boundary", "store-listing",
   "affected-route-contracts",

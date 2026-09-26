@@ -105,6 +105,8 @@ export type RateLimitBucket =
   | "customer_login"
   | "registration"
   | "password_reset"
+  | "confirmation_resend"
+  | "code_verification"
   | "contact_notify"
   | "review_submit"
 
@@ -150,6 +152,20 @@ const POLICIES: Record<RateLimitBucket, BucketPolicy> = {
     identifierSustained: { secs: 86400, max: 3 },
     combinedBurst: { secs: 3600, max: 3 },
   },
+  confirmation_resend: {
+    ipBurst: { secs: 900, max: 3 },
+    ipSustained: { secs: 86400, max: 10 },
+    identifierBurst: { secs: 900, max: 2 },
+    identifierSustained: { secs: 86400, max: 5 },
+    combinedBurst: { secs: 900, max: 3 },
+  },
+  code_verification: {
+    ipBurst: { secs: 300, max: 10 },
+    ipSustained: { secs: 3600, max: 30 },
+    identifierBurst: { secs: 300, max: 5 },
+    identifierSustained: { secs: 3600, max: 15 },
+    combinedBurst: { secs: 300, max: 8 },
+  },
   contact_notify: {
     ipBurst: { secs: 900, max: 5 },         // 5 per 15 min per IP
     ipSustained: { secs: 3600, max: 10 },   // 10 per hour per IP
@@ -186,6 +202,8 @@ const LIMITER_ERROR_POLICY: Record<RateLimitBucket, "closed" | "open"> = {
   customer_login: "open",
   registration: "open",
   password_reset: "open",
+  confirmation_resend: "open",
+  code_verification: "open",
   contact_notify: "open",
   review_submit: "open",
 }

@@ -1,15 +1,16 @@
 "use client";
 
 import type React from "react";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox, TextField } from "@/components/ui/field";
 import { routes } from "@/lib/site";
-import { ACTION_IDLE, type ActionState } from "@/lib/admin/errors";
+import { ACTION_IDLE } from "@/lib/admin/errors";
 import { customerRegisterAction } from "@/app/auth/actions";
+import { PENDING_EMAIL_KEY } from "@/components/auth/confirmation-pending";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[\d\s+()]{10,}$/;
@@ -28,6 +29,7 @@ export function RegisterForm() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const submittedEmail = useRef("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [passwordRepeat, setPasswordRepeat] = useState("");
@@ -41,13 +43,9 @@ export function RegisterForm() {
 
   useEffect(() => {
     if (!registerState || registerState === ACTION_IDLE) return;
-    if ((registerState as ActionState & { needsEmailConfirm?: boolean }).needsEmailConfirm) {
-      toast.success("Hesabınızı oluşturduk. Devam etmek için e-postanızı onaylayın.");
-      router.push(routes.login);
-      return;
-    }
     if (registerState.ok) {
-      router.push(routes.account);
+      sessionStorage.setItem(PENDING_EMAIL_KEY, submittedEmail.current);
+      router.push("/eposta-onay-bekleniyor");
       return;
     }
     if (registerState.message) {
@@ -74,7 +72,7 @@ export function RegisterForm() {
 
   return (
     <>
-      <form action={registerAction} onSubmit={(e) => { if (!validate()) e.preventDefault(); }} noValidate className="space-y-7">
+      <form action={registerAction} onSubmit={(e) => { if (!validate()) e.preventDefault(); else submittedEmail.current = email.trim(); }} noValidate className="space-y-7">
         <TextField
           label="Ad soyad"
           name="name"

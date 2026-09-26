@@ -1,10 +1,13 @@
 "use server"
 
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
+import { redirect } from "next/navigation"
 import { z } from "zod"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import type { ActionState } from "@/lib/admin/errors"
 import { checkRateLimit, getClientIp, RATE_LIMIT_MESSAGE } from "@/lib/auth/rate-limit"
+import { validateSignupCode } from "@/lib/auth/customer-confirm"
+import { RECOVERY_COOKIE, verifyRecoveryGrant } from "@/lib/auth/recovery-grant"
 
 /**
  * SEC-05: Customer authentication server actions.
@@ -36,14 +39,24 @@ const registerSchema = z.object({
 
 const resetSchema = z.object({
   email: z.string().trim().toLowerCase().email("Geçerli bir e-posta adresi girin.").max(254),
-  redirect_to: z.string().trim().max(200).optional(),
 })
+
+const newPasswordSchema = z.object({
+  password: z.string().min(6, "Şifre en az 6 karakter olmalı.").max(200),
+  passwordRepeat: z.string(),
+}).refine(({ password, passwordRepeat }) => password === passwordRepeat, {
+  message: "Şifreler eşleşmiyor.",
+})
+
+const GENERIC_SENT_MESSAGE = "Bu adres için bir hesap varsa e-posta gönderdik. Gelen kutunuzu kontrol edin."
+const GENERIC_CODE_ERROR = "Kod doğrulanamadı. Bilgileri kontrol edip tekrar deneyin."
 
 /**
  * Returns the same result shape for every failure mode, so the client cannot
  * distinguish "wrong password" from "rate limited" from "no such account".
  */
 const GENERIC_AUTH_ERROR = "Giriş yapılamadı. Bilgilerinizi kontrol edip tekrar deneyin."
+const GENERIC_REGISTER_ERROR = "Kayıt tamamlanamadı. Bilgilerinizi kontrol edip tekrar deneyin."
 
 export async function customerLoginAction(
   _prev: ActionState,
@@ -72,16 +85,19 @@ export async function customerLoginAction(
   const supabase = await createSupabaseServerClient()
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
+  if (error?.code === "email_not_confirmed") {
+    return { ok: false, needsEmailConfirm: true, message: "Devam etmek için e-postanızı doğrulayın." }
+  }
   if (error || !data.user) {
     return { ok: false, message: GENERIC_AUTH_ERROR }
   }
 
   if (!data.session) {
-    return { ok: false, needsEmailConfirm: true, message: "Devam etmek için e-postanızı onaylayın." }
+    return { ok: false, needsEmailConfirm: true, message: "Devam etmek için e-postanızı doğrulayın." }
   }
 
   // Only same-origin paths are acceptable return targets.
-  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/hesabim"
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "/hesabim"
   return { ok: true, redirectTo: safeNext }
 }
 
@@ -118,14 +134,10 @@ export async function customerRegisterAction(
   })
 
   if (error) {
-    return { ok: false, message: GENERIC_AUTH_ERROR }
+    return { ok: false, message: GENERIC_REGISTER_ERROR }
   }
 
-  if (!data.session) {
-    return { ok: true, needsEmailConfirm: true, message: "Hesabınızı oluşturduk. Devam etmek için e-postanızı onaylayın." }
-  }
-
-  return { ok: true, message: "Hesap oluşturuldu." }
+  return { ok: true, needsEmailConfirm: !data.session, message: GENERIC_SENT_MESSAGE }
 }
 
 export async function customerResetPasswordAction(
@@ -134,16 +146,15 @@ export async function customerResetPasswordAction(
 ): Promise<ActionState> {
   const parsed = resetSchema.safeParse({
     email: formData.get("email"),
-    redirect_to: formData.get("redirect_to") ?? undefined,
   })
 
   if (!parsed.success) {
     // Return the same generic success message for invalid emails too, so
     // the form cannot be used to enumerate accounts.
-    return { ok: true, message: "Şifre sıfırlama bağlantısını e-postanıza gönderdik (eğer hesap bulunduysa)." }
+    return { ok: true, message: GENERIC_SENT_MESSAGE }
   }
 
-  const { email, redirect_to } = parsed.data
+  const { email } = parsed.data
 
   // SEC-05: Rate-limit password reset requests.
   const h = await headers()
@@ -154,14 +165,66 @@ export async function customerResetPasswordAction(
   }
 
   const supabase = await createSupabaseServerClient()
-  const safeRedirect = redirect_to && redirect_to.startsWith("/") && !redirect_to.startsWith("//")
-    ? redirect_to
-    : "/hesabim/profil"
-
   await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}${safeRedirect}`,
+    redirectTo: new URL(
+      "/auth/confirm?type=recovery&next=/sifre-yenile",
+      process.env.NEXT_PUBLIC_SITE_URL ?? "https://kabia-revised.vercel.app",
+    ).toString(),
   })
 
   // Always return the same message regardless of whether the email exists.
-  return { ok: true, message: "Şifre sıfırlama bağlantısını e-postanıza gönderdik (eğer hesap bulunduysa)." }
+  return { ok: true, message: GENERIC_SENT_MESSAGE }
+}
+
+export async function customerResendConfirmationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = resetSchema.safeParse({ email: formData.get("email") })
+  if (!parsed.success) return { ok: true, message: GENERIC_SENT_MESSAGE }
+  const h = await headers()
+  const rl = await checkRateLimit("confirmation_resend", getClientIp(h), parsed.data.email)
+  if (!rl.allowed) return { ok: false, message: RATE_LIMIT_MESSAGE }
+  const supabase = await createSupabaseServerClient()
+  await supabase.auth.resend({ type: "signup", email: parsed.data.email })
+  return { ok: true, message: GENERIC_SENT_MESSAGE }
+}
+
+export async function customerVerifyCodeAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState & { redirectTo?: string }> {
+  const emailValue = formData.get("email")
+  const tokenValue = formData.get("token")
+  const email = typeof emailValue === "string" ? emailValue.trim().toLowerCase() : ""
+  const h = await headers()
+  const rl = await checkRateLimit("code_verification", getClientIp(h), email || null)
+  if (!rl.allowed) return { ok: false, message: RATE_LIMIT_MESSAGE }
+  const validated = validateSignupCode(email, typeof tokenValue === "string" ? tokenValue : "")
+  if (!validated) return { ok: false, message: GENERIC_CODE_ERROR }
+  const supabase = await createSupabaseServerClient()
+  const { error } = await supabase.auth.verifyOtp({ ...validated, type: "email" })
+  if (error) return { ok: false, message: GENERIC_CODE_ERROR }
+  // WELCOME EMAIL HOOK: verified signup code is here; do not send until enabled.
+  return { ok: true, redirectTo: "/eposta-onaylandi" }
+}
+
+export async function customerUpdatePasswordAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState & { redirectTo?: string }> {
+  const supabase = await createSupabaseServerClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  const cookieStore = await cookies()
+  if (error || !user || !verifyRecoveryGrant(cookieStore.get(RECOVERY_COOKIE)?.value, user.id)) {
+    redirect("/sifremi-unuttum?reason=session")
+  }
+  const h = await headers()
+  const rl = await checkRateLimit("password_reset", getClientIp(h), user.id)
+  if (!rl.allowed) return { ok: false, message: RATE_LIMIT_MESSAGE }
+  const parsed = newPasswordSchema.safeParse({
+    password: formData.get("password"),
+    passwordRepeat: formData.get("passwordRepeat"),
+  })
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Şifre güncellenemedi." }
+  const { error: updateError } = await supabase.auth.updateUser({ password: parsed.data.password })
+  if (updateError) return { ok: false, message: "Şifre güncellenemedi. Lütfen tekrar deneyin." }
+  return { ok: true, message: "Şifreniz güncellendi.", redirectTo: "/hesabim/bilgilerim" }
 }

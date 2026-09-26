@@ -279,6 +279,10 @@ export default async function proxy(request: NextRequest) {
   // Helper to apply security headers to any response we produce.
   const withHeaders = (resp: NextResponse): NextResponse => {
     applySecurityHeaders(resp, nonce, isDev)
+    // The confirm URL contains a one-time token; never forward it as Referer.
+    if (request.nextUrl.pathname === "/auth/confirm") {
+      resp.headers.set("Referrer-Policy", "no-referrer")
+    }
     return resp
   }
 
