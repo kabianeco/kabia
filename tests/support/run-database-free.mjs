@@ -12,7 +12,7 @@ const files = [
   "cart-quantity", "review-privacy", "review-submit", "contact-consent",
   "account-guards", "media-limits", "ownership-scopes", "theme-draft-guard",
   "producer-convergence", "homepage-intro", "client-deferral",
-  "account-actions", "auth-components",
+  "account-actions", "auth-components", "cart-persistence", "order-override",
 ].map(name => `tests/${name}.test.ts`);
 files.push("tests/client-boundary.test.js");
 const env = { ...process.env };
