@@ -528,3 +528,16 @@ describe("money and dates", () => {
     assert.equal(to.getUTCHours(), 21)
   })
 })
+
+describe("S14 — super-admin self-demotion guard", () => {
+  it("changeAdministratorRoleAction refuses self-demotion before any write", async () => {
+    const { readFileSync } = await import("node:fs")
+    const src = readFileSync("app/admin/(protected)/administrators/actions.ts", "utf8")
+    const guardAt = src.indexOf('parsed.data.user_id === acting.userId && parsed.data.role !== "super_admin"')
+    assert.ok(guardAt > 0, "self-demotion guard present")
+    const fnAt = src.indexOf("export async function changeAdministratorRoleAction")
+    const writeAt = src.indexOf('.update({ role: parsed.data.role', fnAt)
+    assert.ok(fnAt < guardAt && guardAt < writeAt, "guard runs before the role write")
+    assert.match(src, /Kendi rolünüzü bu ekrandan düşüremezsiniz/)
+  })
+})

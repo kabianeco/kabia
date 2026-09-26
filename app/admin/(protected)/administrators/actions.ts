@@ -160,6 +160,18 @@ export async function changeAdministratorRoleAction(
     })
     if (!parsed.success) return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error) }
 
+    // Self-demotion guard. Mirrors setAdministratorStateAction's self-lockout
+    // guard: the database stops removal of the *last* super admin; this stops
+    // a super admin demoting themselves while others exist, which the
+    // database has no reason to forbid but which is almost never intended.
+    if (parsed.data.user_id === acting.userId && parsed.data.role !== "super_admin") {
+      return {
+        ok: false,
+        message:
+          "Kendi rolünüzü bu ekrandan düşüremezsiniz. Başka bir süper yönetici bu işlemi yapmalı.",
+      }
+    }
+
     const { data: before, error: readError } = await supabase
       .from("user_roles")
       .select("user_id, role, is_active")
