@@ -46,6 +46,23 @@ export function canTransition(from: OrderStatusValue, to: OrderStatusValue): boo
   return ORDER_TRANSITIONS[from]?.includes(to) ?? false
 }
 
+/**
+ * Columns a direct PostgREST write may touch on orders (S9).
+ *
+ * Mirrors the `guard_orders_direct_update` trigger exactly: status moves must
+ * go through the audited RPCs (admin_update_order_status /
+ * admin_override_order_status), and only tracking columns are writable
+ * directly. The database is authoritative — this copy exists so the rule can
+ * be unit-tested without a database round trip.
+ */
+export const DIRECT_ORDER_WRITE_COLUMNS = ["tracking_carrier", "tracking_number"] as const
+
+export function canDirectUpdateOrder(columns: readonly string[]): boolean {
+  return columns.length > 0 && columns.every((c) =>
+    (DIRECT_ORDER_WRITE_COLUMNS as readonly string[]).includes(c),
+  )
+}
+
 export type StockLevel = "out" | "low" | "healthy"
 
 /** Compared against the product's own threshold, not a global constant. */

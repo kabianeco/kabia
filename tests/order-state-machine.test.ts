@@ -119,3 +119,17 @@ describe("SEC-10 SECURITY DEFINER hardening (application boundary)", () => {
     assert.ok(true, "verified via supabase_execute_sql grant check")
   })
 })
+describe("S9 — direct order-write whitelist mirror", () => {
+  it("allows tracking-only writes, denies status and money columns", async () => {
+    const { canDirectUpdateOrder, DIRECT_ORDER_WRITE_COLUMNS } = await import("../lib/admin/orders.ts")
+    assert.deepEqual([...DIRECT_ORDER_WRITE_COLUMNS], ["tracking_carrier", "tracking_number"])
+    assert.equal(canDirectUpdateOrder(["tracking_carrier", "tracking_number"]), true)
+    assert.equal(canDirectUpdateOrder(["tracking_number"]), true)
+    assert.equal(canDirectUpdateOrder(["status"]), false)
+    assert.equal(canDirectUpdateOrder(["total"]), false)
+    assert.equal(canDirectUpdateOrder(["subtotal"]), false)
+    assert.equal(canDirectUpdateOrder(["user_id"]), false)
+    assert.equal(canDirectUpdateOrder(["tracking_number", "total"]), false)
+    assert.equal(canDirectUpdateOrder([]), false)
+  })
+})
