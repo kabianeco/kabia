@@ -235,7 +235,9 @@ export function ProductDetail({
         {/* Gallery */}
         <div className="md:col-span-1 lg:col-span-6">
           <div className="relative aspect-[4/5] overflow-hidden rounded-theme-product-image bg-paper">
-            <AnimatePresence mode="wait">
+            {/* §5.4: the first paint renders immediately (no hydration fade);
+                later image transitions keep their animation. */}
+            <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={activeImage}
                 initial={{ opacity: 0 }}

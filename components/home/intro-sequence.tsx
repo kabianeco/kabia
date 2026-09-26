@@ -163,18 +163,35 @@ function EditorialBeat({ kicker, text }: { kicker: string; text: string }) {
  */
 function StageBackdrop({ active }: { active: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // §5.5: the poster paints first and the footage starts only after the page
+  // has loaded, so the video download never competes with LCP. The poster is
+  // a still of the video's own first frame, so the handoff is between two
+  // versions of the same picture and never pops.
+  const [pageLoaded, setPageLoaded] = useState(
+    () => typeof document !== "undefined" && document.readyState === "complete",
+  );
+
+  useEffect(() => {
+    if (document.readyState === "complete") {
+      setPageLoaded(true);
+      return;
+    }
+    const onLoad = () => setPageLoaded(true);
+    window.addEventListener("load", onLoad);
+    return () => window.removeEventListener("load", onLoad);
+  }, []);
 
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
-    if (active) {
+    if (active && pageLoaded) {
       // Autoplay can still be refused (low power mode, a browser setting).
       // The poster stays behind the element, so a rejection is invisible.
       void el.play().catch(() => {});
     } else {
       el.pause();
     }
-  }, [active]);
+  }, [active, pageLoaded]);
 
   return (
     <div aria-hidden="true" className="absolute inset-0 z-0 overflow-hidden">
@@ -182,7 +199,6 @@ function StageBackdrop({ active }: { active: boolean }) {
         ref={videoRef}
         className="h-full w-full object-cover"
         poster={HERO_POSTER}
-        autoPlay
         muted
         loop
         playsInline

@@ -140,7 +140,7 @@ export function StoreListing({
             <p className="label pb-5 text-olive">{products.length} ürün</p>
             <ul className="grid grid-cols-1 gap-x-8 gap-y-14 pb-24 sm:grid-cols-2 md:pb-32 lg:grid-cols-3">
               {products.map((product, i) => (
-                <ProductEntry key={product.id} product={product} priority={i < 3} />
+                <ProductEntry key={product.id} product={product} priority={i < 1} />
               ))}
             </ul>
           </>
