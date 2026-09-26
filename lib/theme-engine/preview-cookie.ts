@@ -1,3 +1,5 @@
+import "server-only"
+
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto"
 
 const TOKEN_VERSION = 1
@@ -17,13 +19,11 @@ interface CreatePreviewTokenOptions {
   now?: number
   ttlSeconds?: number
   nonce?: string
-  secret?: string
 }
 
 interface VerifyPreviewTokenOptions {
   userId: string
   now?: number
-  secret?: string
 }
 
 /**
@@ -49,8 +49,35 @@ export function createAppearancePreviewToken({
   now = Date.now(),
   ttlSeconds = MAX_TTL_SECONDS,
   nonce = randomUUID(),
-  secret = getAppearancePreviewSigningSecret() ?? "",
 }: CreatePreviewTokenOptions): string {
+  // S27: the signing secret is always derived server-side — no caller may
+  // supply (or override) it. Tests use the explicitly-unsafe seam below.
+  const secret = getAppearancePreviewSigningSecret() ?? ""
+  return createAppearancePreviewTokenInner({ userId, now, ttlSeconds, nonce, secret })
+}
+
+/**
+ * Test-only seam. The `unsafe` name is the control: production code must
+ * never import it, and the module's `server-only` import keeps the whole
+ * file (secret derivation included) out of client bundles.
+ */
+export function unsafeCreateAppearancePreviewTokenWithSecret({
+  userId,
+  now = Date.now(),
+  ttlSeconds = MAX_TTL_SECONDS,
+  nonce = randomUUID(),
+  secret,
+}: CreatePreviewTokenOptions & { secret: string }): string {
+  return createAppearancePreviewTokenInner({ userId, now, ttlSeconds, nonce, secret })
+}
+
+function createAppearancePreviewTokenInner({
+  userId,
+  now,
+  ttlSeconds,
+  nonce,
+  secret,
+}: Required<Omit<CreatePreviewTokenOptions, "secret">> & { secret: string }): string {
   if (!secret) throw new Error("Appearance preview signing is unavailable")
   if (!userId) throw new Error("Appearance preview subject is missing")
   if (!Number.isFinite(ttlSeconds) || ttlSeconds <= 0 || ttlSeconds > MAX_TTL_SECONDS) {
@@ -71,11 +98,28 @@ export function createAppearancePreviewToken({
 /** Validate content, signature, subject, lifetime, and expiry without throwing. */
 export function verifyAppearancePreviewToken(
   token: string | undefined,
+  { userId, now = Date.now() }: VerifyPreviewTokenOptions,
+): boolean {
+  // S27: same rule as issuance — the secret is derived, never supplied.
+  const secret = getAppearancePreviewSigningSecret() ?? ""
+  return verifyAppearancePreviewTokenInner(token, { userId, now, secret })
+}
+
+/** Test-only seam (see the create-side seam above for why it is unsafe). */
+export function unsafeVerifyAppearancePreviewTokenWithSecret(
+  token: string | undefined,
   {
     userId,
     now = Date.now(),
-    secret = getAppearancePreviewSigningSecret() ?? "",
-  }: VerifyPreviewTokenOptions,
+    secret,
+  }: VerifyPreviewTokenOptions & { secret: string },
+): boolean {
+  return verifyAppearancePreviewTokenInner(token, { userId, now, secret })
+}
+
+function verifyAppearancePreviewTokenInner(
+  token: string | undefined,
+  { userId, now, secret }: Required<VerifyPreviewTokenOptions> & { secret: string },
 ): boolean {
   if (!token || !secret || !userId) return false
   const parts = token.split(".")

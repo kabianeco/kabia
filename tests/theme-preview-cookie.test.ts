@@ -2,8 +2,8 @@ import { describe, it } from "node:test"
 import assert from "node:assert/strict"
 
 import {
-  createAppearancePreviewToken,
-  verifyAppearancePreviewToken,
+  unsafeCreateAppearancePreviewTokenWithSecret as createAppearancePreviewToken,
+  unsafeVerifyAppearancePreviewTokenWithSecret as verifyAppearancePreviewToken,
 } from "../lib/theme-engine/preview-cookie.ts"
 
 const SECRET = "test-only-secret-with-at-least-thirty-two-bytes"
@@ -71,5 +71,28 @@ describe("appearance preview cookie", () => {
       }),
       false,
     )
+  })
+})
+
+describe("S27 — production signatures take no caller secret", () => {
+  it("option types no longer accept secret", async () => {
+    const { readFileSync } = await import("node:fs")
+    const src = readFileSync("lib/theme-engine/preview-cookie.ts", "utf8")
+    assert.match(src, /import "server-only"/)
+    assert.ok(!src.includes("secret?: string"), "caller override removed")
+    assert.match(src, /unsafeCreateAppearancePreviewTokenWithSecret/)
+    assert.match(src, /unsafeVerifyAppearancePreviewTokenWithSecret/)
+  })
+
+  it("no production caller passes a secret", async () => {
+    const { execSync } = await import("node:child_process")
+    const hits = execSync(
+      "grep -rn 'createAppearancePreviewToken(\\|verifyAppearancePreviewToken(' app lib components --include='*.ts' --include='*.tsx' | grep -v unsafe | grep -v 'lib/theme-engine/preview-cookie.ts'",
+    )
+      .toString()
+      .trim()
+    for (const line of hits.split("\n")) {
+      assert.ok(!line.includes("secret"), `caller passes secret: ${line}`)
+    }
   })
 })
