@@ -1,7 +1,8 @@
 # Kabia e-posta şablonları — Supabase Auth (A Grubu)
 
 Bu klasördeki üç HTML dosyası, Supabase panosuna olduğu gibi yapıştırılır.
-Kodda karşılıkları yoktur; gönderimi Supabase Auth yapar.
+Gönderimi Supabase Auth yapar. Bağlantılar uygulamanın `/auth/confirm`
+rotasına gelir; rota `token_hash` değerini doğrulayıp oturumu kurar.
 
 ## Dosyalar ve konu satırları
 
@@ -11,10 +12,10 @@ Kodda karşılıkları yoktur; gönderimi Supabase Auth yapar.
 | `reset-password.html` | Reset password | `Şifrenizi sıfırlayın` |
 | `change-email.html` | Change email address | `Yeni e-posta adresinizi doğrulayın` |
 
-Kod (`{{ .Token }}`) taşıyan şablonlar — Magic link, Email OTP,
-Reauthentication — bilerek yoktur: uygulama bu akışların hiçbirini
-kullanmıyor (biriyle giriş, kodla giriş ve yeniden doğrulama yok; ayrıntı
-aşağıda). Davet (Invite user) şablonu da yoktur: yöneticiler
+Magic link, Email OTP ve Reauthentication şablonları bilerek yoktur:
+uygulama bu akışları kullanmıyor. Confirm signup şablonu, bağlantıya ek
+olarak `{{ .Token }}` ile altı haneli kayıt doğrulama kodunu gösterir.
+Davet (Invite user) şablonu da yoktur: yöneticiler
 `admin.auth.admin.createUser` ile `email_confirm: true` oluşturulur, davet
 e-postası gönderilmez.
 
@@ -26,28 +27,45 @@ e-postası gönderilmez.
 4. Dosyanın **tüm içeriğini** kopyalayıp **Message body** alanına yapıştırın.
 5. **Save** ile kaydedin.
 6. Üç şablon için tekrarlayın.
-7. Kendinize bir test kaydı açıp her e-postayı bir kez alıp bağlantıya
-   tıklayın.
+7. **Üç HTML dosyasının tamamını yeniden yapıştırın**; eski şablonlarda
+   `{{ .ConfirmationURL }}` kaldığında yeni sayfalara yönlendirme olmaz.
+8. Yeni bir test hesabıyla kayıt bağlantısını ve kodunu; ayrıca şifre
+   sıfırlama ve e-posta değişikliği bağlantılarını ayrı ayrı deneyin.
 
 ## Alan adı değişiminde yapılacaklar
 
 Hiçbir şablonu ellemenize gerek yok. Panoda
 **Authentication → URL Configuration → Site URL** alanını
 `https://kabiaekolojik.com` yapmanız yeterli: logo dahil tüm mutlak
-adresler `{{ .SiteURL }}` değişkeninden gelir. Site şu an
-`*.vercel.app` adresinde çalışırken bu alan o adresi göstermelidir.
+adresler `{{ .SiteURL }}` değişkeninden gelir. Şu an Site URL
+`https://kabia-revised.vercel.app` olmalıdır. Üretim ortamında
+`NEXT_PUBLIC_SITE_URL` aynı kökeni göstermelidir; alan adı değiştiğinde
+bu değeri de güncelleyip yeniden dağıtın.
+**Authentication → URL Configuration → Redirect URLs** altında
+`https://kabia-revised.vercel.app/auth/confirm?type=recovery&next=/sifre-yenile`
+izinli olmalıdır (aynı yolu kapsayan mevcut bir izin de yeterlidir).
+`resetPasswordForEmail` bu adresi `redirectTo` olarak gönderir.
+Alan adı değişirse bu izinli adresi de yeni alan adına taşıyın.
 
 ## Bağlantı biçimi
 
-Şablonlar `{{ .ConfirmationURL }}` kullanır. Bunun nedeni: uygulamada
-`token_hash` tüketen bir `/auth/confirm` (veya callback) rotası yoktur;
-doğrulama Supabase'in kendi adresi üzerinden Site URL'e döner.
-`token_hash` biçimine geçmek bu rota yazılmadan yapılırsa tüm
-doğrulamalar sessizce çalışmaz. Rota eklenirse şablonlar da o gün
-değişmelidir.
+Şablonlar `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}`
+adresine gider. Tür ve izinli sonraki sayfa her şablonda sabittir:
+
+| Şablon | `type` | `next` |
+|---|---|---|
+| Confirm signup | `email` | `/eposta-onaylandi` |
+| Reset password | `recovery` | `/sifre-yenile` |
+| Change email address | `email_change` | `/eposta-degisikligi-onaylandi` |
+
+`next` yalnızca bu üç eşleşmeden biri olduğunda kabul edilir. Bağlantılar
+başka tarayıcı veya cihazda da açılabilir; PKCE kod değişimi kullanılmaz.
+
+Supabase panosunda **Confirm Email** açık, **Email OTP Length** 6 olmalıdır.
+**Email OTP Expiration** kayıt, kurtarma ve e-posta değişikliği bağlantılarını
+da kapsar; kullanımınıza uygun bir süre seçin (örneğin 1 saat).
 
 ## Değişkenler
 
-Her şablon yalnızca Supabase'in o şablon için belgelediği değişkenleri
-kullanır: `{{ .ConfirmationURL }}`, `{{ .SiteURL }}`. Başka değişken
-yoktur.
+Şablonlar `{{ .SiteURL }}` ve `{{ .TokenHash }}` kullanır; kayıt şablonu
+ayrıca `{{ .Token }}` gösterir.

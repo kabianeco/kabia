@@ -137,6 +137,16 @@ the choice persists in `localStorage` and is applied before first paint.
 
 Supabase email/password plus Google and Apple OAuth, with password reset and
 email-change confirmation. Session lives in cookies via `@supabase/ssr`.
+Customer signup confirmation, six digit code entry, resend and password
+recovery use `/auth/confirm` and the Turkish pages under `/eposta-*`,
+`/dogrulama-kodu`, `/sifremi-unuttum` and `/sifre-yenile`.
+After deploying these routes, copy the full contents of
+`supabase/templates/confirm-signup.html`, `reset-password.html` and
+`change-email.html` into Supabase **Authentication → Email Templates**
+(Confirm signup, Reset password and Change email address respectively),
+then save each one. Paste the three together; old email links bypass the new
+flow. Subjects, redirect allowlist and Auth settings are recorded in
+[`supabase/templates/README.md`](supabase/templates/README.md).
 `/hesabim/*` and `/odeme` redirect signed-out visitors to `/giris?next=…`;
 **RLS is what actually protects the data.**
 
