@@ -102,3 +102,30 @@ describe("explanatory messages", () => {
     assert.notEqual(PREVIEW_MESSAGE, PREVIEW_GUEST_MESSAGE)
   })
 })
+
+describe("S23 — normalized recognition", () => {
+  it("still recognizes every real preview identity shape", () => {
+    for (const value of ["onizleme-badem", "onizleme-badem-500g", "kabia-preview:badem", "kabia-preview:badem:500g"]) {
+      assert.equal(isPreviewItem({ slug: value }), true, value)
+    }
+  })
+
+  it("rejects the bare prefixes with no token", () => {
+    assert.equal(isPreviewItem({ slug: "onizleme-" }), false)
+    assert.equal(isPreviewItem({ id: "kabia-preview:" }), false)
+    assert.equal(isPreviewItem({ slug: "" }), false)
+  })
+
+  it("normalizes padding, case and zero-width characters", () => {
+    assert.equal(isPreviewItem({ slug: "  onizleme-badem  " }), true)
+    assert.equal(isPreviewItem({ slug: "ONIZLEME-Badem" }), true)
+    assert.equal(isPreviewItem({ slug: "onizleme-\u200Bbadem" }), true)
+    assert.equal(isPreviewItem({ id: "KABIA-PREVIEW:Badem" }), true)
+  })
+
+  it("keeps anchored shapes (no substring or suffix games)", () => {
+    assert.equal(isPreviewItem({ slug: "xonizleme-badem" }), false)
+    assert.equal(isPreviewItem({ slug: "onizleme-badem!" }), false)
+    assert.equal(isPreviewItem({ slug: "onizleme--badem" }), false)
+  })
+})

@@ -21,6 +21,11 @@ export const slugSchema = z
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
     "Kısa ad yalnızca küçük harf, rakam ve tire içerebilir (ör. cig-badem-500g).",
   )
+  // S23: the onizleme- prefix is reserved for preview fixtures and must never
+  // become a real product/producer slug (mirrored by a DB CHECK constraint).
+  .refine((v) => !v.startsWith("onizleme-"), {
+    message: "Kısa ad önizleme önekiyle (onizleme-) başlayamaz.",
+  })
 
 /**
  * Money and counts arrive from text inputs, so parsing is done explicitly

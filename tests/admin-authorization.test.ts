@@ -549,3 +549,12 @@ describe("S15 — search page entry permission", () => {
     assert.match(src, /if \(!canProducts && !canOrders && !canCustomers\) redirect\("\/admin\/unauthorized"\)/)
   })
 })
+
+describe("S23 — onizleme prefix reserved", () => {
+  it("rejects the preview prefix in slugs", () => {
+    for (const slug of ["onizleme-badem", "onizleme-x"]) {
+      assert.equal(slugSchema.safeParse(slug).success, false, `${slug} was accepted`)
+    }
+    assert.equal(slugSchema.safeParse("cig-badem-500g").success, true)
+  })
+})
