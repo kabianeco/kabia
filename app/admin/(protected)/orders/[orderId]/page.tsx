@@ -38,6 +38,7 @@ export default async function OrderDetailPage({
       `id, order_number, status, subtotal, shipping_cost, total, full_name, email,
        shipping_address, payment_method_snapshot, created_at, user_id,
        tracking_carrier, tracking_number,
+       admin_created_by, admin_created_at, admin_note, consent_note,
        order_items(id, product_id, product_name_snapshot, variant_label_snapshot,
                    product_slug_snapshot, product_image_snapshot, unit_price_snapshot,
                    quantity, line_total)`,
@@ -79,6 +80,10 @@ export default async function OrderDetailPage({
     user_id: string
     tracking_carrier: string | null
     tracking_number: string | null
+    admin_created_by: string | null
+    admin_created_at: string | null
+    admin_note: string | null
+    consent_note: string | null
     order_items: {
       id: string
       product_id: string | null
@@ -288,9 +293,26 @@ export default async function OrderDetailPage({
                 <dd className="mt-0.5 text-ink">
                   {order.payment_method_snapshot?.method === "cod"
                     ? "Kapıda ödeme"
-                    : order.payment_method_snapshot?.label || "Kart"}
+                    : order.payment_method_snapshot?.method === "bank_transfer"
+                      ? "Havale / EFT"
+                      : order.payment_method_snapshot?.label || "Kart"}
                 </dd>
               </div>
+              {order.admin_created_by && (
+                <div>
+                  <dt className="label text-olive">Sipariş kaynağı</dt>
+                  <dd className="mt-0.5 text-ink">
+                    Yönetici oluşturdu
+                    {order.admin_created_at ? ` · ${formatDateTime(order.admin_created_at)}` : ""}
+                  </dd>
+                </div>
+              )}
+              {order.consent_note && (
+                <div>
+                  <dt className="label text-olive">Onam beyanı</dt>
+                  <dd className="mt-0.5 text-ink">{order.consent_note}</dd>
+                </div>
+              )}
             </dl>
             <div className="mt-4">
               <InlineAlert tone="info">

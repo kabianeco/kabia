@@ -111,6 +111,7 @@ export type RateLimitBucket =
   | "review_submit"
   | "account_reauth"
   | "account_update"
+  | "admin_order_create"
 
 interface WindowPolicy {
   secs: number
@@ -200,6 +201,14 @@ const POLICIES: Record<RateLimitBucket, BucketPolicy> = {
     identifierSustained: { secs: 3600, max: 60 },
     combinedBurst: { secs: 300, max: 20 },
   },
+  // An administrator creating orders for customers (stock-mutating, money-adjacent).
+  admin_order_create: {
+    ipBurst: { secs: 300, max: 20 },
+    ipSustained: { secs: 3600, max: 60 },
+    identifierBurst: { secs: 300, max: 10 },
+    identifierSustained: { secs: 3600, max: 30 },
+    combinedBurst: { secs: 300, max: 15 },
+  },
 }
 
 export interface RateLimitResult {
@@ -230,6 +239,8 @@ const LIMITER_ERROR_POLICY: Record<RateLimitBucket, "closed" | "open"> = {
   // not turn this into an unthrottled password oracle.
   account_reauth: "closed",
   account_update: "open",
+  // Stock-mutating admin write: fail closed like the other privileged buckets.
+  admin_order_create: "closed",
 }
 
 export function limiterErrorResult(bucket: RateLimitBucket): RateLimitResult {

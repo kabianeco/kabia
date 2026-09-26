@@ -71,7 +71,7 @@ export default async function OrdersPage({
     "durum",
     ["hazirlaniyor", "kargoda", "teslim_edildi", "iptal_edildi"] as const,
   )
-  const payment = pickEnum(params, "odeme", ["cod", "card"] as const)
+  const payment = pickEnum(params, "odeme", ["cod", "card", "bank_transfer"] as const)
   const q = pickString(params, "q", 60)
   const from = pickString(params, "from", 10)
   const to = pickString(params, "to", 10)
@@ -116,6 +116,15 @@ export default async function OrdersPage({
         title="Siparişler"
         description="Sipariş durumu, kargo bilgisi ve iç notlar. Her durum değişikliği denetim kaydına yazılır."
         breadcrumbs={[{ label: "Yönetim", href: "/admin" }, { label: "Siparişler" }]}
+        actions={
+          <Link
+            href="/admin/orders/yeni"
+            prefetch={false}
+            className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-medium text-on-brand transition-colors duration-300 hover:bg-forest"
+          >
+            Yeni sipariş
+          </Link>
+        }
       />
 
       <FilterBar>
@@ -140,6 +149,7 @@ export default async function OrdersPage({
           options={[
             { value: "card", label: "Kart" },
             { value: "cod", label: "Kapıda ödeme" },
+            { value: "bank_transfer", label: "Havale / EFT" },
           ]}
         />
         <DateRangeFilter />

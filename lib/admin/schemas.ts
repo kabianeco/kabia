@@ -474,3 +474,57 @@ export function fieldErrorsFrom(error: z.ZodError): Record<string, string> {
   }
   return out
 }
+
+/**
+ * Yönetici sipariş oluşturma (Feature 2 — /admin/orders/yeni).
+ *
+ * Fiyatlar formdan alınmaz: kalemlerde yalnızca variant_id + adet taşınır,
+ * birim fiyat ve stok denetimi admin_create_order içinde veritabanından
+ * okunur. Ödeme yalnızca kapıda ödeme ve havale/EFT; kart alınmaz.
+ */
+export const ADMIN_ORDER_PAYMENT_METHODS = ["cod", "bank_transfer"] as const
+export type AdminOrderPaymentMethod = (typeof ADMIN_ORDER_PAYMENT_METHODS)[number]
+
+export const ADMIN_ORDER_PAYMENT_LABELS: Record<AdminOrderPaymentMethod, string> = {
+  cod: "Kapıda ödeme",
+  bank_transfer: "Havale / EFT",
+}
+
+const adminOrderItemSchema = z.object({
+  variant_id: uuid,
+  quantity: z.number().int("Adet tam sayı olmalı.").min(1, "Adet en az 1 olmalı.").max(99, "Adet en fazla 99 olabilir."),
+})
+
+const adminOrderAddressSchema = z.object({
+  label: z.string().trim().max(80).optional().nullable(),
+  recipientName: z.string().trim().min(2, "Alıcı adı en az 2 karakter olmalı.").max(160),
+  phone: z.string().trim().min(7, "Telefon en az 7 karakter olmalı.").max(32),
+  addressLine1: z.string().trim().min(4, "Adres en az 4 karakter olmalı.").max(500),
+  addressLine2: z.string().trim().max(500).optional().nullable(),
+  city: z.string().trim().min(2, "İl gerekli.").max(80),
+  district: z.string().trim().min(2, "İlçe gerekli.").max(80),
+  postalCode: z.string().trim().max(20).optional().nullable(),
+})
+
+export const adminCreateOrderSchema = z.object({
+  customer_id: uuid,
+  items: z.array(adminOrderItemSchema).min(1, "En az bir kalem gerekli.").max(50, "En fazla 50 kalem olabilir."),
+  shipping_address: adminOrderAddressSchema,
+  payment_method: z.enum(ADMIN_ORDER_PAYMENT_METHODS, { message: "Geçersiz ödeme yöntemi." }),
+  admin_note: z.string().trim().max(2000, "İç not en fazla 2000 karakter.").optional().nullable(),
+  consent_note: z
+    .string()
+    .trim()
+    .min(3, "Sözlü ya da kayıtlı onayın açık ifadesi gerekli (en az 3 karakter).")
+    .max(500, "Onam beyanı en fazla 500 karakter."),
+})
+
+export type AdminCreateOrderInput = z.infer<typeof adminCreateOrderSchema>
+
+export const customerNumberLookupSchema = z.object({
+  customer_number: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^KE-[0-9]{6}$/, "Müşteri numarası KE-###### biçiminde olmalı."),
+})
