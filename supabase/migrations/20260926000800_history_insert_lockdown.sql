@@ -1,0 +1,21 @@
+-- ============================================================================
+-- S11 (admin can forge order status history): only the
+-- record_order_status_change trigger writes history.
+--
+-- WHAT: drop policy osh_admin_insert on public.order_status_history. No
+-- replacement INSERT policy: history is append-only via
+-- record_order_status_change() (status moves) and create_order() (initial
+-- row). Both are SECURITY DEFINER and run as the table owner, so they bypass
+-- RLS entirely and are unaffected by the removed policy. Kept unchanged:
+-- osh_admin_select (admin reads) and osh_select_own (customer reads own).
+--
+-- ROLLBACK: create policy osh_admin_insert on public.order_status_history
+-- for insert to authenticated with check (public.has_admin_role());
+--
+-- BACKWARD COMPATIBILITY: no deployed code inserts history directly (only
+-- reads in orders/[orderId]/page.tsx). The two definer writers keep working
+-- — verified by design (owner bypasses RLS) and by the unchanged AFTER
+-- trigger on orders.
+-- ============================================================================
+
+drop policy if exists osh_admin_insert on public.order_status_history;
