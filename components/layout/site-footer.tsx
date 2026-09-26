@@ -94,7 +94,7 @@ export async function SiteFooter() {
                 className="h-9 w-auto"
               />
             </Link>
-            <p className="mt-5 max-w-xs text-sm leading-relaxed text-ink/60">
+            <p className="mt-5 max-w-xs text-sm leading-relaxed text-ink/70">
               Toprağa saygıyla üretilenleri bir araya getiriyoruz.
             </p>
             <address className="mt-5 space-y-2 text-sm not-italic text-ink/70">
@@ -126,7 +126,7 @@ export async function SiteFooter() {
                 </a>
               </p>
               {settings.supportHours && (
-                <p className="text-ink/50">{settings.supportHours}</p>
+                <p className="text-ink/70">{settings.supportHours}</p>
               )}
             </address>
             {socialItems.length > 0 && (
@@ -138,7 +138,7 @@ export async function SiteFooter() {
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={label}
-                      className="flex h-11 w-11 items-center justify-center text-ink/60 hover:text-ink transition-colors duration-300"
+                      className="flex h-11 w-11 items-center justify-center text-ink/70 hover:text-ink transition-colors duration-300"
                     >
                       <Icon className="h-4 w-4" aria-hidden="true" />
                     </a>
@@ -201,16 +201,16 @@ export async function SiteFooter() {
 
         {/* Secondary: trust stated as plain type, not badges. */}
         <div className="mt-10 border-t border-ink/10 pt-6">
-          <p className="text-xs leading-relaxed text-ink/50">
+          <p className="text-xs leading-relaxed text-ink/70">
             256-bit SSL · 3D Secure · ETBİS kayıtlı satıcı · 14 gün cayma hakkı
           </p>
-          <p className="mt-2 max-w-2xl text-xs leading-relaxed text-ink/40">
+          <p className="mt-2 max-w-2xl text-xs leading-relaxed text-ink/70">
             Ödeme altyapısı PCI-DSS uyumlu kuruluşlar üzerinden yürütülür; kart bilgileriniz bizde saklanmaz.
           </p>
         </div>
 
         {/* Tertiary: the legal row, stated once. */}
-        <div className="mt-6 flex flex-col gap-3 border-t border-ink/10 pt-6 text-xs text-ink/50 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mt-6 flex flex-col gap-3 border-t border-ink/10 pt-6 text-xs text-ink/70 lg:flex-row lg:items-center lg:justify-between">
           <p>© {new Date().getFullYear()} Kabia Ekolojik. Tüm hakları saklıdır.</p>
           <nav aria-label="Yasal menü">
             <ul className="flex flex-wrap gap-x-5 gap-y-2">
@@ -223,7 +223,7 @@ export async function SiteFooter() {
               ))}
             </ul>
           </nav>
-          <p className="text-ink/35">Sabırlar Köyü, Geyve</p>
+          <p className="text-ink/70">Sabırlar Köyü, Geyve</p>
         </div>
       </div>
     </footer>

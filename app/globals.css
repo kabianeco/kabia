@@ -175,6 +175,19 @@
   filter: brightness(0.92);
 }
 
+/* §5.2: footer muted headings clear 4.5:1 on the light paper (#5a6552 scores
+   4.89) without touching the dark surface — where the base muted already
+   passes — or any other surface. Scoped to exactly the theme states where
+   the light tokens are effective. */
+:root[data-theme="light"] footer {
+  --text-muted: #5a6552;
+}
+@media (prefers-color-scheme: light), (prefers-color-scheme: no-preference) {
+  :root:not([data-theme="dark"]) footer {
+    --text-muted: #5a6552;
+  }
+}
+
 
 html {
   scroll-behavior: smooth;

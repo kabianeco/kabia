@@ -38,7 +38,9 @@ export async function PageShell({ children }: { children: ReactNode }) {
         />
       )}
       <SiteHeader bannerOffset={bannerVisible} />
-      <main className="flex-1">{children}</main>
+      <main id="icerik" tabIndex={-1} className="flex-1">
+        {children}
+      </main>
       <SiteFooter />
     </div>
   );

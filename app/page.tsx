@@ -56,7 +56,7 @@ export default function HomePage() {
   return (
     <>
       <SiteHeader />
-      <main>
+      <main id="icerik" tabIndex={-1}>
         <IntroSequence />
         <OriginStory />
         <Emanet />

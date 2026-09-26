@@ -43,7 +43,7 @@ export default async function AccountLayout({
   return (
     <>
       <SiteHeader />
-      <main className="flex-1">
+      <main id="icerik" tabIndex={-1} className="flex-1">
         <AccountGuard>{children}</AccountGuard>
       </main>
       <SiteFooter />

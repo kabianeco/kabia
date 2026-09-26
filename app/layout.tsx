@@ -158,6 +158,14 @@ export default async function RootLayout({
         <ThemeVars theme={theme} />
       </head>
       <body className="min-h-full flex flex-col">
+        {/* §5.3: skip link — visually hidden until keyboard focus. Every page
+            exposes a main#icerik landmark (PageShell, homepage, admin). */}
+        <a
+          href="#icerik"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-theme-button focus:bg-ink focus:px-5 focus:py-3 focus:text-sm focus:text-ivory"
+        >
+          İçeriğe atla
+        </a>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
