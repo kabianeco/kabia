@@ -4,6 +4,8 @@ import { products as copy } from "@/content/homepage";
 import { Reveal } from "@/components/motion/reveal";
 import { ArrowLink } from "@/components/ui/button";
 import { routes } from "@/lib/site";
+import { getPublicSettings } from "@/lib/settings";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isBrandPreview } from "@/lib/brand-preview";
 import { previewProducts } from "@/content/preview-products";
 
@@ -19,13 +21,48 @@ import { previewProducts } from "@/content/preview-products";
  * the catalogue, so the section stays fixed at three and cannot be reshuffled
  * by whatever is featured that week. That also means the homepage no longer
  * queries the catalogue at all.
+ *
+ * §8.2: each line's product is administered (intro_product_* settings,
+ * /admin/content) but seeded to the curated slugs below, so the rendered
+ * section is identical. The administered slug resolves against active
+ * products; anything missing or inactive falls back to the curated entry —
+ * a bad save can never blank the section. Alt text and source names stay
+ * curated (products carry no alt).
  */
-export function ProductCollection() {
+export async function ProductCollection() {
+  const settings = await getPublicSettings();
+  const administered: Record<string, string> = {
+    ciftlik: settings.introProductCiftlik,
+    secki: settings.introProductSecki,
+    mutfak: settings.introProductMutfak,
+  };
+  const slugs = [...new Set(copy.entries.map((e) => administered[e.source] || e.slug))];
+  let catalog: Record<string, { name: string; main_image_url: string | null; is_active: boolean }> = {};
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase
+      .from("products")
+      .select("slug, name, main_image_url, is_active")
+      .in("slug", slugs);
+    for (const row of (data ?? []) as { slug: string; name: string; main_image_url: string | null; is_active: boolean }[]) {
+      catalog[row.slug] = row;
+    }
+  } catch {
+    catalog = {};
+  }
+  const entries = copy.entries.map((entry) => {
+    const slug = administered[entry.source] || entry.slug;
+    const row = catalog[slug];
+    if (row && row.is_active) {
+      return { ...entry, slug, name: row.name, image: row.main_image_url ?? entry.image };
+    }
+    return { ...entry };
+  });
   // With the gate on, each entry points at the local preview product for its
   // own source so the design review has something to click through to. With it
   // off — always, in normal operation — these are the verified real slugs.
   const preview = isBrandPreview();
-  const hrefFor = (entry: (typeof copy.entries)[number]) => {
+  const hrefFor = (entry: { slug: string; source: string }) => {
     if (!preview) return routes.product(entry.slug);
     const local = previewProducts.find((p) => p.source === entry.source);
     return routes.product(local ? local.slug : entry.slug);
@@ -59,7 +96,7 @@ export function ProductCollection() {
         </div>
 
         <ul className="mt-16 grid grid-cols-1 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
-          {copy.entries.map((entry, index) => (
+          {entries.map((entry, index) => (
             <Reveal as="li" key={entry.slug} delay={index * 0.05} className="group">
               <Link href={hrefFor(entry)} className="block">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-media bg-ivory">

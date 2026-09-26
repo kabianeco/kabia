@@ -9,6 +9,7 @@ import { logQueryError } from "@/lib/admin/errors"
 import { EmptyState, InlineAlert, PageHeader, Panel } from "@/components/admin/ui/surfaces"
 import { PublishTag } from "@/components/admin/ui/status"
 import { SettingsGroupForm } from "../settings/settings-form"
+import { IntroProductsForm } from "@/components/admin/content/intro-products-form"
 import { toggleFeaturedAction } from "./actions"
 
 export const metadata: Metadata = { title: "İçerik" }
@@ -42,6 +43,11 @@ export default async function ContentPage() {
 
   const featuredCount = products.filter((p) => p.is_featured).length
   const canEditSensitive = can(session.role, "manageSensitiveSettings")
+  const introCurrent = Object.fromEntries(
+    (groups.content ?? [])
+      .filter((s) => s.key.startsWith("intro_product_"))
+      .map((s) => [s.key, typeof s.value === "string" ? s.value : ""]),
+  )
 
   return (
     <>
@@ -148,6 +154,11 @@ export default async function ContentPage() {
             </ul>
           )}
         </Panel>
+
+        <IntroProductsForm
+          current={introCurrent}
+          products={products.map((p) => ({ slug: p.slug, name: p.name, isActive: p.is_active }))}
+        />
       </div>
     </>
   )

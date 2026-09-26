@@ -50,6 +50,10 @@ export interface PublicSettings {
   shopBannerImageUrl: string
   shopBannerCtaLabel: string
   shopBannerCtaHref: string
+  /** Homepage intro product slugs, one per source (administered, §8.2). */
+  introProductCiftlik: string
+  introProductSecki: string
+  introProductMutfak: string
 }
 
 export const SETTINGS_FALLBACK: PublicSettings = {
@@ -81,6 +85,9 @@ export const SETTINGS_FALLBACK: PublicSettings = {
   shopBannerImageUrl: "",
   shopBannerCtaLabel: "",
   shopBannerCtaHref: "",
+  introProductCiftlik: "kabuklu-badem",
+  introProductSecki: "findik-ici",
+  introProductMutfak: "tarhana",
 }
 
 /** setting key → the PublicSettings field it populates. */
@@ -112,6 +119,9 @@ const KEY_MAP: Record<string, keyof PublicSettings> = {
   shop_banner_image_url: "shopBannerImageUrl",
   shop_banner_cta_label: "shopBannerCtaLabel",
   shop_banner_cta_href: "shopBannerCtaHref",
+  intro_product_ciftlik: "introProductCiftlik",
+  intro_product_secki: "introProductSecki",
+  intro_product_mutfak: "introProductMutfak",
 }
 
 async function readPublicSettings(): Promise<PublicSettings> {
