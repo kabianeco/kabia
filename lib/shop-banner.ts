@@ -56,3 +56,11 @@ export function shopBannerVisible(settings: ShopBannerSettings): boolean {
     isPlausibleBannerImageUrl(settings.imageUrl)
   )
 }
+
+/**
+ * S24: generic alias for the same host rule at save and render sites outside
+ * the banner (product/producer image URLs). next/image throws at render time
+ * for an unlisted host, so anything persisted or rendered through next/image
+ * must pass this first.
+ */
+export const isAllowedImageUrl = isPlausibleBannerImageUrl

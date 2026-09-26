@@ -22,6 +22,7 @@ import {
   type Product,
 } from "@/lib/products";
 import { routes } from "@/lib/site";
+import { isAllowedImageUrl } from "@/lib/shop-banner";
 import { recordProductView } from "@/lib/recently-viewed";
 import { EASE } from "@/lib/motion";
 import { STOCK_BADGE_STYLE } from "@/lib/theme-engine/stock-badge-style";
@@ -171,7 +172,9 @@ export function ProductDetail({
   const reviewsRef = useRef<HTMLDivElement>(null);
 
   const galleryImages = useMemo(
-    () => (product.images.length ? product.images : [product.mainImageUrl]),
+    // S24: implausible URLs never reach next/image (thumbs render only from
+    // this list; the main image keeps its own gate below).
+    () => (product.images.length ? product.images : [product.mainImageUrl]).filter(isAllowedImageUrl),
     [product.images, product.mainImageUrl],
   );
   const [activeImage, setActiveImage] = useState(0);
@@ -241,6 +244,9 @@ export function ProductDetail({
                 transition={{ duration: 0.25, ease: EASE }}
                 className="absolute inset-0"
               >
+                {/* S24: an implausible URL degrades to the paper backdrop
+                    instead of throwing out of next/image. */}
+                {isAllowedImageUrl(image) ? (
                 <Image
                   src={image}
                   alt={product.name}
@@ -250,6 +256,7 @@ export function ProductDetail({
                   sizes="(min-width: 1024px) 50vw, 100vw"
                   className="object-cover"
                 />
+                ) : null}
               </motion.div>
             </AnimatePresence>
             {!available && (

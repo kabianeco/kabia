@@ -13,6 +13,7 @@ import { routes } from "@/lib/site";
 import { getPublicSettings } from "@/lib/settings";
 import { shopBannerVisible, type ShopBannerSettings } from "@/lib/shop-banner";
 import { ShopHeroBanner } from "@/components/shop/shop-hero-banner";
+import { BannerErrorBoundary } from "@/components/shop/banner-error-boundary";
 
 /** /shop and /magaza render the same listing; both canonicalise to /magaza. */
 export async function generateMetadata(): Promise<Metadata> {
@@ -114,13 +115,15 @@ export default async function ShopPage({
   return (
     <PageShell>
       {showBanner && (
-        <ShopHeroBanner
-          headline={banner.headline}
-          subtext={banner.subtext}
-          imageUrl={banner.imageUrl}
-          ctaLabel={banner.ctaLabel}
-          ctaHref={banner.ctaHref}
-        />
+        <BannerErrorBoundary>
+          <ShopHeroBanner
+            headline={banner.headline}
+            subtext={banner.subtext}
+            imageUrl={banner.imageUrl}
+            ctaLabel={banner.ctaLabel}
+            ctaHref={banner.ctaHref}
+          />
+        </BannerErrorBoundary>
       )}
       <section aria-labelledby="shop-heading">
         <div className={showBanner ? "wrap mt-14 md:mt-20" : "wrap page-top"}>

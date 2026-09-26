@@ -2,6 +2,16 @@ import { z } from "zod"
 import { APP_ROLES } from "@/lib/admin/roles"
 import { PRODUCT_CERTIFICATIONS, PRODUCT_SOURCES } from "@/lib/products"
 import { MEDIA_MAX_BYTES } from "@/lib/admin/media"
+import { isAllowedImageUrl } from "@/lib/shop-banner"
+
+/**
+ * S24: image URLs must live where next/image can serve them (site-relative
+ * path, picsum, or Supabase storage) — an unlisted host throws at render
+ * time and takes down the whole route. All stored URLs pass this today
+ * (verified live), so the check only stops newly bad values.
+ */
+const IMAGE_HOST_MESSAGE =
+  "Görsel adresi site içi bir yol ya da kayıtlı bir barındırıcıda olmalı."
 
 /**
  * Every administrative mutation validates through one of these before touching
@@ -127,7 +137,9 @@ export const parsedVariantSchema = z.object({
 
 export const imageSchema = z.object({
   id: uuid.optional().nullable(),
-  image_url: z.string().trim().min(1, "Görsel adresi zorunlu.").max(1000),
+  image_url: z.string().trim().min(1, "Görsel adresi zorunlu.").max(1000).refine(isAllowedImageUrl, {
+    message: IMAGE_HOST_MESSAGE,
+  }),
   alt_text: z.string().trim().max(200, "Alternatif metin en fazla 200 karakter.").optional().nullable(),
   sort_order: intField("Sıra", 0, 999),
   storage_path: z.string().trim().max(500).optional().nullable(),
@@ -191,7 +203,9 @@ export const productSchema = z
     description: z.string().trim().min(1, "Açıklama zorunlu.").max(5000),
     base_price: priceField("Temel fiyat"),
     original_price: optionalPriceField("Liste fiyatı"),
-    main_image_url: z.string().trim().min(1, "Ana görsel zorunlu.").max(1000),
+    main_image_url: z.string().trim().min(1, "Ana görsel zorunlu.").max(1000).refine(isAllowedImageUrl, {
+      message: IMAGE_HOST_MESSAGE,
+    }),
     origin: z.string().trim().max(200).optional().nullable(),
     production_method: z.string().trim().max(200).optional().nullable(),
     shelf_life: z.string().trim().max(200).optional().nullable(),
@@ -433,7 +447,9 @@ export const producerSchema = z.object({
   tagline: z.string().trim().min(2, "Tek satırlık tanıtım en az 2 karakter olmalı.").max(200),
   region: optionalText("Bölge", 200),
   product_type: optionalText("Ürün türü", 120),
-  photo_url: optionalText("Fotoğraf", 1000),
+  photo_url: optionalText("Fotoğraf", 1000).refine((v) => v == null || isAllowedImageUrl(v), {
+    message: IMAGE_HOST_MESSAGE,
+  }),
   story: z.string().trim().max(8000, "Hikâye en fazla 8000 karakter olabilir.").nullish().transform((v) => v || null),
   production_place: optionalText("Üretim yeri", 300),
   method: optionalText("Yöntem", 1000),

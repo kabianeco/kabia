@@ -77,3 +77,46 @@ describe("isPlausibleBannerImageUrl", () => {
     assert.equal(isPlausibleBannerImageUrl("   "), false)
   })
 })
+
+describe("S24 — unlisted hosts and malformed URLs stay out", () => {
+  it("rejects unlisted hosts, non-https and malformed values", () => {
+    for (const url of [
+      "https://evil.example.com/x.jpg",
+      "http://picsum.photos/seed/a/100/100",
+      "data:image/png;base64,AAA",
+      "blob:https://x",
+      "//picsum.photos/x.jpg",
+      "not a url",
+      "",
+    ]) {
+      assert.equal(isPlausibleBannerImageUrl(url), false, url || "(empty)")
+    }
+  })
+
+  it("accepts site-relative paths and the allowlisted hosts", () => {
+    assert.equal(isPlausibleBannerImageUrl("/images/kabuklu-badem-acik.jpeg"), true)
+    assert.equal(isPlausibleBannerImageUrl("https://picsum.photos/seed/a/100/100"), true)
+    assert.equal(isPlausibleBannerImageUrl("https://fastly.picsum.photos/seed/a/100/100"), true)
+  })
+
+  it("save schemas enforce the allowlist on all three URL fields", async () => {
+    const { readFileSync } = await import("node:fs")
+    const src = readFileSync("lib/admin/schemas.ts", "utf8")
+    assert.match(src, /image_url: z\.string\(\)[\s\S]*?\.refine\(isAllowedImageUrl/)
+    assert.match(src, /main_image_url: z\.string\(\)[\s\S]*?\.refine\(isAllowedImageUrl/)
+    assert.match(src, /photo_url: optionalText\("Fotoğraf", 1000\)\.refine\(\(v\) => v == null \|\| isAllowedImageUrl\(v\)/)
+  })
+
+  it("render paths degrade instead of throwing", async () => {
+    const { readFileSync } = await import("node:fs")
+    const banner = readFileSync("app/shop/page.tsx", "utf8")
+    assert.match(banner, /<BannerErrorBoundary>/)
+    const card = readFileSync("components/producers/producer-card.tsx", "utf8")
+    assert.match(card, /isAllowedImageUrl\(producer\.photoUrl\)/)
+    const entry = readFileSync("components/shop/product-entry.tsx", "utf8")
+    assert.match(entry, /isAllowedImageUrl\(product\.mainImageUrl\)/)
+    const detail = readFileSync("components/shop/product-detail.tsx", "utf8")
+    assert.match(detail, /isAllowedImageUrl\(image\)/)
+    assert.match(detail, /\.filter\(isAllowedImageUrl\)/)
+  })
+})

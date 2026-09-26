@@ -9,6 +9,7 @@ import {
   type Product,
 } from "@/lib/products";
 import { routes } from "@/lib/site";
+import { isAllowedImageUrl } from "@/lib/shop-banner";
 import { STOCK_BADGE_STYLE } from "@/lib/theme-engine/stock-badge-style";
 
 /**
@@ -45,7 +46,9 @@ export function ProductEntry({
     <li className="group">
       <Link href={routes.product(product.slug)} prefetch={false} className="block">
         <div className="relative aspect-[4/5] overflow-hidden rounded-theme-product-image bg-paper">
-          {product.mainImageUrl ? (
+          {/* S24: unlisted hosts degrade to the placeholder instead of
+              throwing out of next/image (save-time validation is primary). */}
+          {product.mainImageUrl && isAllowedImageUrl(product.mainImageUrl) ? (
             <Image
               src={product.mainImageUrl}
               alt={product.name}

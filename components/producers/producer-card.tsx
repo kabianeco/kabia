@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { ButtonLink } from "@/components/ui/button"
 import { routes } from "@/lib/site"
+import { isAllowedImageUrl } from "@/lib/shop-banner"
 import type { Producer } from "@/lib/producers"
 
 /**
@@ -15,11 +16,16 @@ type CardProducer = Omit<Producer, "createdAt" | "tagline" | "sortOrder"> & {
 }
 
 function CardImage({ producer, priority }: { producer: CardProducer; priority: boolean }) {
+  // S24: an unlisted host would make next/image throw and take down the whole
+  // page — degrade to the existing placeholder instead. Save-time validation
+  // keeps stored values plausible; this is defence against config drift.
+  const photoOk = !!producer.photoUrl && isAllowedImageUrl(producer.photoUrl);
+  const photo = photoOk ? producer.photoUrl : null;
   return (
     <div className="relative aspect-[4/3] overflow-hidden rounded-media bg-paper">
-      {producer.photoUrl ? (
+      {photo ? (
         <Image
-          src={producer.photoUrl}
+          src={photo}
           alt={producer.name}
           fill
           priority={priority}
