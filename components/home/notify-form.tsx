@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { sendContactMessage } from "@/app/iletisim/actions";
+import { Checkbox } from "@/components/ui/field";
+import { routes } from "@/lib/site";
 import type { ActionState } from "@/lib/admin/errors";
 
 /** Local rather than imported so the public bundle keeps no admin module. */
@@ -64,6 +67,29 @@ export function NotifyForm() {
         />
         <SubmitButton />
       </div>
+      {/* §5.1: explicit consent for commercial electronic messaging (6563/İYS).
+          Unchecked by default; the server rejects the submission without it. */}
+      <Checkbox
+        name="kvkk"
+        value="1"
+        className="mt-3"
+        aria-invalid={errors.kvkk ? true : undefined}
+        label={
+          <span className="leading-relaxed">
+            <Link href={routes.kvkkDisclosure} target="_blank" className="text-brand hover:text-forest underline underline-offset-4">
+              KVKK Aydınlatma Metni
+            </Link>
+            ’ni okudum; hasat ve ön sipariş bildirimleri için{" "}
+            <Link href={routes.explicitConsent} target="_blank" className="text-brand hover:text-forest underline underline-offset-4">
+              Açık Rıza Metni
+            </Link>{" "}
+            kapsamında e-posta almayı onaylıyorum. <span className="text-clay">*</span>
+          </span>
+        }
+      />
+      {errors.kvkk && (
+        <p role="alert" className="mt-1 text-sm text-clay">{errors.kvkk}</p>
+      )}
       <p aria-live="polite" className="mt-3 min-h-5 text-sm">
         {state.message && (
           <span className={state.ok ? "text-brand" : "text-clay"}>

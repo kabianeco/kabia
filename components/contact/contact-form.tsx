@@ -1,10 +1,12 @@
 "use client"
 
+import Link from "next/link"
 import { useActionState, useEffect, useRef } from "react"
 import { useFormStatus } from "react-dom"
 import { sendContactMessage } from "@/app/iletisim/actions"
 import { CONTACT_SUBJECTS } from "@/lib/contact"
-import { SelectField, TextAreaField, TextField } from "@/components/ui/field"
+import { routes } from "@/lib/site"
+import { Checkbox, SelectField, TextAreaField, TextField } from "@/components/ui/field"
 import type { ActionState } from "@/lib/admin/errors"
 
 /** Local rather than imported so the public bundle keeps no admin module. */
@@ -102,6 +104,29 @@ export function ContactForm() {
         error={errors.message}
         required
       />
+
+      {/* §5.1: explicit KVKK consent. Unchecked by default; the server
+          rejects the submission without it. */}
+      <Checkbox
+        name="kvkk"
+        value="1"
+        aria-invalid={errors.kvkk ? true : undefined}
+        label={
+          <span className="leading-relaxed">
+            <Link href={routes.kvkkDisclosure} target="_blank" className="text-brand hover:text-forest underline underline-offset-4">
+              KVKK Aydınlatma Metni
+            </Link>{" "}
+            ve{" "}
+            <Link href={routes.privacyPolicy} target="_blank" className="text-brand hover:text-forest underline underline-offset-4">
+              Gizlilik Politikası
+            </Link>
+            ’nı okudum, kişisel verilerimin işlenmesini onaylıyorum. <span className="text-clay">*</span>
+          </span>
+        }
+      />
+      {errors.kvkk && (
+        <p role="alert" className="text-sm text-clay">{errors.kvkk}</p>
+      )}
 
       <div className="flex flex-wrap items-center gap-5">
         <SubmitButton />

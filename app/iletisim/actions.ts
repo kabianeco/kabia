@@ -1,7 +1,9 @@
 "use server"
 
+import { headers } from "next/headers"
 import { z } from "zod"
 import { createSupabaseAdminClient, hasServiceRoleKey } from "@/lib/supabase/admin"
+import { checkRateLimit, getClientIp } from "@/lib/auth/rate-limit"
 import { CONTACT_SUBJECTS } from "@/lib/contact"
 import { fieldErrorsFrom } from "@/lib/admin/schemas"
 import type { ActionState } from "@/lib/admin/errors"
@@ -15,10 +17,11 @@ import type { ActionState } from "@/lib/admin/errors"
  * why the schema below is duplicated as CHECK constraints in the migration:
  * the schema is the readable error, the constraints are the guarantee.
  *
- * Nothing about the sender is trusted or stored beyond what they typed. There
- * is no hidden field, no IP, no user agent — an address that turns out to be
- * unreachable is discovered by replying to it, which is the only check that
- * ever meant anything.
+ * Nothing about the sender is trusted or stored beyond what they typed, plus
+ * the KVKK consent record (§5.1: consent boolean + server timestamp).
+ * There is no hidden field, no IP, no user agent — an address that turns
+ * out to be unreachable is discovered by replying to it, which is the only
+ * check that ever meant anything.
  */
 
 const contactSchema = z.object({
@@ -51,6 +54,9 @@ const contactSchema = z.object({
     .trim()
     .min(10, "Birkaç cümle yazarsanız size daha iyi dönebiliriz.")
     .max(4000, "Mesaj en fazla 4000 karakter olabilir."),
+  // S20/§5.1: explicit KVKK consent — unchecked by default in the forms,
+  // rejected server-side when missing. Stored with a server timestamp.
+  kvkk: z.literal("1", { message: "Devam etmek için KVKK metnini onaylayın." }),
 })
 
 export async function sendContactMessage(
@@ -63,6 +69,7 @@ export async function sendContactMessage(
     phone: formData.get("phone") ?? "",
     subject: formData.get("subject") ?? "",
     message: formData.get("message") ?? "",
+    kvkk: formData.get("kvkk") ?? "",
   })
 
   if (!parsed.success) {
@@ -70,6 +77,19 @@ export async function sendContactMessage(
       ok: false,
       message: "Formda eksik ya da hatalı alanlar var.",
       fieldErrors: fieldErrorsFrom(parsed.error),
+    }
+  }
+
+  // S20: per-IP + per-email bucket. The failure message stays generic — it
+  // must not reveal which limiter was hit.
+  const h = await headers()
+  const rl = await checkRateLimit("contact_notify", getClientIp(h), parsed.data.email)
+  if (!rl.allowed) {
+    console.error("[iletisim] contact_notify limit aşıldı.")
+    return {
+      ok: false,
+      message:
+        "Mesaj gönderilemedi. Bize doğrudan e-posta ya da telefonla ulaşabilirsiniz.",
     }
   }
 
@@ -92,6 +112,8 @@ export async function sendContactMessage(
     phone: parsed.data.phone,
     subject: parsed.data.subject,
     message: parsed.data.message,
+    consent_kvkk: true,
+    consent_kvkk_at: new Date().toISOString(),
   })
 
   if (error) {
