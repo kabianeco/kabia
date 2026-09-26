@@ -29,7 +29,13 @@ export function AccountGuard({ children }: { children: React.ReactNode }) {
     }
   }, [hydrated, isLoggedIn, router, pathname]);
 
-  if (!hydrated || !isLoggedIn) {
+  // The server layout has already verified the session, so the frame and the
+  // page render from the first byte (each page shows its own loading state
+  // until client data arrives). Rendering the page on the server is also what
+  // lets a server-side notFound() — an unknown order — answer with a real 404
+  // instead of streaming it after a 200 shell. The placeholder is only for a
+  // session that is known to have ended on the client.
+  if (hydrated && !isLoggedIn) {
     return (
       <div className="min-h-[60vh]" aria-busy="true">
         <span className="sr-only">Hesabınız yükleniyor</span>

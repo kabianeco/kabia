@@ -24,6 +24,14 @@ describe("S21 — server-side account gate", () => {
     const guard = readFileSync("components/account/account-guard.tsx", "utf8");
     assert.match(guard, /router\.replace\(\`\$\{routes\.login\}\?next=/);
   });
+
+  it("renders the page during SSR so a server notFound() is a real 404", () => {
+    // Phase 2: the guard used to render a placeholder until hydration, so the
+    // page segment (and its notFound) streamed after a 200 shell.
+    const guard = readFileSync("components/account/account-guard.tsx", "utf8");
+    assert.match(guard, /if \(hydrated && !isLoggedIn\) \{\n\s*return \(/);
+    assert.ok(!guard.includes("if (!hydrated || !isLoggedIn)"));
+  });
 });
 
 describe("S22 — real 404 for unknown or foreign order ids", () => {
