@@ -13,12 +13,9 @@ const CLIENT_FILES = [
   "lib/checkout-context.tsx",
   "lib/orders-context.tsx",
   "lib/favorites-context.tsx",
-  "lib/cards-context.tsx",
   "lib/notification-prefs.ts",
   "lib/checkout-order.ts",
   "components/checkout/checkout-flow.tsx",
-  "components/auth/login-form.tsx",
-  "app/hesabim/bilgilerim/page.tsx",
   "app/hesabim/favorilerim/page.tsx",
   "app/hesabim/page.tsx",
 ];
@@ -42,6 +39,15 @@ describe("supabase client deferral", () => {
     const co = readFileSync("lib/checkout-order.ts", "utf8");
     assert.match(co, /createClient: \(\) => Promise<SupabaseClient>/);
     assert.match(co, /await \(await createClient\(\)\)\.rpc/);
+  });
+
+  it("files that no longer talk to Supabase from the browser stay that way", () => {
+    // Phase 2: saved cards retired; password login and profile saves go
+    // through server actions only.
+    for (const file of ["lib/cards-context.tsx", "components/auth/login-form.tsx", "app/hesabim/bilgilerim/page.tsx"]) {
+      const src = readFileSync(file, "utf8");
+      assert.ok(!/SupabaseBrowserClient/.test(src), `${file}: browser client reintroduced`);
+    }
   });
 
   it("no render-time client in providers", () => {
