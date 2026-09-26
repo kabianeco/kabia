@@ -2,13 +2,15 @@
 
 import { randomInt } from "crypto"
 import { headers } from "next/headers"
-import { z } from "zod"
 import { adminContext, requireSuperAdmin } from "@/lib/admin/auth"
 import { AUDIT_WARNING, logAdminAction } from "@/lib/admin/audit"
 import { toActionState, type ActionState } from "@/lib/admin/errors"
-import { fieldErrorsFrom } from "@/lib/admin/schemas"
+import {
+  adminSetCustomerPasswordSchema,
+  customerIdParamSchema,
+  fieldErrorsFrom,
+} from "@/lib/admin/schemas"
 import { loadAuthSummary } from "@/lib/admin/queries/customers"
-import { newPasswordField } from "@/lib/auth/password-policy"
 import { checkRateLimit, getClientIp, RATE_LIMIT_MESSAGE } from "@/lib/auth/rate-limit"
 import { createSupabaseAdminClient, hasServiceRoleKey } from "@/lib/supabase/admin"
 import { adminPasswordResetEmail } from "@/lib/email"
@@ -29,8 +31,6 @@ import { sendEmail } from "@/lib/email/send"
  *    loglanmaz — hata nesnelerine ve denetim kaydına asla konmaz.
  */
 
-const customerIdSchema = z.object({ customer_id: z.string().uuid("Geçersiz müşteri.") })
-
 export type RecoverySendState = ActionState
 
 export async function sendCustomerRecoveryAction(
@@ -40,7 +40,7 @@ export async function sendCustomerRecoveryAction(
   try {
     const { session, supabase } = await adminContext("manageCustomers")
 
-    const parsed = customerIdSchema.safeParse({ customer_id: formData.get("customer_id") })
+    const parsed = customerIdParamSchema.safeParse({ customer_id: formData.get("customer_id") })
     if (!parsed.success) {
       return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error), message: "Geçersiz istek." }
     }
@@ -93,34 +93,6 @@ function generatePassword(length = 16): string {
   return out
 }
 
-const setPasswordSchema = z
-  .object({
-    customer_id: z.string().uuid("Geçersiz müşteri."),
-    reason: z
-      .string()
-      .trim()
-      .min(3, "Gerekçe en az 3 karakter olmalı.")
-      .max(500, "Gerekçe en fazla 500 karakter."),
-    mode: z.enum(["generate", "manual"], { message: "Parola yöntemi seçilmeli." }),
-    password: z.string().max(72).optional().nullable(),
-    confirm: z.string().max(72).optional().nullable(),
-  })
-  .superRefine((v, ctx) => {
-    if (v.mode !== "manual") return
-    const checked = newPasswordField.safeParse(v.password ?? "")
-    if (!checked.success) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["password"],
-        message: checked.error.issues[0]?.message ?? "Geçersiz şifre.",
-      })
-      return
-    }
-    if ((v.confirm ?? "") !== (v.password ?? "")) {
-      ctx.addIssue({ code: "custom", path: ["confirm"], message: "Parolalar eşleşmiyor." })
-    }
-  })
-
 export interface SetPasswordState extends ActionState {
   /** Sunucuda üretilen parola — yanıtta BİR KEZ gösterilir, saklanmaz. */
   generatedPassword?: string
@@ -136,7 +108,7 @@ export async function setCustomerPasswordAction(
     const { createSupabaseServerClient } = await import("@/lib/supabase/server")
     const supabase = await createSupabaseServerClient()
 
-    const parsed = setPasswordSchema.safeParse({
+    const parsed = adminSetCustomerPasswordSchema.safeParse({
       customer_id: formData.get("customer_id"),
       reason: formData.get("reason"),
       mode: formData.get("mode"),

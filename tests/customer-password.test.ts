@@ -13,6 +13,10 @@ import {
   type SessionUser,
 } from "@/lib/account/handlers";
 import { newPasswordField, PASSWORD_MIN_LENGTH } from "@/lib/auth/password-policy";
+import {
+  adminSetCustomerPasswordSchema,
+  customerIdParamSchema,
+} from "@/lib/admin/schemas";
 import { can } from "@/lib/admin/roles";
 import { describeAuditAction } from "@/lib/admin/audit";
 import { adminPasswordResetEmail } from "@/lib/email";
@@ -94,6 +98,38 @@ describe("customer password policy (min 8, shared rule)", () => {
   });
 });
 
+describe("admin set-password validation", () => {
+  const CID = "a69550e7-262b-4381-9945-78acf7334f1b";
+  const base = { customer_id: CID, reason: "Müşteri telefonla istedi.", mode: "generate" };
+
+  it("generate mode needs only a valid reason", () => {
+    assert.equal(adminSetCustomerPasswordSchema.safeParse(base).success, true);
+    assert.equal(
+      adminSetCustomerPasswordSchema.safeParse({ ...base, reason: "x" }).success,
+      false,
+    );
+  });
+
+  it("manual mode enforces the shared min-8 rule plus confirmation", () => {
+    const manual = { ...base, mode: "manual", password: "kisa7ch", confirm: "kisa7ch" };
+    const short = adminSetCustomerPasswordSchema.safeParse(manual);
+    assert.equal(short.success, false);
+    const mismatch = adminSetCustomerPasswordSchema.safeParse({
+      ...base, mode: "manual", password: "uzun-sifre-1", confirm: "baska-sifre-2",
+    });
+    assert.equal(mismatch.success, false);
+    const good = adminSetCustomerPasswordSchema.safeParse({
+      ...base, mode: "manual", password: "uzun-sifre-1", confirm: "uzun-sifre-1",
+    });
+    assert.equal(good.success, true);
+  });
+
+  it("customer id must be a uuid", () => {
+    assert.equal(customerIdParamSchema.safeParse({ customer_id: "nope" }).success, false);
+    assert.equal(customerIdParamSchema.safeParse({ customer_id: CID }).success, true);
+  });
+});
+
 describe("permissions and audit vocabulary", () => {
   it("manageCustomers belongs to both admin roles (recovery link)", () => {
     assert.equal(can("admin", "manageCustomers"), true);
@@ -171,7 +207,9 @@ describe("admin password actions (source guarantees)", () => {
 
   it("set password: super admin only, mandatory reason, global revoke", () => {
     assert.ok(src.includes("requireSuperAdmin"), "super-admin gate missing");
-    assert.match(src, /Gerekçe en az 3 karakter/);
+    assert.ok(src.includes("adminSetCustomerPasswordSchema"), "shared validation missing");
+    const schemas = readFileSync("lib/admin/schemas.ts", "utf8");
+    assert.match(schemas, /Gerekçe en az 3 karakter/);
     assert.ok(src.includes('scope: "global"'), "session revocation missing");
     assert.ok(src.includes("admin_set_customer_must_change"), "flag call missing");
     assert.ok(src.includes("customer.password_set"), "audit missing");
@@ -187,7 +225,9 @@ describe("admin password actions (source guarantees)", () => {
   });
 
   it("manual passwords follow the shared customer rule", () => {
-    assert.ok(src.includes("newPasswordField"), "shared policy missing");
+    const schemas = readFileSync("lib/admin/schemas.ts", "utf8");
+    assert.ok(schemas.includes("newPasswordField"), "shared policy missing");
+    assert.ok(src.includes("adminSetCustomerPasswordSchema"), "action must use the shared schema");
   });
 
   it("UI exists with confirmation and super-admin gating", () => {

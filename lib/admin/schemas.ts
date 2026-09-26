@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { APP_ROLES } from "@/lib/admin/roles"
+import { newPasswordField } from "@/lib/auth/password-policy"
 import { PRODUCT_CERTIFICATIONS, PRODUCT_SOURCES } from "@/lib/products"
 import { MEDIA_MAX_BYTES } from "@/lib/admin/media"
 import { isAllowedImageUrl } from "@/lib/shop-banner"
@@ -528,3 +529,47 @@ export const customerNumberLookupSchema = z.object({
     .toUpperCase()
     .regex(/^KE-[0-9]{6}$/, "Müşteri numarası KE-###### biçiminde olmalı."),
 })
+
+/**
+ * Feature 3 — müşteri parola işlemleri.
+ *
+ * 3a (recovery bağlantısı) yalnızca müşteri kimliği taşır; e-posta sunucuda
+ * Auth Admin API'den okunur, forma güvenilmez. 3b (doğrudan şifre) süper
+ * yöneticiye özeldir: gerekçe zorunlu, parola ya sunucuda üretilir ya da
+ * müşteri parolalarıyla aynı kuralla (en az 8) elle girilir.
+ */
+export const customerIdParamSchema = z.object({
+  customer_id: uuid,
+})
+
+export const ADMIN_PASSWORD_MODES = ["generate", "manual"] as const
+
+export const adminSetCustomerPasswordSchema = z
+  .object({
+    customer_id: uuid,
+    reason: z
+      .string()
+      .trim()
+      .min(3, "Gerekçe en az 3 karakter olmalı.")
+      .max(500, "Gerekçe en fazla 500 karakter."),
+    mode: z.enum(ADMIN_PASSWORD_MODES, { message: "Parola yöntemi seçilmeli." }),
+    password: z.string().max(72).optional().nullable(),
+    confirm: z.string().max(72).optional().nullable(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.mode !== "manual") return
+    // Müşteri parolalarıyla aynı kural (lib/auth/password-policy.ts, en az 8):
+    // tek doğruluk kaynağı newPasswordField'dır.
+    const checked = newPasswordField.safeParse(v.password ?? "")
+    if (!checked.success) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["password"],
+        message: checked.error.issues[0]?.message ?? "Geçersiz şifre.",
+      })
+      return
+    }
+    if ((v.confirm ?? "") !== (v.password ?? "")) {
+      ctx.addIssue({ code: "custom", path: ["confirm"], message: "Parolalar eşleşmiyor." })
+    }
+  })
