@@ -288,3 +288,18 @@ describe("affected route contracts", () => {
     assert.equal(new Set(paths).size, paths.length, "sitemap paths must be unique")
   })
 })
+
+describe("§8.7 Offer shipping and return policy", () => {
+  it("product Offer carries shippingDetails and a finite return policy", async () => {
+    const { readFileSync } = await import("node:fs")
+    const src = readFileSync("app/shop/[slug]/page.tsx", "utf8")
+    assert.match(src, /shippingDetails: \{/)
+    assert.match(src, /"@type": "OfferShippingDetails"/)
+    assert.match(src, /handlingTime: \{ "@type": "QuantitativeValue", minValue: 0, maxValue: 3/)
+    assert.match(src, /transitTime: \{ "@type": "QuantitativeValue", minValue: 2, maxValue: 5/)
+    assert.match(src, /hasMerchantReturnPolicy: \{/)
+    assert.match(src, /merchantReturnDays: 14/)
+    assert.match(src, /MerchantReturnFiniteReturnWindow/)
+    assert.ok(!src.includes('"@type": "LocalBusiness"'), "no LocalBusiness without farm facts")
+  })
+})
