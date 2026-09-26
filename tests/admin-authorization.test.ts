@@ -541,3 +541,11 @@ describe("S14 — super-admin self-demotion guard", () => {
     assert.match(src, /Kendi rolünüzü bu ekrandan düşüremezsiniz/)
   })
 })
+
+describe("S15 — search page entry permission", () => {
+  it("denies callers with none of the searched permissions", async () => {
+    const { readFileSync } = await import("node:fs")
+    const src = readFileSync("app/admin/(protected)/search/page.tsx", "utf8")
+    assert.match(src, /if \(!canProducts && !canOrders && !canCustomers\) redirect\("\/admin\/unauthorized"\)/)
+  })
+})

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { adminPageContext } from "@/lib/admin/auth"
 import { sanitizeSearch } from "@/lib/admin/queries/products"
 import { formatCurrency, formatDate, formatDateTime, formatInteger, toNumber } from "@/lib/admin/format"
@@ -51,6 +52,11 @@ export default async function AdminSearchPage({
   const canProducts = can(session.role, "manageCatalogue")
   const canOrders = can(session.role, "manageOrders")
   const canCustomers = can(session.role, "viewCustomers")
+
+  // S15: entry requires at least one of the searched permissions; each section
+  // below keeps its own gate, and RLS remains the final boundary. Today both
+  // roles hold all three, so this only matters for future least-privilege roles.
+  if (!canProducts && !canOrders && !canCustomers) redirect("/admin/unauthorized")
 
   const [productsRes, ordersRes, customersRes] = await Promise.all([
     canProducts
