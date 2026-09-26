@@ -5,6 +5,13 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useAuth } from "@/lib/auth-context"
 import { hasPreviewItems, isPreviewItem } from "@/lib/preview-identity"
 import { clampCartQuantity } from "@/lib/cart-quantity"
+import {
+  GUEST_CART_STORAGE_KEY,
+  nextGuestCartAfterAdd,
+  nextGuestCartAfterQuantity,
+  readGuestCart,
+  writeGuestCart,
+} from "@/lib/cart-storage"
 import type { CartItemRow } from "@/lib/supabase/rows"
 
 export interface CartItem {
@@ -32,7 +39,7 @@ interface CartContextValue {
 
 const CartContext = createContext<CartContextValue | null>(null)
 
-const STORAGE_KEY = "kabia_cart"
+const STORAGE_KEY = GUEST_CART_STORAGE_KEY
 
 export const FREE_SHIPPING_THRESHOLD = 2000
 // HepsiJet anlaşması: 4 desiye kadar sabit ücret. Değişirse tek yerden değişir.
@@ -68,6 +75,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const authority = useRef({ userId, authHydrated })
   // eslint-disable-next-line react-hooks/refs -- intentional latest-value ref: async cart handlers compare against the current authority (both reviewers cleared this pattern).
   authority.current = { userId, authHydrated }
+  // Misafir yazımlarının effect beklenmeden senkron kalıcı olması için
+  // state'in ref aynası: hızlı ardışık eklemelerde stale closure kaybını önler.
+  const itemsRef = useRef<CartItem[]>([])
+  const setItemsSync = useCallback((next: CartItem[] | ((prev: CartItem[]) => CartItem[])) => {
+    const resolved = typeof next === "function" ? (next as (prev: CartItem[]) => CartItem[])(itemsRef.current) : next
+    itemsRef.current = resolved
+    setItems(resolved)
+    // Misafir ise aynı tick'te localStorage'a yaz: tam sayfa yenilemesi
+    // (toast "Sepete git") effect'i beklemez.
+    if (!authority.current.userId) writeGuestCart(resolved)
+  }, [])
   const [loadedFor, setLoadedFor] = useState<string | null | undefined>(undefined)
 
   const ensureCart = useCallback(
@@ -92,31 +110,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const cid = cartRow?.id ?? null
       cartIdRef.current = cid
       if (!cid) {
+        itemsRef.current = []
         setItems([])
         return
       }
       const { data: rows } = await supabase.from("cart_items").select(CART_SELECT).eq("cart_id", cid)
       // PostgREST types embedded relations as arrays; both of these are
       // to-one joins and come back as single objects.
-      if (authority.current.userId === uid) setItems(((rows ?? []) as unknown as CartItemRow[]).map(mapCartRow).filter((item) => !isPreviewItem(item)))
+      if (authority.current.userId === uid) {
+        const next = ((rows ?? []) as unknown as CartItemRow[]).map(mapCartRow).filter((item) => !isPreviewItem(item))
+        itemsRef.current = next
+        setItems(next)
+      }
     },
     [],
   )
 
   const loadGuestCart = useCallback(() => {
     cartIdRef.current = null
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      const parsed = raw ? (JSON.parse(raw) as CartItem[]) : []
-      // localStorage is a client boundary: sanitize staged quantities.
-      setItems(
-        Array.isArray(parsed)
-          ? parsed.map((i) => ({ ...i, quantity: clampCartQuantity(i?.quantity) }))
-          : [],
-      )
-    } catch {
-      setItems([])
-    }
+    // Senkron okuma + sterilize: readGuestCart ile aynı davranış.
+    const next = readGuestCart(localStorage.getItem(STORAGE_KEY))
+    itemsRef.current = next
+    setItems(next)
   }, [])
 
   // Bootstrap + react to auth state (guest <-> authed). Merges guest cart on login.
@@ -173,13 +188,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [userId, authHydrated, ensureCart, loadDbCart, loadGuestCart])
 
-  // Persist guest cart to localStorage
+  // Persist guest cart to localStorage (yedek: birincil yazım artık
+  // setItemsSync içinde senkron yapılır, bu effect yalnızca güvence).
   useEffect(() => {
     if (!hydrated || !authHydrated || userId || loadedFor !== null) return
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      const serialized = JSON.stringify(items)
+      if (raw !== serialized) localStorage.setItem(STORAGE_KEY, serialized)
+    } catch {
+      // Yoksay: birincil yazım zaten denendi.
+    }
   }, [items, hydrated, userId, authHydrated, loadedFor])
-
-  const isAuthed = !!userId
 
   const addItem = useCallback<CartContextValue["addItem"]>(
     (item) => {
@@ -188,7 +208,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const qty = clampCartQuantity(item.quantity ?? 1)
       if (auth.userId) {
         const uid = auth.userId
-        const existing = items.find((i) => i.variantId === item.variantId)
+        const existing = itemsRef.current.find((i) => i.variantId === item.variantId)
         ;(async () => {
           const supabase = await getSupabaseBrowserClient()
           const cid = cartIdRef.current ?? await ensureCart(uid)
@@ -203,22 +223,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
           }
         })()
       }
-      // Optimistic local update
-      setItems((prev) => {
-        const existing = prev.find((i) => i.id === item.id)
-        if (existing) {
-          return prev.map((i) => (i.id === item.id ? { ...i, quantity: Math.min(99, i.quantity + qty) } : i))
-        }
-        return [...prev, { ...item, quantity: qty }]
-      })
+      // Optimistic local update + misafirde senkron kalıcılık (Bug 1 kök neden).
+      setItemsSync((prev) => nextGuestCartAfterAdd(prev, { ...item, quantity: qty }))
       return true
     },
-    [items, ensureCart],
+    [ensureCart, setItemsSync],
   )
 
   const updateQuantity = useCallback(
     (id: string, quantity: number) => {
-      const item = items.find((i) => i.id === id)
+      const item = itemsRef.current.find((i) => i.id === id)
       if (!item || (isPreviewItem(item) && (!authority.current.authHydrated || authority.current.userId))) return
       if (!isPreviewItem(item) && authority.current.userId && cartIdRef.current) {
         const cid = cartIdRef.current
@@ -231,18 +245,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
           }
         })()
       }
-      setItems((prev) =>
-        prev
-          .map((i) => (i.id === id ? { ...i, quantity: Math.max(1, Math.min(99, quantity)) } : i))
-          .filter((i) => i.quantity > 0),
-      )
+      setItemsSync((prev) => nextGuestCartAfterQuantity(prev, id, quantity <= 0 ? 0 : clampCartQuantity(quantity)))
     },
-    [isAuthed, items],
+    [setItemsSync],
   )
 
   const removeItem = useCallback(
     (id: string) => {
-      const item = items.find((i) => i.id === id)
+      const item = itemsRef.current.find((i) => i.id === id)
       if (item && !isPreviewItem(item) && authority.current.userId && cartIdRef.current) {
         const cid = cartIdRef.current
         ;(async () => {
@@ -250,21 +260,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
           await supabase.from("cart_items").delete().eq("cart_id", cid).eq("variant_id", item.variantId)
         })()
       }
-      setItems((prev) => prev.filter((i) => i.id !== id))
+      setItemsSync((prev) => prev.filter((i) => i.id !== id))
     },
-    [isAuthed, items],
+    [setItemsSync],
   )
 
   const clearCart = useCallback(() => {
-    if (!hasPreviewItems(items) && authority.current.userId && cartIdRef.current) {
+    if (!hasPreviewItems(itemsRef.current) && authority.current.userId && cartIdRef.current) {
       const cid = cartIdRef.current
       ;(async () => {
         const supabase = await getSupabaseBrowserClient()
         await supabase.from("cart_items").delete().eq("cart_id", cid)
       })()
     }
-    setItems([])
-  }, [items])
+    setItemsSync([])
+  }, [setItemsSync])
 
 
   const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items])
