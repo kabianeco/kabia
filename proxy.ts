@@ -285,6 +285,15 @@ export default async function proxy(request: NextRequest) {
   // Pass the nonce to server components via the request headers.
   request.headers.set("x-nonce", nonce)
 
+  // S21: the account layout's server gate needs the request path for its
+  // login `next` parameter (server components cannot read it themselves).
+  if (
+    request.nextUrl.pathname === "/hesabim" ||
+    request.nextUrl.pathname.startsWith("/hesabim/")
+  ) {
+    request.headers.set("x-pathname", request.nextUrl.pathname + request.nextUrl.search)
+  }
+
   // 1. Development canonical-origin redirect — must run first so the HMR
   //    client initialises on the canonical origin.
   const canonical = maybeCanonicalDevOrigin(request)
