@@ -5,12 +5,12 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { IntroSequence } from "@/components/home/intro-sequence";
 import { BrandManifesto } from "@/components/home/brand-manifesto";
-import { ProductCollection } from "@/components/home/product-collection";
+import { ProductCollection, ProductCollectionFallback } from "@/components/home/product-collection";
 import { BestSellers } from "@/components/home/best-sellers";
 import { CertStrip } from "@/components/home/cert-strip";
 import { HomeFaq } from "@/components/home/home-faq";
 import { HarvestNotify } from "@/components/home/harvest-notify";
-import { Producers } from "@/components/home/producers";
+import { Producers, ProducersFallback } from "@/components/home/producers";
 import { OriginStory } from "@/components/home/origin-story";
 import { Principles } from "@/components/home/principles";
 import { Emanet } from "@/components/home/emanet";
@@ -61,18 +61,17 @@ export default function HomePage() {
         <OriginStory />
         <Emanet />
         <Suspense
-          fallback={
-            <section className="border-y border-ink/10 bg-paper">
-              <div className="wrap py-24 md:py-32">
-                <div className="h-64 motion-safe:animate-pulse bg-paper" aria-hidden="true" />
-              </div>
-            </section>
-          }
+          fallback={<ProductCollectionFallback />}
         >
           <ProductCollection />
         </Suspense>
         <BrandManifesto />
-        <Producers />
+        {/* Streams: the strip paints curated rows immediately and swaps in
+            the administered rows when the read resolves (identical content
+            post-convergence, so the swap is invisible). */}
+        <Suspense fallback={<ProducersFallback />}>
+          <Producers />
+        </Suspense>
         <ProcessStory />
         <Principles />
         <EditorialImage />

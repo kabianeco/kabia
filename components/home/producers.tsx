@@ -20,6 +20,10 @@ import { routes } from "@/lib/site";
  * convergence); preview keeps the static file. A failed read is a small
  * outage note in place — never a silently missing section — and an empty
  * line hides the section the way BestSellers does.
+ *
+ * Streaming: the page wraps this in Suspense with ProducersFallback (the
+ * curated static rows, byte-identical to the loaded rows post-convergence),
+ * so the first HTML — and the H1 — never wait on the producers read.
  */
 export async function Producers() {
   let producers: CardProducer[] | "error" = "error";
@@ -29,6 +33,15 @@ export async function Producers() {
     const result = await fetchSeckiProducers(await createSupabaseServerClient());
     producers = result.status === "ok" ? result.producers : "error";
   }
+  return <ProducersStrip producers={producers} />;
+}
+
+/** Curated static strip — the Suspense fallback; identical to loaded rows. */
+export function ProducersFallback() {
+  return <ProducersStrip producers={[...producerCollections.secki]} />;
+}
+
+function ProducersStrip({ producers }: { producers: CardProducer[] | "error" }) {
   if (producers !== "error" && producers.length === 0) return null;
 
   return (

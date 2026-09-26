@@ -58,6 +58,19 @@ export async function ProductCollection() {
     }
     return { ...entry };
   });
+  return <CollectionStrip entries={entries} />;
+}
+
+/** Curated static strip — the Suspense fallback; identical to loaded rows. */
+export function ProductCollectionFallback() {
+  return <CollectionStrip entries={copy.entries.map((entry) => ({ ...entry }))} />;
+}
+
+function CollectionStrip({
+  entries,
+}: {
+  entries: { source: string; sourceName: string; name: string; slug: string; image: string; alt: string }[];
+}) {
   // With the gate on, each entry points at the local preview product for its
   // own source so the design review has something to click through to. With it
   // off — always, in normal operation — these are the verified real slugs.

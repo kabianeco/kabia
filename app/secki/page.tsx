@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import { pageMetadata } from "@/lib/seo"
 import { PageShell } from "@/components/layout/page-shell"
 import { ProducerCard } from "@/components/producers/producer-card"
@@ -24,41 +25,49 @@ export async function generateMetadata(): Promise<Metadata> {
  * source of truth since convergence. A failed read is an outage (same
  * markup language as /ureticiler), never an empty shelf. Preview keeps the
  * static file as its fixture.
+ *
+ * Streaming: the grid resolves inside Suspense with the static rows as the
+ * fallback (identical post-convergence, so the swap is invisible) — the
+ * heading and first HTML never wait on the producers read.
  */
-export default async function SeckiPage() {
-  let producers: CardProducer[] | null = null
+async function SeckiGrid() {
   if (isBrandPreview()) {
-    producers = [...producerCollections.secki]
-  } else {
-    const result = await fetchSeckiProducers(await createSupabaseServerClient())
-    if (result.status === "error") {
-      return (
-        <PageShell>
-          <section aria-labelledby="secki-heading">
-            <div className="wrap page-top pb-16 md:pb-24">
-              <p className="label text-olive">Seçki</p>
-              <h1
-                id="secki-heading"
-                className="mt-6 max-w-3xl text-4xl leading-[1.08] tracking-tight md:text-6xl"
-              >
-                Tanıdığımız <em className="font-theme-display italic text-brand">üreticiler</em>.
-              </h1>
-            </div>
-            <div role="alert" className="wrap flex flex-col items-start pb-24 md:pb-32">
-              <p className="font-theme-display text-3xl italic text-clay">
-                Üretici profilleri şu anda yüklenemiyor.
-              </p>
-              <p className="mt-4 max-w-sm text-sm leading-relaxed text-ink/55">
-                Lütfen daha sonra yeniden deneyin.
-              </p>
-            </div>
-          </section>
-        </PageShell>
-      )
-    }
-    producers = result.producers
+    return <SeckiGridRows producers={[...producerCollections.secki]} />
   }
+  const result = await fetchSeckiProducers(await createSupabaseServerClient())
+  if (result.status === "error") {
+    return (
+      <div role="alert" className="wrap flex flex-col items-start pb-24 md:pb-32">
+        <p className="font-theme-display text-3xl italic text-clay">
+          Üretici profilleri şu anda yüklenemiyor.
+        </p>
+        <p className="mt-4 max-w-sm text-sm leading-relaxed text-ink/55">
+          Lütfen daha sonra yeniden deneyin.
+        </p>
+      </div>
+    )
+  }
+  return <SeckiGridRows producers={result.producers} />
+}
 
+function SeckiGridRows({ producers }: { producers: CardProducer[] }) {
+  return (
+    <div className="wrap">
+      <ul className="grid grid-cols-1 gap-x-8 gap-y-14 pb-24 sm:grid-cols-2 md:pb-32 lg:grid-cols-3">
+        {producers.map((producer, i) => (
+          <ProducerCard
+            key={producer.id}
+            producer={producer}
+            priority={i < 3}
+            variant="secki"
+          />
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+export default function SeckiPage() {
   return (
     <PageShell>
       <section aria-labelledby="secki-heading">
@@ -76,18 +85,9 @@ export default async function SeckiPage() {
           </p>
         </div>
 
-        <div className="wrap">
-          <ul className="grid grid-cols-1 gap-x-8 gap-y-14 pb-24 sm:grid-cols-2 md:pb-32 lg:grid-cols-3">
-            {producers.map((producer, i) => (
-              <ProducerCard
-                key={producer.id}
-                producer={producer}
-                priority={i < 3}
-                variant="secki"
-              />
-            ))}
-          </ul>
-        </div>
+        <Suspense fallback={<SeckiGridRows producers={[...producerCollections.secki]} />}>
+          <SeckiGrid />
+        </Suspense>
       </section>
 
       <FaqList group="secki" />
