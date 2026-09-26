@@ -45,6 +45,25 @@ registerHooks({
       const resolved = withExtension(path.join(root, specifier.slice(2)))
       return nextResolve(pathToFileURL(resolved).href, context)
     }
+    // TypeScript-style extensionless relative imports inside the modules
+    // under test (e.g. lib/email/password-admin-reset.ts importing
+    // ./layout). Node ESM requires the concrete file. Only TypeScript
+    // sources are intercepted: resolving a `.js` winner (or nothing) to a
+    // file:// URL would break CJS `require` chains inside node_modules,
+    // which rely on the default resolution.
+    if (
+      (specifier.startsWith("./") || specifier.startsWith("../")) &&
+      context.parentURL?.startsWith("file:")
+    ) {
+      const base = path.resolve(path.dirname(fileURLToPath(context.parentURL)), specifier)
+      if (!path.extname(base)) {
+        for (const candidate of [`${base}.ts`, `${base}.mts`, path.join(base, "index.ts")]) {
+          if (existsSync(candidate)) {
+            return nextResolve(pathToFileURL(candidate).href, context)
+          }
+        }
+      }
+    }
     return nextResolve(specifier, context)
   },
 })

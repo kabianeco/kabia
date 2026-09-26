@@ -19,6 +19,12 @@ export interface SessionUser {
   email: string
   /** True when the account has an e-mail/password identity. */
   hasPassword: boolean
+  /**
+   * True when an administrator set this customer's password and the customer
+   * has not changed it yet (profiles.must_change_password). Only the password
+   * change itself is allowed until it is cleared.
+   */
+  mustChangePassword?: boolean
 }
 
 export type Bucket = "account_reauth" | "account_update"
@@ -42,6 +48,8 @@ export const MESSAGES = {
   noPassword:
     "Hesabınızda henüz şifre yok. Önce “Şifremi unuttum” ile e-postanıza gelen bağlantıdan bir şifre belirleyin.",
   rateLimited: RATE_LIMIT_MESSAGE,
+  mustChangePassword:
+    "Önce şifrenizi yenileyin. Yöneticiniz şifrenizi güncelledi; devam etmek için yeni bir şifre belirleyin.",
 } as const
 
 const currentPasswordField = z.string().min(1, "Mevcut şifrenizi girin.").max(200)
@@ -73,6 +81,16 @@ async function reauthenticate(
   return null
 }
 
+/**
+ * Forced-rotation guard (customer counterpart of the admin must_change_password
+ * gate): while the flag stands, only the password change itself may run.
+ * Checked in every mutating handler below — server-side, never only in pages.
+ */
+function passwordChangeOwed(user: SessionUser): AccountResult | null {
+  if (user.mustChangePassword) return { ok: false, message: MESSAGES.mustChangePassword }
+  return null
+}
+
 // ---------------------------------------------------------------------------
 // Password change
 // ---------------------------------------------------------------------------
@@ -89,6 +107,12 @@ export type PasswordUpdateOutcome = "ok" | "invalid_current" | "weak" | "same" |
 export interface ChangePasswordDeps extends BaseDeps {
   /** Proves `current` in an isolated session and sets `next` from it. */
   updatePassword(email: string, current: string, next: string): Promise<PasswordUpdateOutcome>
+  /**
+   * Clears profiles.must_change_password after a successful change
+   * (customer_complete_password_change). Best-effort: a failure leaves the
+   * flag standing, which is the safe direction.
+   */
+  clearPasswordFlag?: () => Promise<boolean>
 }
 
 export async function changePassword(input: unknown, deps: ChangePasswordDeps): Promise<AccountResult> {
@@ -101,6 +125,7 @@ export async function changePassword(input: unknown, deps: ChangePasswordDeps): 
   const outcome = await deps.updatePassword(user.email, parsed.data.currentPassword, parsed.data.newPassword)
   switch (outcome) {
     case "ok":
+      if (deps.clearPasswordFlag) await deps.clearPasswordFlag()
       return { ok: true, message: "Şifreniz güncellendi." }
     case "invalid_current":
       return { ok: false, message: MESSAGES.wrongPassword, fieldErrors: { currentPassword: MESSAGES.wrongPassword } }
@@ -142,6 +167,8 @@ export const EMAIL_CHANGE_SENT =
 export async function changeEmail(input: unknown, deps: ChangeEmailDeps): Promise<AccountResult> {
   const user = await deps.getUser()
   if (!user) return { ok: false, message: MESSAGES.signedOut }
+  const owed = passwordChangeOwed(user)
+  if (owed) return owed
   const parsed = changeEmailSchema.safeParse(input)
   if (!parsed.success) return invalid(parsed.error)
   if (parsed.data.newEmail === user.email.toLowerCase()) {
@@ -169,6 +196,8 @@ export const SIGNED_OUT_EVERYWHERE_PATH = "/giris?cikis=tum"
 export async function signOutEverywhere(input: unknown, deps: SignOutEverywhereDeps): Promise<AccountResult> {
   const user = await deps.getUser()
   if (!user) return { ok: false, message: MESSAGES.signedOut }
+  const owed = passwordChangeOwed(user)
+  if (owed) return owed
   const parsed = passwordOnlySchema.safeParse(input)
   if (!parsed.success) return invalid(parsed.error)
   const denied = await reauthenticate(deps, user, parsed.data.currentPassword)
@@ -195,6 +224,8 @@ export function exportFilename(now: Date): string {
 export async function exportData(input: unknown, deps: ExportDeps, now = new Date()): Promise<ExportResult> {
   const user = await deps.getUser()
   if (!user) return { ok: false, message: MESSAGES.signedOut }
+  const owed = passwordChangeOwed(user)
+  if (owed) return owed
   const parsed = passwordOnlySchema.safeParse(input)
   if (!parsed.success) return invalid(parsed.error)
   const denied = await reauthenticate(deps, user, parsed.data.currentPassword)
@@ -232,6 +263,8 @@ export const ACCOUNT_DELETED_PATH = "/hesap-silindi"
 export async function deleteAccount(input: unknown, deps: DeleteAccountDeps): Promise<AccountResult> {
   const user = await deps.getUser()
   if (!user) return { ok: false, message: MESSAGES.signedOut }
+  const owed = passwordChangeOwed(user)
+  if (owed) return owed
   const parsed = deleteAccountSchema.safeParse(input)
   if (!parsed.success) return invalid(parsed.error)
   const denied = await reauthenticate(deps, user, parsed.data.currentPassword)
@@ -277,6 +310,8 @@ export interface ProfileDeps extends BaseDeps {
 export async function updateProfile(input: unknown, deps: ProfileDeps): Promise<AccountResult & { profile?: ProfilePatch }> {
   const user = await deps.getUser()
   if (!user) return { ok: false, message: MESSAGES.signedOut }
+  const owed = passwordChangeOwed(user)
+  if (owed) return owed
   const parsed = profileSchema.safeParse(input)
   if (!parsed.success) return invalid(parsed.error)
   if (!(await deps.allow("account_update", user.id))) return { ok: false, message: MESSAGES.rateLimited }
@@ -303,6 +338,8 @@ export interface MarketingDeps extends BaseDeps {
 export async function setMarketingConsent(input: unknown, deps: MarketingDeps): Promise<AccountResult & { granted?: boolean }> {
   const user = await deps.getUser()
   if (!user) return { ok: false, message: MESSAGES.signedOut }
+  const owed = passwordChangeOwed(user)
+  if (owed) return owed
   const parsed = marketingSchema.safeParse(input)
   if (!parsed.success) return { ok: false, message: MESSAGES.generic }
   if (!(await deps.allow("account_update", user.id))) return { ok: false, message: MESSAGES.rateLimited }

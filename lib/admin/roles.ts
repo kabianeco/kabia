@@ -41,6 +41,7 @@ export const PERMISSIONS = {
   manageInventory: ["admin", "super_admin"],
   manageOrders: ["admin", "super_admin"],
   viewCustomers: ["admin", "super_admin"],
+  manageCustomers: ["admin", "super_admin"],
   manageMedia: ["admin", "super_admin"],
   manageContent: ["admin", "super_admin"],
   viewMessages: ["admin", "super_admin"],

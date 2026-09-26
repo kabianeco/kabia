@@ -58,6 +58,10 @@ export type AuditAction =
   | "blog.tag_delete"
   | "order.note"
   | "order.tracking"
+  | "order.admin_create"
+  | "order.status_override"
+  | "customer.recovery_sent"
+  | "customer.password_set"
   | "administrator.create"
   | "administrator.role_change"
   | "administrator.deactivate"
@@ -127,6 +131,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "order.cancel": "Sipariş iptal edildi",
   "order.note": "Siparişe not eklendi",
   "order.tracking": "Kargo bilgisi güncellendi",
+  "order.admin_create": "Yönetici sipariş oluşturdu",
+  "order.status_override": "Sipariş durumu geçersiz kılındı",
+  "customer.recovery_sent": "Müşteriye şifre yenileme bağlantısı gönderildi",
+  "customer.password_set": "Müşteri şifresi yönetici tarafından belirlendi",
   "settings.update": "Ayar güncellendi",
   "content.update": "İçerik güncellendi",
   "theme.draft_save": "Tema taslağı kaydedildi",
@@ -163,6 +171,7 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   category: "Kategori",
   producer: "Üretici",
   order: "Sipariş",
+  customer: "Müşteri",
   media: "Medya",
   setting: "Ayar",
   theme: "Tema",

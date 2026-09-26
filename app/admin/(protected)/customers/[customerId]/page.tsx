@@ -2,11 +2,8 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { adminPageContext } from "@/lib/admin/auth"
-import {
-  loadAuthSummary,
-  loadCustomerAddresses,
-  loadCustomerOrders,
-} from "@/lib/admin/queries/customers"
+import { loadAuthSummary, loadCustomerAddresses, loadCustomerOrders } from "@/lib/admin/queries/customers"
+import { CustomerPasswordActions } from "./password-actions"
 import { formatCurrency, formatDate, formatDateTime, formatInteger, toNumber } from "@/lib/admin/format"
 import { logQueryError } from "@/lib/admin/errors"
 import { EmptyState, PageHeader, Panel } from "@/components/admin/ui/surfaces"
@@ -22,7 +19,7 @@ export default async function CustomerDetailPage({
 }: {
   params: Promise<{ customerId: string }>
 }) {
-  const { supabase } = await adminPageContext("viewCustomers")
+  const { session, supabase } = await adminPageContext("viewCustomers")
   const { customerId } = await params
 
   const { data, error } = await supabase
@@ -210,6 +207,17 @@ export default async function CustomerDetailPage({
                 Kimlik doğrulama verileri yalnızca sunucuda okunur. Parola bilgisi, oturum
                 anahtarları ve sağlayıcı gizli bilgileri hiçbir zaman bu ekrana taşınmaz.
               </p>
+            </Panel>
+
+            <Panel
+              title="Parola işlemleri"
+              description="Yenileme bağlantısı her yönetici tarafından gönderilebilir; doğrudan şifre belirleme yalnızca süper yönetici."
+            >
+              <CustomerPasswordActions
+                customerId={customer.id}
+                customerName={customer.full_name}
+                canSetPassword={session.role === "super_admin"}
+              />
             </Panel>
           </div>
         </div>

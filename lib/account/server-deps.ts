@@ -30,11 +30,12 @@ function isolatedClient(): SupabaseClient {
   })
 }
 
-function toSessionUser(user: User): SessionUser {
+function toSessionUser(user: User, mustChangePassword = false): SessionUser {
   return {
     id: user.id,
     email: user.email ?? "",
     hasPassword: (user.identities ?? []).some((identity) => identity.provider === "email"),
+    mustChangePassword,
   }
 }
 
@@ -45,7 +46,17 @@ export async function baseDeps(): Promise<BaseDeps & { client: SupabaseClient }>
     client,
     async getUser() {
       const { data, error } = await client.auth.getUser()
-      return error || !data.user ? null : toSessionUser(data.user)
+      if (error || !data.user) return null
+      // Zorunlu şifre bayrağı sunucuda okunur; istemci beyanına güvenilmez.
+      const { data: profile } = await client
+        .from("profiles")
+        .select("must_change_password")
+        .eq("id", data.user.id)
+        .maybeSingle()
+      return toSessionUser(
+        data.user,
+        (profile as { must_change_password?: boolean } | null)?.must_change_password === true,
+      )
     },
     async allow(bucket: Bucket, key: string) {
       return (await checkRateLimit(bucket, ip, key)).allowed

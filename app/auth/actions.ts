@@ -88,6 +88,17 @@ export async function customerLoginAction(
     return { ok: false, needsEmailConfirm: true, message: "Devam etmek için e-postanızı doğrulayın." }
   }
 
+  // Yönetici parola belirlediyse ilk iş şifre yenileme: güvenlik sayfasına
+  // yönlendir; diğer hesap eylemleri sunucuda zaten kilitli.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("must_change_password")
+    .eq("id", data.user.id)
+    .maybeSingle()
+  if ((profile as { must_change_password?: boolean } | null)?.must_change_password === true) {
+    return { ok: true, redirectTo: "/hesabim/guvenlik" }
+  }
+
   // Only same-origin paths are acceptable return targets.
   const safeNext = next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "/hesabim"
   return { ok: true, redirectTo: safeNext }
@@ -235,5 +246,7 @@ export async function customerUpdatePasswordAction(
   }
   // The grant is single-purpose: spend it once the password is set.
   cookieStore.set(RECOVERY_COOKIE, "", { path: "/sifre-yenile", maxAge: 0 })
+  // Kurtarma akışıyla şifre yenileyen müşteri bayrağı da kapatır.
+  await supabase.rpc("customer_complete_password_change")
   return { ok: true, message: "Şifreniz güncellendi." }
 }

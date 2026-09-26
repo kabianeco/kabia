@@ -38,7 +38,16 @@ import type { ActionState } from "@/lib/admin/errors"
 
 export async function changePasswordAction(_prev: ActionState, formData: FormData): Promise<AccountResult> {
   const deps = await baseDeps()
-  return changePassword(formObject(formData), { ...deps, updatePassword: updatePasswordWithProof })
+  return changePassword(formObject(formData), {
+    ...deps,
+    updatePassword: updatePasswordWithProof,
+    // Bayrak oturum istemcisiyle temizlenir (auth.uid = müşteri).
+    clearPasswordFlag: async () => {
+      const { error } = await deps.client.rpc("customer_complete_password_change")
+      if (error) console.error("[account] password flag clear failed:", error.code)
+      return !error
+    },
+  })
 }
 
 export async function changeEmailAction(_prev: ActionState, formData: FormData): Promise<AccountResult> {
