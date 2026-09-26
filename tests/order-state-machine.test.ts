@@ -133,3 +133,17 @@ describe("S9 — direct order-write whitelist mirror", () => {
     assert.equal(canDirectUpdateOrder([]), false)
   })
 })
+
+describe("S13 — strict matrix converged, override stays in the audited RPC", () => {
+  it("converge migration pins the strict edges and no trigger override", async () => {
+    const { readFileSync } = await import("node:fs")
+    const src = readFileSync(
+      "supabase/migrations/20260926000900_status_transition_converge.sql",
+      "utf8",
+    )
+    assert.match(src, /hazirlaniyor' and new\.status in \('kargoda', 'teslim_edildi', 'iptal_edildi'\)/)
+    assert.match(src, /kargoda' and new\.status in \('teslim_edildi', 'iptal_edildi'\)/)
+    assert.ok(!src.includes("is_super_admin"), "trigger must contain no override logic")
+    assert.ok(!src.includes("allow_order_write"), "converge changes no bypass flags")
+  })
+})
