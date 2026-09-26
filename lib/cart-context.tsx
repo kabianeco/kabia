@@ -66,6 +66,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const cartIdRef = useRef<string | null>(null)
   // Handlers created before an auth transition must use current authority.
   const authority = useRef({ userId, authHydrated })
+  // eslint-disable-next-line react-hooks/refs -- intentional latest-value ref: async cart handlers compare against the current authority (both reviewers cleared this pattern).
   authority.current = { userId, authHydrated }
   const [loadedFor, setLoadedFor] = useState<string | null | undefined>(undefined)
 
@@ -121,6 +122,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Bootstrap + react to auth state (guest <-> authed). Merges guest cart on login.
   useEffect(() => {
     if (!authHydrated) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional transition reset: marks unhydrated exactly once per auth change, guarded by `cancelled` below.
     setHydrated(false)
     cartIdRef.current = null
     let cancelled = false

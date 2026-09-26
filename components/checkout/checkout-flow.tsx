@@ -65,6 +65,7 @@ export function CheckoutFlow() {
   const total = subtotal + shippingCost;
 
   const currentItems = useRef(items);
+  // eslint-disable-next-line react-hooks/refs -- intentional latest-value ref: the async submit handler needs the cart at submit time, not at render time (both reviewers cleared this pattern).
   currentItems.current = items;
   const containsPreview = hasPreviewItems(items);
 

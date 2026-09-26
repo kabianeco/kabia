@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { pageMetadata } from "@/lib/seo"
 import { PageShell } from "@/components/layout/page-shell"
 import { process } from "@/content/homepage"
@@ -112,19 +113,19 @@ export default function BademPage() {
               Altı adımı okudun — yedincisi sofrada.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <a
+              <Link
                 href="/shop/kabuklu-badem"
                 className="inline-flex min-h-11 items-center rounded-full bg-brand px-7 text-sm font-medium text-on-brand transition-colors duration-300 hover:bg-forest"
               >
                 Kabuklu Badem — Mağazada gör →
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/magaza"
                 className="inline-flex min-h-11 items-center gap-2 text-sm text-ink/60 transition-colors duration-300 hover:text-ink"
               >
                 Mağaza
                 <span aria-hidden="true">→</span>
-              </a>
+              </Link>
             </div>
           </div>
         </div>

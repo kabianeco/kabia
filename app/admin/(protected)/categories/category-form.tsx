@@ -35,6 +35,7 @@ export function CategoryForm() {
 
   useEffect(() => {
     if (state.ok) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional post-submit reset: clears the form once, only after the server action reports success.
       setName("")
       setSlug("")
       setSlugTouched(false)

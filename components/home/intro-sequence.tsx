@@ -6,7 +6,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   motion,
@@ -172,13 +171,14 @@ function StageBackdrop({ active }: { active: boolean }) {
   );
 
   useEffect(() => {
-    if (document.readyState === "complete") {
-      setPageLoaded(true);
-      return;
-    }
-    const onLoad = () => setPageLoaded(true);
-    window.addEventListener("load", onLoad);
-    return () => window.removeEventListener("load", onLoad);
+    // Read inside a callback, not the effect body: the load event may fire
+    // between the lazy initializer above and this effect on a fast load.
+    const syncFromReadyState = () => {
+      if (document.readyState === "complete") setPageLoaded(true);
+    };
+    syncFromReadyState();
+    window.addEventListener("load", syncFromReadyState);
+    return () => window.removeEventListener("load", syncFromReadyState);
   }, []);
 
   useEffect(() => {

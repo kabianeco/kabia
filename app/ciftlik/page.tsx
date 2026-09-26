@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Image from "next/image";
 import { PageShell } from "@/components/layout/page-shell";
+import Link from "next/link";
 import { FarmTimeline } from "@/components/farm/farm-timeline";
 import { FaqList } from "@/components/faq/faq-list";
 import { emanetManifesto, farmCertificate, farmOpening, farmPrinciples } from "@/content/farm";
@@ -407,13 +408,13 @@ export default function FarmPage() {
           <p className="mx-auto mt-6 max-w-xl font-theme-display text-2xl italic leading-snug md:text-4xl">
             Bu toprağın hasadını tat.
           </p>
-          <a
+          <Link
             href="/magaza"
             className="mt-8 inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-7 text-sm font-medium text-on-brand transition-colors duration-300 hover:bg-forest"
           >
             Mağaza
             <span aria-hidden="true">→</span>
-          </a>
+          </Link>
         </div>
       </section>
     </PageShell>

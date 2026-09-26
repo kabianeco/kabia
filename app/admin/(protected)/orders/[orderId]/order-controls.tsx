@@ -9,7 +9,7 @@ import {
   overrideOrderStatusAction,
 } from "../actions"
 import { ACTION_IDLE } from "@/lib/admin/errors"
-import { ORDER_STATUSES, ORDER_TRANSITIONS, canTransition } from "@/lib/admin/orders"
+import { ORDER_STATUSES, ORDER_TRANSITIONS } from "@/lib/admin/orders"
 import {
   ORDER_STATUS_LABELS,
   type OrderStatusValue,
@@ -54,6 +54,7 @@ export function OrderStatusControls({
   }, [state.ok, router])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional prop sync: the selection resets when the order's status changes underneath (e.g. another admin acted).
     setSelected(status)
   }, [status])
 
