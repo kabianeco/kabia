@@ -109,6 +109,8 @@ export type RateLimitBucket =
   | "code_verification"
   | "contact_notify"
   | "review_submit"
+  | "account_reauth"
+  | "account_update"
 
 interface WindowPolicy {
   secs: number
@@ -180,6 +182,24 @@ const POLICIES: Record<RateLimitBucket, BucketPolicy> = {
     identifierSustained: { secs: 86400, max: 5 },
     combinedBurst: { secs: 3600, max: 5 },
   },
+  // Signed-in sensitive actions that re-check the current password: password
+  // and e-mail change, sign-out everywhere, data export, account deletion.
+  // Keyed on the account id, so guessing a password here is as slow as login.
+  account_reauth: {
+    ipBurst: { secs: 300, max: 10 },
+    ipSustained: { secs: 3600, max: 30 },
+    identifierBurst: { secs: 300, max: 5 },
+    identifierSustained: { secs: 3600, max: 15 },
+    combinedBurst: { secs: 300, max: 8 },
+  },
+  // Ordinary signed-in writes (profile, notification consent).
+  account_update: {
+    ipBurst: { secs: 300, max: 30 },
+    ipSustained: { secs: 3600, max: 120 },
+    identifierBurst: { secs: 300, max: 20 },
+    identifierSustained: { secs: 3600, max: 60 },
+    combinedBurst: { secs: 300, max: 20 },
+  },
 }
 
 export interface RateLimitResult {
@@ -206,6 +226,10 @@ const LIMITER_ERROR_POLICY: Record<RateLimitBucket, "closed" | "open"> = {
   code_verification: "open",
   contact_notify: "open",
   review_submit: "open",
+  // Password re-checks guard destructive actions: an unavailable limiter must
+  // not turn this into an unthrottled password oracle.
+  account_reauth: "closed",
+  account_update: "open",
 }
 
 export function limiterErrorResult(bucket: RateLimitBucket): RateLimitResult {
@@ -297,5 +321,4 @@ export async function checkRateLimit(
   return combineRateLimitResults(results)
 }
 
-/** Generic Turkish rate-limit message that does not reveal which limiter was hit. */
-export const RATE_LIMIT_MESSAGE = "Çok fazla deneme yaptınız. Lütfen daha sonra tekrar deneyin."
+export { RATE_LIMIT_MESSAGE } from "@/lib/auth/rate-limit-message"

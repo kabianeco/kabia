@@ -90,6 +90,12 @@ export const routes = {
   account: "/hesabim",
   accountOrders: "/hesabim/siparislerim",
   accountProfile: "/hesabim/bilgilerim",
+  accountSecurity: "/hesabim/guvenlik",
+  accountDelete: "/hesabim/guvenlik/hesabi-sil",
+  accountDeleted: "/hesap-silindi",
+  confirmationPending: "/eposta-onay-bekleniyor",
+  verificationCode: "/dogrulama-kodu",
+  forgotPassword: "/sifremi-unuttum",
   // Yasal / sözleşme sayfaları
   distanceSalesAgreement: "/mesafeli-satis-sozlesmesi",
   preliminaryInfo: "/on-bilgilendirme-formu",
@@ -158,3 +164,28 @@ export const mailto = (subject?: string) =>
   subject
     ? `mailto:${site.email}?subject=${encodeURIComponent(subject)}`
     : `mailto:${site.email}`;
+
+/**
+ * Sign-in, registration, e-mail/password status pages and the account area.
+ * These screens are forms end to end, so the floating WhatsApp control and
+ * toasts are placed so they never cover a field or a button here (see
+ * WhatsAppFloat and SiteToaster). Every other route is left exactly as it is.
+ */
+const ACCOUNT_SURFACE_PATHS = [
+  routes.login,
+  routes.register,
+  routes.confirmationPending,
+  routes.verificationCode,
+  routes.forgotPassword,
+  "/sifre-yenile",
+  "/eposta-onaylandi",
+  "/eposta-degisikligi-onaylandi",
+  "/baglanti-gecersiz",
+  routes.accountDeleted,
+] as const
+
+export function isAccountSurface(pathname: string | null | undefined): boolean {
+  if (!pathname) return false
+  if (pathname === routes.account || pathname.startsWith(`${routes.account}/`)) return true
+  return (ACCOUNT_SURFACE_PATHS as readonly string[]).includes(pathname)
+}

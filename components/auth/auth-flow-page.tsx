@@ -2,7 +2,8 @@ import type { ReactNode } from "react"
 import { PageShell } from "@/components/layout/page-shell"
 import { AuthShell } from "@/components/auth/auth-shell"
 
-export function AuthFlowPage({ title, lead, children }: { title: string; lead: string; children: ReactNode }) {
+/** A form step in the auth flows: short heading, one line, then the form. */
+export function AuthFlowPage({ title, lead, children }: { title: ReactNode; lead?: ReactNode; children: ReactNode }) {
   return (
     <PageShell>
       <AuthShell
@@ -17,3 +18,5 @@ export function AuthFlowPage({ title, lead, children }: { title: string; lead: s
     </PageShell>
   )
 }
+
+export { Accent } from "@/components/auth/accent"

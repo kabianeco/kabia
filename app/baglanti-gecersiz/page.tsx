@@ -1,15 +1,27 @@
 import type { Metadata } from "next"
-import { AuthFlowPage } from "@/components/auth/auth-flow-page"
-import { ButtonLink } from "@/components/ui/button"
+import { Accent } from "@/components/auth/accent"
+import { StatusScreen } from "@/components/auth/status-screen"
+import { routes } from "@/lib/site"
 
 export const metadata: Metadata = { title: "Bağlantı geçersiz", robots: { index: false } }
 
+/** Never claims why a link failed; offers the one next step for that flow. */
+const FLOWS = {
+  signup: { lead: "Kodla doğrulayabilir ya da yeni bir kod isteyebilirsiniz.", action: { href: routes.verificationCode, label: "Kodla doğrula" } },
+  recovery: { lead: "Yeni bir şifre yenileme bağlantısı isteyin.", action: { href: routes.forgotPassword, label: "Yeni bağlantı iste" } },
+  change: { lead: "E-posta değişikliğini güvenlik ayarlarından yeniden başlatabilirsiniz.", action: { href: routes.accountSecurity, label: "Güvenlik ayarlarına git" } },
+} as const
+
 export default async function InvalidLinkPage({ searchParams }: { searchParams: Promise<{ flow?: string }> }) {
   const { flow } = await searchParams
-  const isRecovery = flow === "recovery"
-  const href = isRecovery ? "/sifremi-unuttum" : flow === "signup" ? "/eposta-onay-bekleniyor" : "/hesabim/bilgilerim"
-  const label = isRecovery ? "Yeni bağlantı iste" : flow === "signup" ? "Doğrulama e-postasını yeniden gönder" : "Bilgilerime git"
-  return <AuthFlowPage title="Bağlantı geçersiz" lead="Bu bağlantının süresi dolmuş, bağlantı kullanılmış veya adres eksik olabilir. Yeniden deneyebilirsiniz.">
-    <ButtonLink href={href} size="lg">{label}</ButtonLink>
-  </AuthFlowPage>
+  const content = flow === "signup" || flow === "recovery" ? FLOWS[flow] : FLOWS.change
+  return (
+    <StatusScreen
+      tone="error"
+      eyebrow="Hesap · Bağlantı geçersiz"
+      title={<>Bu bağlantı <Accent>kullanılamıyor</Accent>.</>}
+      lead={`Süresi dolmuş ya da daha önce kullanılmış olabilir. ${content.lead}`}
+      action={content.action}
+    />
+  )
 }

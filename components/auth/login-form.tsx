@@ -1,17 +1,17 @@
 "use client";
 
-import type React from "react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Checkbox, TextField } from "@/components/ui/field";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { TextField } from "@/components/ui/field";
+import { PasswordField } from "@/components/auth/password-field";
 import { routes } from "@/lib/site";
 import { ACTION_IDLE, type ActionState } from "@/lib/admin/errors";
 import { customerLoginAction } from "@/app/auth/actions";
-import { PENDING_EMAIL_KEY } from "@/components/auth/confirmation-pending";
+import { writePendingEmail } from "@/lib/auth/pending";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Only same-origin paths may be used as a post-login destination. */
 function safeNext(next: string | null): string {
@@ -21,44 +21,60 @@ function safeNext(next: string | null): string {
   return next;
 }
 
+type LoginState = ActionState & { needsEmailConfirm?: boolean; redirectTo?: string };
+
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNext(searchParams.get("next"));
+  const signedOutEverywhere = searchParams.get("cikis") === "tum";
 
   const [email, setEmail] = useState("");
-  const submittedEmail = useRef("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(true);
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const submittedEmail = useRef("");
+  const form = useRef<HTMLFormElement>(null);
 
-  // SEC-05: password-based login now goes through a server action with
-  // distributed rate limiting. OAuth stays on the browser client.
-  const [loginState, loginAction] = useActionState(customerLoginAction, ACTION_IDLE);
+  // SEC-05: password login goes through the rate-limited server action.
+  const [state, action, pending] = useActionState(customerLoginAction, ACTION_IDLE);
+  const result = state as LoginState;
 
   useEffect(() => {
-    if (!loginState || loginState === ACTION_IDLE) return;
-    const state = loginState as ActionState & { needsEmailConfirm?: boolean; redirectTo?: string };
-    if (state.ok && state.redirectTo) {
-      router.push(state.redirectTo);
-    } else if (state.needsEmailConfirm) {
-      sessionStorage.setItem(PENDING_EMAIL_KEY, submittedEmail.current);
-    } else if (!state.ok && state.message) {
-      toast.error(state.message);
-    }
-  }, [loginState, router]);
+    if (result === ACTION_IDLE) return;
+    if (result.ok && result.redirectTo) router.push(result.redirectTo);
+    else if (result.needsEmailConfirm) writePendingEmail(submittedEmail.current);
+  }, [result, router]);
 
-  const handleSocialLogin = async (provider: "google" | "apple") => {
-    const supabase = await getSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}${next}` },
-    });
-    if (error) toast.error("Bu yöntemle giriş yapılamadı.");
+  const serverError = result !== ACTION_IDLE && !result.ok && !result.needsEmailConfirm ? result.message : undefined;
+
+  const validate = () => {
+    const found: typeof errors = {};
+    if (!EMAIL_RE.test(email.trim())) found.email = "Geçerli bir e-posta adresi girin.";
+    if (!password) found.password = "Şifrenizi girin.";
+    setErrors(found);
+    const first = found.email ? "email" : found.password ? "password" : null;
+    if (first) form.current?.querySelector<HTMLInputElement>(`[name="${first}"]`)?.focus();
+    return !first;
   };
 
   return (
     <>
-      <form action={loginAction} onSubmit={() => { submittedEmail.current = email.trim() }} noValidate className="space-y-7">
+      {signedOutEverywhere && (
+        <p role="status" className="mb-10 text-sm text-ink/65">
+          Tüm cihazlardan çıkış yapıldı. Yeniden giriş yapabilirsiniz.
+        </p>
+      )}
+
+      <form
+        ref={form}
+        action={action}
+        onSubmit={(event) => {
+          if (!validate()) event.preventDefault();
+          else submittedEmail.current = email.trim();
+        }}
+        noValidate
+        className="space-y-7"
+      >
         <input type="hidden" name="next" value={next} />
         <TextField
           label="E-posta"
@@ -68,64 +84,44 @@ export function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="ornek@eposta.com"
           autoComplete="email"
+          error={errors.email}
           className="auth-field"
           required
         />
-        <TextField
+        <PasswordField
           label="Şifre"
-          type="password"
           name="password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onValueChange={setPassword}
           placeholder="••••••••"
           autoComplete="current-password"
-          className="auth-field"
+          error={errors.password ?? serverError}
           required
         />
 
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <Checkbox
-            label="Beni hatırla"
-            checked={remember}
-            onChange={(e) => setRemember(e.target.checked)}
-          />
-          <Link href="/sifremi-unuttum" className="inline-flex min-h-11 items-center text-sm text-brand transition-colors hover:text-forest">
+        <div className="flex justify-end">
+          <Link href={routes.forgotPassword} className="inline-flex min-h-11 items-center text-sm text-brand transition-colors duration-300 hover:text-forest">
             Şifremi unuttum
           </Link>
         </div>
 
-        <Button type="submit" size="lg" className="w-full">
-          Giriş yap
+        <Button type="submit" size="lg" className="w-full" disabled={pending}>
+          {pending ? "Giriş yapılıyor…" : <>Giriş yap <span aria-hidden="true">→</span></>}
         </Button>
+
+        {result.needsEmailConfirm && (
+          <p role="alert" className="text-sm text-ink/65">
+            E-postanızı henüz doğrulamadınız.{" "}
+            <Link href={routes.verificationCode} className="text-brand transition-colors duration-300 hover:text-forest">
+              Kodla doğrulayın
+            </Link>
+          </p>
+        )}
       </form>
 
-      {(loginState as ActionState & { needsEmailConfirm?: boolean }).needsEmailConfirm && (
-        <p role="alert" className="mt-6 text-sm text-ink/65">
-          E-postanızı doğrulamanız gerekiyor. <Link href="/eposta-onay-bekleniyor" className="text-brand hover:text-forest">Doğrulama e-postasını yeniden gönderin.</Link>
-        </p>
-      )}
-
-      <div className="mt-10 flex items-center gap-4">
-        <span className="h-px flex-1 bg-ink/10" />
-        <span className="label text-olive">veya</span>
-        <span className="h-px flex-1 bg-ink/10" />
-      </div>
-
-      <div className="mt-6 grid grid-cols-2 gap-3">
-        <Button variant="outline" onClick={() => handleSocialLogin("google")}>
-          Google
-        </Button>
-        <Button variant="outline" onClick={() => handleSocialLogin("apple")}>
-          Apple
-        </Button>
-      </div>
-
-      <p className="mt-10 text-sm text-ink/60">
+      <p className="mt-10 border-t border-ink/10 pt-8 text-sm text-ink/60">
         Hesabınız yok mu?{" "}
-        <Link
-          href={routes.register}
-          className="text-brand transition-colors hover:text-forest"
-        >
+        <Link href={routes.register} className="text-brand transition-colors duration-300 hover:text-forest">
           Kayıt olun
         </Link>
       </p>

@@ -8,6 +8,8 @@ import type { ActionState } from "@/lib/admin/errors"
 import { checkRateLimit, getClientIp, RATE_LIMIT_MESSAGE } from "@/lib/auth/rate-limit"
 import { validateSignupCode } from "@/lib/auth/customer-confirm"
 import { RECOVERY_COOKIE, verifyRecoveryGrant } from "@/lib/auth/recovery-grant"
+import { newPasswordField } from "@/lib/auth/password-policy"
+import { parseRegistration, type RegistrationFieldErrors } from "@/lib/auth/registration"
 
 /**
  * SEC-05: Customer authentication server actions.
@@ -30,23 +32,13 @@ const loginSchema = z.object({
   next: z.string().trim().max(200).optional(),
 })
 
-const registerSchema = z.object({
-  name: z.string().trim().min(2, "Ad soyad girin.").max(120),
-  email: z.string().trim().toLowerCase().email("Geçerli bir e-posta adresi girin.").max(254),
-  phone: z.string().trim().max(20),
-  password: z.string().min(6, "Şifre en az 6 karakter olmalı.").max(200),
-})
-
 const resetSchema = z.object({
   email: z.string().trim().toLowerCase().email("Geçerli bir e-posta adresi girin.").max(254),
 })
 
-const newPasswordSchema = z.object({
-  password: z.string().min(6, "Şifre en az 6 karakter olmalı.").max(200),
-  passwordRepeat: z.string(),
-}).refine(({ password, passwordRepeat }) => password === passwordRepeat, {
-  message: "Şifreler eşleşmiyor.",
-})
+// One field with show/hide replaces the old "repeat" field; the rule is the
+// shared 8-character policy (lib/auth/password-policy.ts).
+const newPasswordSchema = z.object({ password: newPasswordField })
 
 const GENERIC_SENT_MESSAGE = "Bu adres için bir hesap varsa e-posta gönderdik. Gelen kutunuzu kontrol edin."
 const GENERIC_CODE_ERROR = "Kod doğrulanamadı. Bilgileri kontrol edip tekrar deneyin."
@@ -104,33 +96,41 @@ export async function customerLoginAction(
 export async function customerRegisterAction(
   _prev: ActionState,
   formData: FormData,
-): Promise<ActionState & { needsEmailConfirm?: boolean }> {
-  const parsed = registerSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    phone: formData.get("phone"),
-    password: formData.get("password"),
+): Promise<ActionState & { needsEmailConfirm?: boolean; fields?: RegistrationFieldErrors }> {
+  const value = (key: string) => {
+    const v = formData.get(key)
+    return typeof v === "string" ? v : undefined
+  }
+  // Terms and KVKK are required here on the server, not only in the browser.
+  const parsed = parseRegistration({
+    name: value("name"),
+    email: value("email"),
+    phone: value("phone"),
+    password: value("password"),
+    terms: value("terms"),
+    kvkk: value("kvkk"),
+    marketing: value("marketing"),
   })
 
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Geçersiz bilgiler." }
+  if (!parsed.ok) {
+    return { ok: false, message: "Lütfen işaretli alanları düzeltin.", fields: parsed.fieldErrors }
   }
-
-  const { name, email, phone, password } = parsed.data
 
   // SEC-05: Rate-limit registration.
   const h = await headers()
   const ip = getClientIp(h)
-  const rl = await checkRateLimit("registration", ip, email)
+  const rl = await checkRateLimit("registration", ip, parsed.email)
   if (!rl.allowed) {
     return { ok: false, message: RATE_LIMIT_MESSAGE }
   }
 
   const supabase = await createSupabaseServerClient()
+  // handle_new_user() records metadata.consents in public.customer_consents
+  // and starts campaign e-mail from the marketing choice.
   const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: name, phone } },
+    email: parsed.email,
+    password: parsed.password,
+    options: { data: parsed.metadata },
   })
 
   if (error) {
@@ -209,7 +209,7 @@ export async function customerVerifyCodeAction(
 export async function customerUpdatePasswordAction(
   _prev: ActionState,
   formData: FormData,
-): Promise<ActionState & { redirectTo?: string }> {
+): Promise<ActionState> {
   const supabase = await createSupabaseServerClient()
   const { data: { user }, error } = await supabase.auth.getUser()
   const cookieStore = await cookies()
@@ -219,12 +219,21 @@ export async function customerUpdatePasswordAction(
   const h = await headers()
   const rl = await checkRateLimit("password_reset", getClientIp(h), user.id)
   if (!rl.allowed) return { ok: false, message: RATE_LIMIT_MESSAGE }
-  const parsed = newPasswordSchema.safeParse({
-    password: formData.get("password"),
-    passwordRepeat: formData.get("passwordRepeat"),
-  })
-  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Şifre güncellenemedi." }
+  const parsed = newPasswordSchema.safeParse({ password: formData.get("password") })
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? "Şifre güncellenemedi."
+    return { ok: false, message, fieldErrors: { password: message } }
+  }
   const { error: updateError } = await supabase.auth.updateUser({ password: parsed.data.password })
-  if (updateError) return { ok: false, message: "Şifre güncellenemedi. Lütfen tekrar deneyin." }
-  return { ok: true, message: "Şifreniz güncellendi.", redirectTo: "/hesabim/bilgilerim" }
+  if (updateError) {
+    const message = updateError.code === "same_password"
+      ? "Yeni şifre eskisinden farklı olmalı."
+      : updateError.code === "weak_password"
+        ? "Bu şifre kabul edilmedi. Daha uzun ya da daha az bilinen bir şifre seçin."
+        : "Şifre güncellenemedi. Lütfen tekrar deneyin."
+    return { ok: false, message, fieldErrors: { password: message } }
+  }
+  // The grant is single-purpose: spend it once the password is set.
+  cookieStore.set(RECOVERY_COOKIE, "", { path: "/sifre-yenile", maxAge: 0 })
+  return { ok: true, message: "Şifreniz güncellendi." }
 }

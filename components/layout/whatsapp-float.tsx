@@ -1,10 +1,20 @@
-import { whatsappHref } from "@/lib/site";
+"use client";
+
+import { usePathname } from "next/navigation";
+import { isAccountSurface, whatsappHref } from "@/lib/site";
 
 /**
  * Her sayfada sağ altta duran WhatsApp hattı. Yeşil daire + ahize,
- * hazır mesajla açılır; JavaScript gerektirmez, saf hizada bir linktir.
+ * hazır mesajla açılır; saf hizada bir linktir.
+ *
+ * Giriş, kayıt, e-posta/şifre adımları ve hesap sayfaları baştan sona
+ * formdur: dar ekranda sabit bir düğme alan ve butonların üstüne biner. Bu
+ * rotalarda yalnızca içeriğin yanında boş kenar kalan geniş ekranlarda (xl)
+ * gösterilir; WhatsApp bağlantısı alt bilgide her zaman durur. Diğer bütün
+ * sayfalarda davranış aynıdır.
  */
 export function WhatsAppFloat() {
+  const accountSurface = isAccountSurface(usePathname());
   return (
     <a
       href={whatsappHref()}
@@ -13,7 +23,7 @@ export function WhatsAppFloat() {
       aria-label="WhatsApp'tan yazın"
       title="WhatsApp'tan yazın"
       style={{ backgroundColor: "#25d366" }}
-      className="fixed bottom-5 right-5 z-40 grid h-14 w-14 place-items-center rounded-full text-white shadow-lg transition-transform duration-300 hover:scale-105"
+      className={`fixed bottom-5 right-5 z-40 ${accountSurface ? "hidden xl:grid" : "grid"} h-14 w-14 place-items-center rounded-full text-white shadow-lg transition-transform duration-300 hover:scale-105`}
     >
       <svg
         viewBox="0 0 24 24"

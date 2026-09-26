@@ -1,4 +1,5 @@
 import type { EmailOtpType } from "@supabase/supabase-js"
+import { isValidCode } from "@/lib/auth/code"
 
 const destinations = {
   email: "/eposta-onaylandi",
@@ -44,9 +45,9 @@ export async function confirmLink(url: URL, client: VerificationClient): Promise
   return parsed.next
 }
 
-/** Signup email code is always six digits; never normalize the code itself. */
+/** Signup email code is exactly CODE_LENGTH digits; never normalize the code itself. */
 export function validateSignupCode(emailValue: string, token: string): { email: string; token: string } | null {
   const email = emailValue.trim().toLowerCase()
-  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^[0-9]{6}$/.test(token)) return null
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !isValidCode(token)) return null
   return { email, token }
 }

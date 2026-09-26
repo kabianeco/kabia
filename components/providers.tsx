@@ -11,6 +11,7 @@ import { CheckoutProvider } from "@/lib/checkout-context";
 import { OrdersProvider } from "@/lib/orders-context";
 import { FavoritesProvider } from "@/lib/favorites-context";
 import { CardsProvider } from "@/lib/cards-context";
+import { isAccountSurface } from "@/lib/site";
 
 /**
  * The application's single provider stack, mounted once in the root layout.
@@ -68,11 +69,17 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 }
 
-/** Sonner, dressed in the site's palette. Shared by both branches above. */
+/**
+ * Sonner, dressed in the site's palette. Shared by both branches above.
+ * On sign-in and account screens, where the WhatsApp control shows only on
+ * wide screens, desktop toasts sit above it instead of on top of it.
+ */
 function SiteToaster() {
+  const accountSurface = isAccountSurface(usePathname());
   return (
     <Toaster
       position="bottom-right"
+      {...(accountSurface ? { offset: { bottom: 96 } } : {})}
       toastOptions={{
         style: {
           background: "var(--color-ivory)",

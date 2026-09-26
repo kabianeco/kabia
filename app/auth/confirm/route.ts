@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { checkRateLimit, getClientIp } from "@/lib/auth/rate-limit"
 import { confirmLink, invalidLinkPath, parseConfirmation } from "@/lib/auth/customer-confirm"
 import { issueRecoveryGrant, RECOVERY_COOKIE } from "@/lib/auth/recovery-grant"
+import { FLOW_COOKIES, flowCookieOptions, issueFlowMarker } from "@/lib/auth/flow-marker"
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl
@@ -16,6 +17,11 @@ export async function GET(request: NextRequest) {
       try {
         const supabase = await createSupabaseServerClient()
         destination = await confirmLink(url, supabase)
+        if (destination === "/eposta-degisikligi-onaylandi") {
+          // The status page shows only right after a verified change link.
+          const cookieStore = await cookies()
+          cookieStore.set(FLOW_COOKIES.email_change.name, issueFlowMarker("email_change", "link"), flowCookieOptions("email_change"))
+        }
         if (destination === "/sifre-yenile") {
           const { data: { user }, error } = await supabase.auth.getUser()
           if (error || !user) {

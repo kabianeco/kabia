@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
  */
 export function AuthShell({
   eyebrow,
+  eyebrowTone = "text-olive",
   title,
   lead,
   image,
@@ -16,8 +17,10 @@ export function AuthShell({
   footer,
 }: {
   eyebrow: string;
+  /** Status screens tint the eyebrow; everything else keeps olive. */
+  eyebrowTone?: "text-olive" | "text-brand" | "text-clay";
   title: ReactNode;
-  lead?: string;
+  lead?: ReactNode;
   image: string;
   imageCaption: string;
   children: ReactNode;
@@ -27,7 +30,7 @@ export function AuthShell({
     <div className="wrap page-top pb-24 md:pb-32">
       <div className="grid gap-14 lg:grid-cols-12 lg:gap-20">
         <div className="lg:col-span-5">
-          <p className="label text-olive">{eyebrow}</p>
+          <p className={`label ${eyebrowTone}`}>{eyebrow}</p>
           <h1 className="mt-6 text-4xl leading-[1.08] tracking-tight md:text-5xl">
             {title}
           </h1>

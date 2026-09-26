@@ -1,25 +1,61 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useState } from "react"
 import { customerUpdatePasswordAction } from "@/app/auth/actions"
 import { ACTION_IDLE } from "@/lib/admin/errors"
-import type { ActionState } from "@/lib/admin/errors"
-import { Button } from "@/components/ui/button"
-import { TextField } from "@/components/ui/field"
-import { TimedRedirect } from "@/components/auth/timed-redirect"
+import { Button, ButtonLink } from "@/components/ui/button"
+import { PasswordField } from "@/components/auth/password-field"
+import { PASSWORD_MIN_LENGTH, PASSWORD_TOO_SHORT } from "@/lib/auth/password-policy"
+import { routes } from "@/lib/site"
 
+/** One password field with show/hide; success replaces the form in place. */
 export function NewPasswordForm() {
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState<string>()
   const [state, action, pending] = useActionState(customerUpdatePasswordAction, ACTION_IDLE)
-  const result = state as ActionState & { redirectTo?: string }
-  if (result.ok && result.redirectTo) {
-    return <div className="space-y-7"><p role="status" className="text-sm text-ink/65">Şifreniz güncellendi.</p><TimedRedirect href={result.redirectTo} label="Hesabıma git" /></div>
+
+  if (state !== ACTION_IDLE && state.ok) {
+    return (
+      <div className="space-y-8">
+        <p role="status" className="text-base leading-relaxed text-ink/65">
+          Şifreniz güncellendi. Bundan sonra yeni şifrenizle giriş yapın.
+        </p>
+        <ButtonLink href={routes.account} size="lg" className="w-full">
+          Hesabıma git <span aria-hidden="true">→</span>
+        </ButtonLink>
+      </div>
+    )
   }
+
+  const serverError = state !== ACTION_IDLE && !state.ok ? state.fieldErrors?.password ?? state.message : undefined
+
   return (
-    <form action={action} className="space-y-7">
-      <TextField label="Yeni şifre" type="password" name="password" hint="En az 6 karakter" minLength={6} maxLength={200} autoComplete="new-password" className="auth-field" required />
-      <TextField label="Yeni şifre tekrar" type="password" name="passwordRepeat" minLength={6} maxLength={200} autoComplete="new-password" className="auth-field" required />
-      {state !== ACTION_IDLE && !state.ok && <p role="alert" className="text-sm text-clay">{state.message}</p>}
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>{pending ? "Güncelleniyor…" : "Şifreyi güncelle"}</Button>
+    <form
+      action={action}
+      noValidate
+      onSubmit={(event) => {
+        if (password.length < PASSWORD_MIN_LENGTH) {
+          event.preventDefault()
+          setError(PASSWORD_TOO_SHORT)
+        } else {
+          setError(undefined)
+        }
+      }}
+      className="space-y-8"
+    >
+      <PasswordField
+        label="Yeni şifre"
+        name="password"
+        value={password}
+        onValueChange={setPassword}
+        autoComplete="new-password"
+        error={error ?? serverError}
+        strength
+        required
+      />
+      <Button type="submit" size="lg" className="w-full" disabled={pending}>
+        {pending ? "Kaydediliyor…" : <>Şifreyi kaydet <span aria-hidden="true">→</span></>}
+      </Button>
     </form>
   )
 }
