@@ -10,11 +10,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin"
  * service-role client, which is server-only (import "server-only" above).
  *
  * Identifiers (email) and IP addresses are NEVER stored raw. They are
- * SHA-256 hashed with a server-side salt before being sent to the database.
- *
- * The salt is derived from SUPABASE_SERVICE_ROLE_KEY (which is already
- * server-only and never exposed to the browser) so no additional secret
- * management is required.
+ * SHA-256 hashed with a dedicated RATE_LIMIT_SALT before being sent to the
+ * database. The salt fails closed in production when unset.
  */
 
 // ---------------------------------------------------------------------------
@@ -22,30 +19,33 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 // ---------------------------------------------------------------------------
 
 /**
- * Derives the client IP from trusted Vercel forwarding headers.
+ * Derives the client IP from the platform-guaranteed header only.
  *
- * Vercel sets `x-forwarded-for` to the originating client IP followed by
- * intermediary proxies. We take the first entry (the original client).
+ * On Vercel, `x-vercel-forwarded-for` is set by the platform to the
+ * originating client IP; unlike `x-forwarded-for` it cannot be spoofed by
+ * the caller, so no other header is consulted. We take the first entry.
  * In development, we fall back to 127.0.0.1.
  *
- * This is the ONLY place client address derivation happens; all auth flows
- * must use this function so the behavior is consistent.
+ * When no header is present outside development, every such client shares
+ * the "unknown" sentinel: one crowded bucket that trips quickly, which is
+ * the strict direction for abuse (at the cost of shared fate for legitimate
+ * header-less traffic — header-less production traffic should not exist).
+ *
+ * This is the ONLY place client address derivation happens; all flows that
+ * rate-limit by IP must use this function so the behavior is consistent.
  */
 export function getClientIp(headers: Headers): string {
-  // In production, Vercel guarantees x-forwarded-for is the originating client.
-  // We take the first IP only; we do NOT trust any other header.
-  const xff = headers.get("x-forwarded-for")
-  if (xff) {
-    const first = xff.split(",")[0]?.trim()
+  const vxff = headers.get("x-vercel-forwarded-for")
+  if (vxff) {
+    const first = vxff.split(",")[0]?.trim()
     if (first) return normalizeIp(first)
   }
 
-  // In local development or non-Vercel hosting, fall back.
   if (process.env.NODE_ENV === "development") {
     return "127.0.0.1"
   }
 
-  return "0.0.0.0"
+  return "unknown"
 }
 
 /** Normalizes an IP address for consistent hashing. */
@@ -71,12 +71,18 @@ export function normalizeIdentifier(identifier: string): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Derives the salt from the service role key. This is already server-only and
- * never exposed to the browser. Using it as the salt means the rate-limit
- * hashes are useless without the key, which is already a secret.
+ * Dedicated salt for rate-limit key hashing. Fails closed in production when
+ * unset (the limiter throws instead of hashing with a public constant); in
+ * non-production a clearly-marked insecure constant keeps local dev working.
+ * Listed in .env.example — the owner must add it to the deployment env.
  */
 function getSalt(): string {
-  return process.env.SUPABASE_SERVICE_ROLE_KEY ?? "dev-salt-fallback"
+  const salt = process.env.RATE_LIMIT_SALT?.trim()
+  if (salt) return salt
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("[rate-limit] RATE_LIMIT_SALT is not set")
+  }
+  return "dev-salt-insecure-do-not-use-in-production"
 }
 
 /**
@@ -94,7 +100,13 @@ export function hashKey(value: string): string {
 // Rate-limit policies
 // ---------------------------------------------------------------------------
 
-export type RateLimitBucket = "admin_login" | "customer_login" | "registration" | "password_reset"
+export type RateLimitBucket =
+  | "admin_login"
+  | "customer_login"
+  | "registration"
+  | "password_reset"
+  | "contact_notify"
+  | "review_submit"
 
 interface WindowPolicy {
   secs: number
@@ -138,11 +150,69 @@ const POLICIES: Record<RateLimitBucket, BucketPolicy> = {
     identifierSustained: { secs: 86400, max: 3 },
     combinedBurst: { secs: 3600, max: 3 },
   },
+  contact_notify: {
+    ipBurst: { secs: 900, max: 5 },         // 5 per 15 min per IP
+    ipSustained: { secs: 3600, max: 10 },   // 10 per hour per IP
+    identifierBurst: { secs: 900, max: 3 }, // 3 per 15 min per email
+    identifierSustained: { secs: 3600, max: 5 },
+    combinedBurst: { secs: 900, max: 5 },
+  },
+  review_submit: {
+    ipBurst: { secs: 3600, max: 5 },        // 5 per hour per IP
+    ipSustained: { secs: 86400, max: 10 },  // 10 per day per IP
+    identifierBurst: { secs: 3600, max: 3 },
+    identifierSustained: { secs: 86400, max: 5 },
+    combinedBurst: { secs: 3600, max: 5 },
+  },
 }
 
 export interface RateLimitResult {
   allowed: boolean
   retryAfter: number // seconds
+}
+
+/**
+ * What checkRateLimit returns when the limiter itself errors (DB down,
+ * mis-wired RPC, missing salt in production). Explicit per bucket, so a
+ * silent fail-open cannot recur unnoticed:
+ * - admin_login fails CLOSED (an unavailable limiter must not open the admin
+ *   gate; availability loss on this path is the safe direction).
+ * - Customer-facing buckets fail OPEN as a deliberate, logged availability
+ *   decision: blocking all sign-ins because the rate-limit table is down is
+ *   worse than allowing a temporary burst. GoTrue's own limits remain.
+ */
+const LIMITER_ERROR_POLICY: Record<RateLimitBucket, "closed" | "open"> = {
+  admin_login: "closed",
+  customer_login: "open",
+  registration: "open",
+  password_reset: "open",
+  contact_notify: "open",
+  review_submit: "open",
+}
+
+export function limiterErrorResult(bucket: RateLimitBucket): RateLimitResult {
+  if (LIMITER_ERROR_POLICY[bucket] === "closed") {
+    return { allowed: false, retryAfter: 60 }
+  }
+  return { allowed: true, retryAfter: 0 }
+}
+
+/**
+ * Pure aggregation: blocked if ANY dimension denies; retryAfter is the max
+ * across denied dimensions. Unit-tested database-free; checkRateLimit below
+ * must use it so over-limit semantics cannot silently change.
+ */
+export function combineRateLimitResults(
+  results: Array<{ allowed: boolean; retry_after?: number; retryAfter?: number }>,
+): RateLimitResult {
+  const blocked = results.filter((r) => !r.allowed)
+  if (blocked.length > 0) {
+    return {
+      allowed: false,
+      retryAfter: Math.max(...blocked.map((r) => r.retry_after ?? r.retryAfter ?? 0)),
+    }
+  }
+  return { allowed: true, retryAfter: 0 }
 }
 
 /**
@@ -196,26 +266,17 @@ export async function checkRateLimit(
         p_max_count: check.policy.max,
       })
       if (error) {
-        // If the limiter itself fails, we must fail-OPEN for availability:
-        // blocking all auth because the rate-limit DB is down is worse than
-        // allowing a temporary burst. Log the error server-side.
+        // Limiter failure: per-bucket explicit policy (fail closed for admin,
+        // fail open + server-side log for customer flows). See
+        // LIMITER_ERROR_POLICY — a silent blanket fail-open cannot recur.
         console.error("[rate-limit] consume failed:", error.message)
-        return { allowed: true, retryAfter: 0 }
+        return { allowed: limiterErrorResult(bucket).allowed, retry_after: limiterErrorResult(bucket).retryAfter }
       }
       return (data ?? { allowed: true, retry_after: 0 }) as { allowed: boolean; retry_after: number }
     }),
   )
 
-  // If any dimension is blocked, the request is blocked.
-  const blocked = results.filter((r) => !r.allowed)
-  if (blocked.length > 0) {
-    return {
-      allowed: false,
-      retryAfter: Math.max(...blocked.map((r) => (r as { retry_after: number }).retry_after ?? 0)),
-    }
-  }
-
-  return { allowed: true, retryAfter: 0 }
+  return combineRateLimitResults(results)
 }
 
 /** Generic Turkish rate-limit message that does not reveal which limiter was hit. */
