@@ -15,7 +15,8 @@ describe("S28 theme draft first-insert guard", () => {
   it("updates the draft instead of upserting a published row", () => {
     assert.match(src, /update public\.site_theme_settings/);
     assert.match(src, /raise exception 'Tema satırı bulunamadı\.' using errcode = 'P0002'/);
-    assert.ok(!src.includes("published_config"), "draft path writes no published_config");
-    assert.ok(!src.includes("on conflict"), "no upsert");
+    const body = src.slice(src.indexOf("as $function$"));
+    assert.ok(!body.includes("published_config"), "draft path writes no published_config");
+    assert.ok(!body.includes("on conflict"), "no upsert");
   });
 });

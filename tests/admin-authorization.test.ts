@@ -233,7 +233,7 @@ describe("product validation", () => {
     description: "Uzun açıklama",
     base_price: "100",
     original_price: "",
-    main_image_url: "https://example.com/a.jpg",
+    main_image_url: "https://picsum.photos/seed/kabia-test/400/400",
     is_active: true,
     is_featured: false,
     low_stock_threshold: "5",
