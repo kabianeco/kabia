@@ -209,7 +209,9 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const updateAddress = useCallback(
     async (id: string, patch: Omit<SavedAddress, "id">) => {
       if (userId) {
-        await supabase.from("addresses").update(toDbRow(patch, userId)).eq("id", id)
+        // S26: scope to the row AND its owner — RLS is the second boundary,
+        // not the only one.
+        await supabase.from("addresses").update(toDbRow(patch, userId)).eq("id", id).eq("user_id", userId)
         setAddresses((prev) => prev.map((a) => (a.id === id ? { ...patch, id } : a)))
       } else {
         setAddresses((prev) => prev.map((a) => (a.id === id ? { ...patch, id } : a)))
@@ -220,7 +222,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
   const removeAddress = useCallback(
     async (id: string) => {
-      if (userId) await supabase.from("addresses").delete().eq("id", id)
+      if (userId) await supabase.from("addresses").delete().eq("id", id).eq("user_id", userId)
       setAddresses((prev) => {
         const next = prev.filter((a) => a.id !== id)
         return next
@@ -233,8 +235,10 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const setDefaultAddress = useCallback(
     async (id: string) => {
       if (userId) {
-        await supabase.from("addresses").update({ is_default: false }).neq("id", id)
-        await supabase.from("addresses").update({ is_default: true }).eq("id", id)
+        // S26: the default-clear is owner-scoped — without user_id it would
+        // touch every row except this id.
+        await supabase.from("addresses").update({ is_default: false }).neq("id", id).eq("user_id", userId)
+        await supabase.from("addresses").update({ is_default: true }).eq("id", id).eq("user_id", userId)
       }
       setAddresses((prev) => prev.map((a) => ({ ...a, isDefault: a.id === id })))
     },

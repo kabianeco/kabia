@@ -43,7 +43,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           }
           localStorage.removeItem(STORAGE_KEY)
         }
-        const { data } = await supabase.from("favorites").select("product_id, products(slug)")
+        const { data } = await supabase.from("favorites").select("product_id, products(slug)").eq("user_id", userId)
         if (!cancelled) setFavoriteSlugs(
             ((data ?? []) as unknown as FavoriteRow[])
               .map((r) => r.products?.slug)
@@ -83,7 +83,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           if (!prod) return
           const isFav = favoriteSlugs.includes(slug)
           if (isFav) {
-            await supabase.from("favorites").delete().eq("product_id", prod.id)
+            // S26: owner-scoped delete — never by product alone.
+            await supabase.from("favorites").delete().eq("product_id", prod.id).eq("user_id", userId)
           } else {
             await supabase.from("favorites").upsert({ user_id: userId, product_id: prod.id }, { onConflict: "user_id,product_id" })
           }
