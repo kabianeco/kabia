@@ -215,6 +215,7 @@ export default async function OrderDetailPage({
               orderNumber={order.order_number}
               status={order.status}
               isSuperAdmin={session.role === "super_admin"}
+              hasTracking={Boolean(order.tracking_carrier || order.tracking_number)}
             />
           </Panel>
 

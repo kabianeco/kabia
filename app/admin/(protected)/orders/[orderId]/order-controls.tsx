@@ -41,15 +41,19 @@ export function OrderStatusControls({
   orderNumber,
   status,
   isSuperAdmin,
+  hasTracking,
 }: {
   orderId: string
   orderNumber: string
   status: OrderStatusValue
   isSuperAdmin: boolean
+  /** Siparişte kargo firması ya da takip numarası kayıtlı mı. */
+  hasTracking: boolean
 }) {
   const [state, formAction] = useActionState(updateOrderStatusAction, ACTION_IDLE)
   const router = useRouter()
   const [selected, setSelected] = useState<OrderStatusValue>(status)
+  const [trackingConfirmed, setTrackingConfirmed] = useState(false)
 
   useEffect(() => {
     if (state.ok) router.refresh()
@@ -63,6 +67,11 @@ export function OrderStatusControls({
   const validNext = ORDER_TRANSITIONS[status] ?? []
   const unchanged = selected === status
   const noTransitions = validNext.length === 0
+  // Kargo e-postası kargoda'ya geçişte bir kez gider; takip yoksa müşteri
+  // takipsiz bir e-posta alır ve sonrası güncellenmez. Geçişi engelleme,
+  // yalnızca onaylat.
+  const shippingWithoutTracking = selected === "kargoda" && !hasTracking && !unchanged
+  const needsTrackingConfirm = shippingWithoutTracking && !trackingConfirmed
 
   return (
     <div className="space-y-4">
@@ -74,7 +83,10 @@ export function OrderStatusControls({
           name="status"
           required
           value={selected}
-          onChange={(event) => setSelected(event.target.value as OrderStatusValue)}
+          onChange={(event) => {
+            setSelected(event.target.value as OrderStatusValue)
+            setTrackingConfirmed(false)
+          }}
         >
           <option value={status}>
             {ORDER_STATUS_LABELS[status]} (mevcut)
@@ -100,9 +112,31 @@ export function OrderStatusControls({
           hint="Opsiyonel. Sipariş geçmişine iç not olarak eklenir."
         />
 
+        {shippingWithoutTracking && (
+          <div className="rounded-[3px] border border-clay/30 bg-clay/5 p-3" role="alert">
+            <p className="text-sm font-medium text-clay">
+              Kargo bilgisi yok — e-posta takipsiz gidecek
+            </p>
+            <p className="mt-1 text-xs text-ink/60">
+              Bu siparişte kargo firması ya da takip numarası kayıtlı değil.
+              Durumu kargoda olarak güncellerseniz kargo e-postası bir kez,
+              takip bilgisi olmadan gönderilir ve sonradan güncellenmez.
+            </p>
+            <label className="mt-2 flex items-center gap-2 text-sm text-ink/70">
+              <input
+                type="checkbox"
+                checked={trackingConfirmed}
+                onChange={(e) => setTrackingConfirmed(e.target.checked)}
+                className="h-4 w-4 rounded border-ink/20"
+              />
+              Takipsiz göndereceğimi onaylıyorum.
+            </label>
+          </div>
+        )}
+
         <FormMessage state={state} />
 
-        <SubmitButton disabled={unchanged || noTransitions} pendingLabel="Güncelleniyor…">
+        <SubmitButton disabled={unchanged || noTransitions || needsTrackingConfirm} pendingLabel="Güncelleniyor…">
           Durumu güncelle
         </SubmitButton>
       </form>
