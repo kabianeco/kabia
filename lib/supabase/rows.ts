@@ -165,6 +165,8 @@ export interface OrderRow {
     postalCode: string;
   } | null;
   payment_method_snapshot: { label?: string } | null;
+  tracking_carrier: string | null;
+  tracking_number: string | null;
   order_items: OrderItemRow[] | null;
   order_status_history?: { status: string; changed_at: string }[] | null;
 }

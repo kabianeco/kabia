@@ -5,12 +5,15 @@
  * (`updateTrackingAction`) or moves the order to `kargoda`.
  *
  * Tracking link: pass `trackingUrl` explicitly when known. The
- * `carrierTrackingUrl` helper below intentionally returns null for every
- * carrier — no Turkish carrier URL pattern has been verified against the
- * carrier's own site, and a guessed pattern would send customers to a dead
- * page. Verify a pattern on the carrier's site first, then add it here.
+ * `carrierTrackingUrl` helper (lib/tracking.ts, re-exported here) returns a
+ * URL only for carriers whose GET deep-link format was verified on the
+ * carrier's own official site — unverified carriers get no link rather than
+ * a guessed one. Today the verified list is empty (see lib/tracking.ts).
  */
 import { buildEmail, escapeHtml, siteUrl, type EmailResult } from "./layout";
+
+/** Verified per-carrier tracking URL patterns live in lib/tracking.ts (none verified yet). */
+export { carrierTrackingUrl } from "@/lib/tracking";
 
 export interface OrderShippedInput {
   orderNumber: string;
@@ -18,14 +21,6 @@ export interface OrderShippedInput {
   trackingNumber?: string | null;
   /** Verified carrier tracking page URL, when one is known. */
   trackingUrl?: string | null;
-}
-
-/** Verified per-carrier tracking URL patterns. None verified yet. */
-export function carrierTrackingUrl(
-  _carrier: string | null | undefined,
-  _trackingNumber: string | null | undefined,
-): string | null {
-  return null;
 }
 
 const SANS =

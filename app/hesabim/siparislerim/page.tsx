@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useOrders } from "@/lib/orders-context";
 import { formatTL } from "@/lib/products";
 import { OrderStatusBadge } from "@/components/account/order-status";
+import { OrderTrackingLine } from "@/components/account/order-tracking";
 import { AccountEmpty, AccountError, AccountHeading, AccountLoading } from "@/components/account/account-states";
 import { routes } from "@/lib/site";
 
@@ -60,6 +61,7 @@ export default function OrdersListPage() {
                   <span className="mt-1 block text-xs text-ink/50">
                     {formatDate(order.date)} · {order.items.reduce((sum, i) => sum + i.quantity, 0)} ürün
                   </span>
+                  <OrderTrackingLine carrier={order.trackingCarrier} trackingNumber={order.trackingNumber} />
                 </span>
 
                 <span className="figure whitespace-nowrap text-base text-ink">{formatTL(order.total)}</span>

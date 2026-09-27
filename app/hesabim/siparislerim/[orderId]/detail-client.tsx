@@ -13,6 +13,7 @@ import {
   OrderStatusBadge,
   OrderStatusTimeline,
 } from "@/components/account/order-status";
+import { OrderTrackingSection } from "@/components/account/order-tracking";
 import { routes } from "@/lib/site";
 import { reorderMessage } from "@/lib/account/reorder";
 import { AccountError, AccountLoading } from "@/components/account/account-states";
@@ -134,6 +135,8 @@ export default function OrderDetailClient() {
       <div className="mt-12">
         <OrderStatusTimeline status={order.status} placedAt={order.date} history={order.history} />
       </div>
+
+      <OrderTrackingSection carrier={order.trackingCarrier} trackingNumber={order.trackingNumber} />
 
       <section aria-labelledby="order-items" className="mt-14">
         <h2 id="order-items" className="label text-olive">

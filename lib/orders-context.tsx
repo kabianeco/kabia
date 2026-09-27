@@ -42,6 +42,10 @@ export interface OrderRecord {
   email: string
   address: OrderAddress
   paymentLabel: string
+  /** Yöneticinin girdiği kargo firması (yoksa null). */
+  trackingCarrier: string | null
+  /** Yöneticinin girdiği takip numarası (yoksa null). */
+  trackingNumber: string | null
   /** Recorded status changes, oldest first (order_status_history). */
   history: { status: OrderStatus; at: string }[]
 }
@@ -81,6 +85,12 @@ function mapOrderItem(i: OrderItemRow): OrderItem {
 }
 
 function mapOrder(o: OrderRow): OrderRecord {
+  const carrier = typeof o.tracking_carrier === "string" && o.tracking_carrier.trim() !== ""
+    ? o.tracking_carrier.trim()
+    : null
+  const number = typeof o.tracking_number === "string" && o.tracking_number.trim() !== ""
+    ? o.tracking_number.trim()
+    : null
   return {
     id: o.order_number,
     date: o.created_at,
@@ -95,6 +105,8 @@ function mapOrder(o: OrderRow): OrderRecord {
       label: "", recipientName: "", phone: "", addressLine1: "", addressLine2: "", city: "", district: "", postalCode: "",
     },
     paymentLabel: o.payment_method_snapshot?.label ?? "",
+    trackingCarrier: carrier,
+    trackingNumber: number,
     history: (o.order_status_history ?? [])
       .map((h) => ({ status: mapStatus(h.status), at: h.changed_at }))
       .sort((a, b) => a.at.localeCompare(b.at)),
