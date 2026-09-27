@@ -488,3 +488,53 @@ describe("trigger wiring present", () => {
     )
   })
 })
+
+describe("single source of truth: confirmed Auth e-mail", () => {
+  it("create_order snapshots auth.users.email and never stores client p_email", () => {
+    const sql = readFileSync(
+      "supabase/migrations/20260927000700_create_order_auth_email_source.sql",
+      "utf8",
+    )
+    // Param kept for backward compat, but storage uses the snapshot.
+    assert.match(sql, /p_email text DEFAULT NULL/)
+    assert.match(sql, /select au\.email into v_email from auth\.users au where au\.id = v_uid/)
+    assert.match(sql, /p_full_name, v_email, true, true, true, now\(\)/)
+    assert.ok(!sql.includes("p_full_name, p_email"), "client p_email must not reach orders.email")
+  })
+
+  it("checkout submits and displays the Auth address, not the typed contact value", () => {
+    const src = readFileSync("components/checkout/checkout-flow.tsx", "utf8")
+    assert.ok(src.includes("authUser?.email"), "must prefer the confirmed Auth e-mail")
+    assert.match(src, /const email = authUser\?\.email/)
+    assert.ok(src.includes("Single source of truth"), "rule must be documented at the use site")
+  })
+
+  it("admin path snapshots the same Auth address", () => {
+    const sql = readFileSync("supabase/migrations/20260927000300_admin_create_order.sql", "utf8")
+    assert.match(sql, /pr\.full_name, au\.email/)
+  })
+
+  it("every sending path reads from Auth or its order snapshot", () => {
+    const notify = readFileSync("lib/email/notify.ts", "utf8")
+    assert.ok(notify.includes("to: (order.email as string).trim()"), "order mails use the snapshot")
+    assert.ok(notify.includes("const to = input.email.trim()"), "welcome uses the caller-supplied Auth address")
+    const confirmRoute = readFileSync("app/auth/confirm/route.ts", "utf8")
+    assert.ok(confirmRoute.includes("email: user.email"), "welcome caller passes the confirmed Auth address")
+    const adminMail = readFileSync("app/admin/(protected)/customers/[customerId]/actions.ts", "utf8")
+    assert.ok(adminMail.includes("target.user.email"), "admin password mail uses Auth Admin e-mail")
+  })
+
+  it("profiles stores no e-mail, so nothing is written before Auth confirms", () => {
+    const schema = readFileSync("supabase/migrations/20260730194034_create_schema.sql", "utf8")
+    const start = schema.indexOf("create table if not exists public.profiles")
+    const end = schema.indexOf(");", start)
+    const profilesBlock = schema.slice(start, end)
+    assert.ok(!profilesBlock.toLowerCase().includes("email"), "profiles must not hold an e-mail column")
+    const deps = readFileSync("lib/account/server-deps.ts", "utf8")
+    const fnStart = deps.indexOf("export async function requestEmailChange")
+    const fnEnd = deps.indexOf("\n}", fnStart)
+    const fnBody = deps.slice(fnStart, fnEnd)
+    assert.ok(fnBody.includes("auth.updateUser"), "change starts in Auth only")
+    assert.ok(!fnBody.includes("profiles"), "no premature profiles write in the change path")
+  })
+})

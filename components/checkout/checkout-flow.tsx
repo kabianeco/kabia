@@ -42,13 +42,18 @@ export function CheckoutFlow() {
   const { items, subtotal, hydrated: cartHydrated, clearCart } = useCart();
   const {
     fullName,
-    email,
+    email: checkoutEmail,
     hydrated: checkoutHydrated,
     getSelectedAddress,
   } = useCheckout();
   const { refresh } = useOrders();
-  const { isLoggedIn, hydrated: authHydrated } = useAuth();
+  const { isLoggedIn, hydrated: authHydrated, user: authUser } = useAuth();
   const router = useRouter();
+  // Single source of truth: the confirmed Supabase Auth e-mail. The cart
+  // contact form value is never used for signed-in orders — create_order
+  // snapshots auth.users.email server-side as well, so a typed unconfirmed
+  // address can never enter orders.email.
+  const email = authUser?.email ?? checkoutEmail;
 
   const hydrated = cartHydrated && checkoutHydrated && authHydrated;
   const selectedAddress = getSelectedAddress();

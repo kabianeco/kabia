@@ -73,3 +73,38 @@ describe("recovery session marker", () => {
     assert.equal(verifyRecoveryGrant(undefined, "user-a", now + 1), false)
   })
 })
+
+describe("secure email change is reported honestly", () => {
+  it("verifies email_change tokens with their own type", async () => {
+    const url = new URL(
+      "https://kabia.test/auth/confirm?token_hash=tok123&type=email_change&next=/eposta-degisikligi-onaylandi",
+    )
+    const calls: unknown[] = []
+    const client = { auth: { verifyOtp: async (value: unknown) => { calls.push(value); return { error: null } } } }
+    assert.equal(await confirmLink(url, client), "/eposta-degisikligi-onaylandi")
+    assert.deepEqual(calls, [{ token_hash: "tok123", type: "email_change" }])
+  })
+
+  it("success is shown only when no pending new address remains", async () => {
+    const { readFileSync } = await import("node:fs")
+    const src: string = readFileSync("app/eposta-degisikligi-onaylandi/page.tsx", "utf8")
+    // First confirmation: Supabase still reports user.new_email -> waiting, never success.
+    const waitingAt = src.indexOf("Bir onay")
+    const pendingCheck = src.indexOf("user?.new_email")
+    const successAt = src.indexOf("Adresiniz")
+    assert.ok(pendingCheck !== -1 && waitingAt !== -1 && successAt !== -1, "both states must exist")
+    assert.ok(pendingCheck < waitingAt && waitingAt < successAt, "waiting guards success")
+    assert.ok(src.includes('tone="waiting"'), "pending state is waiting, not success")
+    assert.ok(src.includes('tone="success"'), "completed state is success")
+  })
+
+  it("the change starts in Auth only, never in app tables", async () => {
+    const { readFileSync } = await import("node:fs")
+    const deps: string = readFileSync("lib/account/server-deps.ts", "utf8")
+    const fnStart = deps.indexOf("export async function requestEmailChange")
+    const fnEnd = deps.indexOf("\n}", fnStart)
+    const fnBody = deps.slice(fnStart, fnEnd)
+    assert.ok(fnBody.includes("auth.updateUser"), "single Auth entry point")
+    assert.ok(!fnBody.includes("profiles"), "no app-table write on change start")
+  })
+})
