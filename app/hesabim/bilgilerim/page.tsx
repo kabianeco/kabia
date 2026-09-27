@@ -46,13 +46,13 @@ export default function ProfilePage() {
           <Button type="submit" disabled={pending}>
             {pending ? "Kaydediliyor…" : "Kaydet"}
           </Button>
-          <p role="status" aria-live="polite" className={`text-sm ${formError ? "text-clay" : "text-ink/60"}`}>
+          <p role="status" aria-live="polite" className={`min-h-5 max-w-md text-sm ${formError ? "text-clay" : "text-ink/60"}`}>
             {state === ACTION_IDLE || pending ? "" : state.ok ? state.message : formError}
           </p>
         </div>
       </form>
 
-      <div className="mt-14 flex flex-wrap items-baseline justify-between gap-4 border-t border-ink/10 pt-8">
+      <div className="mt-8 flex flex-wrap items-baseline justify-between gap-4 border-t border-ink/10 pt-8">
         <div className="min-w-0">
           <p className="label text-olive">Müşteri numarası</p>
           <p className="figure mt-2 text-base text-ink">{user?.customerNumber ?? "—"}</p>
@@ -65,7 +65,7 @@ export default function ProfilePage() {
           <p className="label text-olive">E-posta</p>
           <p className="mt-2 break-all text-base text-ink">{user?.email}</p>
         </div>
-        <Link href={`${routes.accountSecurity}#eposta`} className="inline-flex min-h-11 items-center text-sm text-brand transition-colors duration-300 hover:text-forest">
+        <Link href={`${routes.accountSecurity}#eposta`} className="inline-flex min-h-11 shrink-0 items-center text-sm text-brand transition-colors duration-300 hover:text-forest">
           Değiştir
         </Link>
       </div>

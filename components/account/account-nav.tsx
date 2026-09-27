@@ -68,7 +68,7 @@ export function AccountNav() {
           <button
             type="button"
             onClick={handleLogout}
-            className="flex min-h-11 items-center whitespace-nowrap text-sm text-ink/45 transition-colors duration-300 hover:text-clay lg:min-h-0"
+            className="flex min-h-11 items-center whitespace-nowrap text-sm text-ink/45 transition-colors duration-300 hover:text-clay lg:py-3.5"
           >
             Çıkış yap
           </button>

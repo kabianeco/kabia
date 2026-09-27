@@ -6,7 +6,7 @@ import { ArrowLink } from "@/components/ui/button";
 /** Page heading for the account area: one title, at most one quiet line. */
 export function AccountHeading({ title, lead, children }: { title: ReactNode; lead?: ReactNode; children?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-4">
+    <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="min-w-0">
         <h1 className="text-3xl tracking-tight md:text-4xl">{title}</h1>
         {lead && <p className="mt-4 max-w-md text-sm leading-relaxed text-ink/60">{lead}</p>}

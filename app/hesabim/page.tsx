@@ -166,7 +166,7 @@ export default function AccountOverviewPage() {
         ) : lastOrder ? (
           <Link
             href={`${routes.accountOrders}/${lastOrder.id}`}
-            className="mt-6 flex flex-wrap items-center gap-5 border-y border-ink/10 py-6 transition-colors duration-300 hover:bg-paper/60"
+            className="mt-6 flex flex-wrap items-center gap-5 border-y border-ink/10 px-4 py-6 transition-colors duration-300 hover:bg-paper/60 sm:px-5"
           >
             <span className="flex shrink-0 -space-x-4">
               {lastOrder.items.slice(0, 4).map((item, i) => (

@@ -33,7 +33,7 @@ export default function OrdersListPage() {
             <li key={order.id} className="border-b border-ink/10">
               <Link
                 href={`${routes.accountOrders}/${order.id}`}
-                className="flex items-center gap-4 py-6 transition-colors duration-300 hover:bg-paper/60 sm:gap-5"
+                className="flex items-center gap-4 px-4 py-6 transition-colors duration-300 hover:bg-paper/60 sm:gap-5 sm:px-5"
               >
                 <span className="hidden shrink-0 -space-x-4 sm:flex">
                   {order.items.slice(0, 4).map((item, i) => (

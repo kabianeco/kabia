@@ -17,7 +17,7 @@ const STATUS_TONE: Record<OrderStatus, string> = {
 /** Status as a tracked label rather than a coloured pill. */
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   return (
-    <span className={`label ${STATUS_TONE[status]}`}>{STATUS_LABELS[status]}</span>
+    <span className={`label whitespace-nowrap ${STATUS_TONE[status]}`}>{STATUS_LABELS[status]}</span>
   );
 }
 
