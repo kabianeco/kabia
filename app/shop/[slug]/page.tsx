@@ -3,11 +3,10 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { ProductDetail } from "@/components/shop/product-detail";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isBrandPreview } from "@/lib/brand-preview";
 import { isPreviewItem } from "@/lib/preview-identity";
 import { previewProducts } from "@/content/preview-products";
-import { getCachedProductBase, fetchProductReviews, fetchRelatedProducts } from "@/lib/catalog";
+import { getCachedProductBase, getCachedProductReviews, getCachedRelatedProducts } from "@/lib/catalog";
 import { site } from "@/lib/site";
 import { absoluteUrl, pageMetadata } from "@/lib/seo";
 import type { Product } from "@/lib/products";
@@ -133,12 +132,11 @@ export default async function ProductDetailPage({
   if (isPreviewItem({ slug })) notFound();
   const base = await getProductBase(slug);
   if (!base) notFound();
-  // The related shelf needs the product's category, not its reviews: fire
-  // both reads together on one client instead of waiting for reviews first.
-  const supabase = await createSupabaseServerClient();
+  // Reviews and related ride the same cache tag (busted on review submits,
+  // catalog mutations and order commits): warm, all three read in parallel.
   const [reviews, related] = await Promise.all([
-    fetchProductReviews(supabase, base.id),
-    fetchRelatedProducts(supabase, base, 4),
+    getCachedProductReviews(base.id),
+    getCachedRelatedProducts(base.category, base.slug, 4),
   ]);
   const product = { ...base, reviews };
 

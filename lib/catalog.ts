@@ -343,6 +343,47 @@ export const getCachedProducerProducts = unstable_cache(fetchProducerProductsUnc
   tags: [CATALOG_PRODUCTS_TAG],
 })
 
+/**
+ * Reviews and related products, cached with the same tag. Both change only
+ * through busted paths — review submits and catalog mutations bust
+ * CATALOG_PRODUCTS_TAG, and order commits bust it via the confirmation
+ * action — so the product page serves warm on all three reads. Stock truth
+ * still holds: the order RPC validates and decrements atomically, so a
+ * display lag can never oversell.
+ */
+async function fetchProductReviewsUncached(productId: string): Promise<ProductReview[]> {
+  const client = getAnonClient()
+  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  return fetchProductReviews(client, productId)
+}
+
+export const getCachedProductReviews = unstable_cache(fetchProductReviewsUncached, ["kabia-product-reviews-v1"], {
+  revalidate: 300,
+  tags: [CATALOG_PRODUCTS_TAG],
+})
+
+async function fetchRelatedUncached(category: string, slug: string, count: number): Promise<Product[]> {
+  const client = getAnonClient()
+  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  const categoryId = await categoryIdBySlug(client, category)
+  const restPromise = client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).neq("slug", slug).order("created_at", { ascending: true }).limit(count)
+  const samePromise = categoryId
+    ? client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).eq("category_id", categoryId).neq("slug", slug).order("created_at", { ascending: true }).limit(count)
+    : Promise.resolve({ data: [] as unknown[] | null })
+  const [sameRes, restRes] = await Promise.all([samePromise, restPromise])
+  const combined = [
+    ...(sameRes.data ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),
+    ...(restRes.data ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),
+  ]
+  const seen = new Set<string>()
+  return combined.filter((p) => (seen.has(p.slug) ? false : (seen.add(p.slug), true))).slice(0, count)
+}
+
+export const getCachedRelatedProducts = unstable_cache(fetchRelatedUncached, ["kabia-related-v1"], {
+  revalidate: 300,
+  tags: [CATALOG_PRODUCTS_TAG],
+})
+
 export async function fetchProductBySlug(
   client: SupabaseClient,
   slug: string,

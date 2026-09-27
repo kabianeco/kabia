@@ -1,6 +1,8 @@
 "use server"
 
+import { updateTag } from "next/cache"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { CATALOG_PRODUCTS_TAG } from "@/lib/catalog"
 import {
   defaultMailer,
   isFreshOwnedOrder,
@@ -51,6 +53,10 @@ export async function sendOrderReceivedAction(orderId: string): Promise<{ ok: bo
     ) {
       return { ok: true }
     }
+    // A fresh owned order just decremented variant stock: bust the cached
+    // catalogue reads so PDP stock/availability follows within a request.
+    // (Oversell is impossible regardless — the RPC decrements atomically.)
+    updateTag(CATALOG_PRODUCTS_TAG)
     await sendOrderReceivedEmail(supabaseNotificationStore(supabase), defaultMailer, {
       orderId,
       ownerUserId: user.id,
