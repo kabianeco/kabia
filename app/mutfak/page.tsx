@@ -5,8 +5,7 @@ import { PageShell } from "@/components/layout/page-shell"
 import { ProducerCard } from "@/components/producers/producer-card"
 import type { CardProducer } from "@/components/producers/producer-card"
 import { FaqList } from "@/components/faq/faq-list"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
-import { fetchProducersBySource } from "@/lib/producers"
+import { getCachedProducersBySource } from "@/lib/producers"
 import { producerCollections } from "@/content/producers"
 import { isBrandPreview } from "@/lib/brand-preview"
 
@@ -32,7 +31,7 @@ async function MutfakGrid() {
   if (isBrandPreview()) {
     return <MutfakGridRows producers={[...producerCollections.mutfak]} />
   }
-  const result = await fetchProducersBySource(await createSupabaseServerClient(), "mutfak")
+  const result = await getCachedProducersBySource("mutfak")
   if (result.status === "error") {
     return (
       <div role="alert" className="wrap flex flex-col items-start pb-24 md:pb-32">
@@ -56,7 +55,7 @@ function MutfakGridRows({ producers }: { producers: CardProducer[] }) {
           <ProducerCard
             key={producer.id}
             producer={producer}
-            priority={i < 3}
+            priority={i === 0}
             variant="secki"
           />
         ))}

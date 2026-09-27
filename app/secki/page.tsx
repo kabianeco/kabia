@@ -4,8 +4,7 @@ import { pageMetadata } from "@/lib/seo"
 import { PageShell } from "@/components/layout/page-shell"
 import { ProducerCard } from "@/components/producers/producer-card"
 import { FaqList } from "@/components/faq/faq-list"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
-import { fetchSeckiProducers } from "@/lib/producers"
+import { getCachedSeckiProducers } from "@/lib/producers"
 import type { CardProducer } from "@/components/producers/producer-card"
 import { producerCollections } from "@/content/producers"
 import { isBrandPreview } from "@/lib/brand-preview"
@@ -34,7 +33,7 @@ async function SeckiGrid() {
   if (isBrandPreview()) {
     return <SeckiGridRows producers={[...producerCollections.secki]} />
   }
-  const result = await fetchSeckiProducers(await createSupabaseServerClient())
+  const result = await getCachedSeckiProducers()
   if (result.status === "error") {
     return (
       <div role="alert" className="wrap flex flex-col items-start pb-24 md:pb-32">
@@ -58,7 +57,7 @@ function SeckiGridRows({ producers }: { producers: CardProducer[] }) {
           <ProducerCard
             key={producer.id}
             producer={producer}
-            priority={i < 3}
+            priority={i === 0}
             variant="secki"
           />
         ))}

@@ -1,7 +1,7 @@
 "use server"
 
 import { redirect } from "next/navigation"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { z } from "zod"
 import { adminContext } from "@/lib/admin/auth"
 import { logAdminAction, AUDIT_WARNING } from "@/lib/admin/audit"
@@ -16,6 +16,8 @@ import {
   countProducerProductReferences,
   loadProducerDetail,
 } from "@/lib/admin/queries/producers"
+import { CATALOG_PRODUCERS_TAG } from "@/lib/producers"
+import { CATALOG_PRODUCTS_TAG } from "@/lib/catalog"
 
 /**
  * Producer mutations.
@@ -39,6 +41,10 @@ function revalidateProducerRoutes(slug?: string | null) {
     revalidatePath(`/ureticiler/${slug}`)
     revalidatePath(`/magaza/${slug}`)
   }
+  // Producer rows are tag-cached, and product rows embed the producer name:
+  // bust both tags so an edit is visible on the next request.
+  updateTag(CATALOG_PRODUCERS_TAG)
+  updateTag(CATALOG_PRODUCTS_TAG)
 }
 
 function boolField(formData: FormData, name: string): boolean {

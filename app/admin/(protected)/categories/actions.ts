@@ -1,11 +1,12 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { z } from "zod"
 import { adminContext } from "@/lib/admin/auth"
 import { logAdminAction, AUDIT_WARNING } from "@/lib/admin/audit"
 import { toActionState, type ActionState } from "@/lib/admin/errors"
 import { fieldErrorsFrom, intField, slugSchema, uuid } from "@/lib/admin/schemas"
+import { CATALOG_PRODUCTS_TAG } from "@/lib/catalog"
 
 /**
  * Category lifecycle.
@@ -30,6 +31,8 @@ function revalidateCategoryRoutes() {
   revalidatePath("/shop")
   revalidatePath("/magaza")
   revalidatePath("/")
+  // Product rows embed their category name and are tag-cached.
+  updateTag(CATALOG_PRODUCTS_TAG)
 }
 
 export async function createCategoryAction(

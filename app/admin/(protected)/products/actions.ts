@@ -1,7 +1,7 @@
 "use server"
 
 import { redirect } from "next/navigation"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { z } from "zod"
 import { adminContext } from "@/lib/admin/auth"
 import { logAdminAction, AUDIT_WARNING } from "@/lib/admin/audit"
@@ -15,6 +15,7 @@ import {
   variantSchema,
 } from "@/lib/admin/schemas"
 import { countOrderReferences, loadProductDetail } from "@/lib/admin/queries/products"
+import { CATALOG_PRODUCTS_TAG } from "@/lib/catalog"
 import {
   ORGANIC_CONFIRMATION_MESSAGE,
   buildProductRow,
@@ -35,7 +36,9 @@ import {
  *
  * The storefront reads products through a cookie-bound server client, so its
  * pages are already dynamic and pick changes up on the next request. The
- * revalidate calls below make that explicit rather than incidental.
+ * revalidate calls below make that explicit rather than incidental; the
+ * updateTag call busts the tag-cached catalogue reads, which revalidatePath
+ * alone would leave behind the 5-minute ceiling.
  */
 
 function revalidateStorefront(slug?: string | null) {
@@ -43,6 +46,9 @@ function revalidateStorefront(slug?: string | null) {
   revalidatePath("/shop")
   revalidatePath("/magaza")
   if (slug) revalidatePath(`/shop/${slug}`)
+  // The storefront catalogue reads are tag-cached (CATALOG_PRODUCTS_TAG):
+  // revalidatePath alone would leave them behind the 5-minute ceiling.
+  updateTag(CATALOG_PRODUCTS_TAG)
   revalidatePath("/admin/products")
   revalidatePath("/admin/inventory")
 }

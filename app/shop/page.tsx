@@ -6,8 +6,7 @@ import { StoreListing } from "@/components/shop/store-listing";
 import { isBrandPreview } from "@/lib/brand-preview";
 import { previewProducts } from "@/content/preview-products";
 import { SORT_OPTIONS } from "@/lib/store-listing";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { fetchPublicProducts } from "@/lib/catalog";
+import { getCachedPublicProducts } from "@/lib/catalog";
 import { ALL_CATEGORIES, SOURCES, type ProductSource } from "@/lib/products";
 import { routes } from "@/lib/site";
 import { getPublicSettings } from "@/lib/settings";
@@ -77,7 +76,7 @@ async function ProductGrid({
 }) {
   const search = { kategori: activeCategory, kaynak: activeSource, sirala: sort };
   if (isBrandPreview()) return <StoreListing products={previewProducts} base={routes.store} search={search} />;
-  const result = await fetchPublicProducts(await createSupabaseServerClient());
+  const result = await getCachedPublicProducts();
   return <StoreListing products={result.status === "error" ? [] : result.products} error={result.status === "error"} base={routes.store} search={search} />;
 }
 

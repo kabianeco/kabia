@@ -30,7 +30,9 @@ import { previewProducts } from "@/content/preview-products";
  * curated (products carry no alt).
  */
 export async function ProductCollection() {
-  const settings = await getPublicSettings();
+  // Settings are tag-cached and client creation is local: start both together
+  // instead of awaiting settings before even building the client.
+  const [settings, supabase] = await Promise.all([getPublicSettings(), createSupabaseServerClient()]);
   const administered: Record<string, string> = {
     ciftlik: settings.introProductCiftlik,
     secki: settings.introProductSecki,
@@ -39,7 +41,6 @@ export async function ProductCollection() {
   const slugs = [...new Set(copy.entries.map((e) => administered[e.source] || e.slug))];
   let catalog: Record<string, { name: string; main_image_url: string | null; is_active: boolean }> = {};
   try {
-    const supabase = await createSupabaseServerClient();
     const { data } = await supabase
       .from("products")
       .select("slug, name, main_image_url, is_active")

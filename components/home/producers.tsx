@@ -2,8 +2,7 @@ import { ProducerCard } from "@/components/producers/producer-card";
 import type { CardProducer } from "@/components/producers/producer-card";
 import { Reveal } from "@/components/motion/reveal";
 import { ArrowLink } from "@/components/ui/button";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { fetchSeckiProducers } from "@/lib/producers";
+import { getCachedSeckiProducers } from "@/lib/producers";
 import { producerCollections } from "@/content/producers";
 import { isBrandPreview } from "@/lib/brand-preview";
 import { routes } from "@/lib/site";
@@ -30,7 +29,7 @@ export async function Producers() {
   if (isBrandPreview()) {
     producers = [...producerCollections.secki];
   } else {
-    const result = await fetchSeckiProducers(await createSupabaseServerClient());
+    const result = await getCachedSeckiProducers();
     producers = result.status === "ok" ? result.producers : "error";
   }
   return <ProducersStrip producers={producers} />;

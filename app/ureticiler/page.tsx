@@ -3,8 +3,7 @@ import { pageMetadata } from "@/lib/seo"
 import { PageShell } from "@/components/layout/page-shell"
 import { ProducerCard } from "@/components/producers/producer-card"
 import type { CardProducer } from "@/components/producers/producer-card"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
-import { fetchPublicProducers } from "@/lib/producers"
+import { getCachedPublicProducers } from "@/lib/producers"
 import { sourceProducers } from "@/content/producers"
 import { isBrandPreview } from "@/lib/brand-preview"
 
@@ -56,7 +55,7 @@ function ProducersGrid({ producers }: { producers: readonly CardProducer[] }) {
           ) : (
             <ul className="grid grid-cols-1 gap-x-8 gap-y-14 pb-24 sm:grid-cols-2 md:pb-32 lg:grid-cols-3">
               {producers.map((producer, i) => (
-                <ProducerCard key={producer.id} producer={producer} priority={i < 3} />
+                <ProducerCard key={producer.id} producer={producer} priority={i === 0} />
               ))}
             </ul>
           )}
@@ -95,7 +94,7 @@ export default async function ProducersPage() {
   // database in curated sort_order.
   if (isBrandPreview()) return <ProducersGrid producers={sourceProducers} />
 
-  const result = await fetchPublicProducers(await createSupabaseServerClient())
+  const result = await getCachedPublicProducers()
   if (result.status === "error") return <ProducersOutage />
 
   return <ProducersGrid producers={result.producers} />

@@ -76,7 +76,11 @@ export default function HomePage() {
         <Principles />
         <EditorialImage />
         <BrandQuote />
-        <BestSellers />
+        {/* DB-backed and below the fold: stream it like the strips above
+            instead of holding up the closing sections on a cold cache. */}
+        <Suspense fallback={null}>
+          <BestSellers />
+        </Suspense>
         <CertStrip />
         <HomeFaq />
         <FinalCta />

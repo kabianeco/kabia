@@ -1,7 +1,9 @@
 "use server"
 
 import { headers } from "next/headers"
+import { updateTag } from "next/cache"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { CATALOG_PRODUCTS_TAG } from "@/lib/catalog"
 import { checkRateLimit, getClientIp, RATE_LIMIT_MESSAGE } from "@/lib/auth/rate-limit"
 import { reviewInputSchema } from "@/lib/reviews/schema"
 
@@ -62,6 +64,10 @@ export async function submitReviewAction(input: {
     }
     return { ok: false, message: "Değerlendirme kaydedilemedi. Lütfen tekrar deneyin." }
   }
+
+  // The product page caches the product row (rating_avg/count live there);
+  // bust it so the new review is visible on the next request.
+  updateTag(CATALOG_PRODUCTS_TAG)
 
   return { ok: true, message: "Değerlendirmeniz için teşekkürler." }
 }

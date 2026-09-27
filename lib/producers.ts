@@ -1,4 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
+import { unstable_cache } from "next/cache"
+import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 import type { ProducerRow } from "@/lib/supabase/rows"
 import type { ProductSource } from "@/lib/products"
 
@@ -156,3 +157,62 @@ export async function fetchPublishedProducerBySlug(
   if (!data) return { status: "not_found" }
   return { status: "ok", producer: mapProducer(data as unknown as ProducerRow) }
 }
+
+/**
+ * Storefront producer cache. Same contract as the direct reads (honest
+ * error states included), refreshed every 5 minutes through the shared anon
+ * client. Producer mutations bust the tag with updateTag, so an edit is
+ * visible on the next request.
+ */
+export const CATALOG_PRODUCERS_TAG = "catalog-producers"
+
+function getAnonClient(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  return createClient(url, key, { auth: { persistSession: false } })
+}
+
+async function fetchPublicProducersUncached(): Promise<PublicProducersResult> {
+  const client = getAnonClient()
+  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  return fetchPublicProducers(client)
+}
+
+export const getCachedPublicProducers = unstable_cache(fetchPublicProducersUncached, ["kabia-public-producers-v1"], {
+  revalidate: 300,
+  tags: [CATALOG_PRODUCERS_TAG],
+})
+
+async function fetchSeckiProducersUncached(): Promise<PublicProducersResult> {
+  const client = getAnonClient()
+  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  return fetchSeckiProducers(client)
+}
+
+export const getCachedSeckiProducers = unstable_cache(fetchSeckiProducersUncached, ["kabia-secki-producers-v1"], {
+  revalidate: 300,
+  tags: [CATALOG_PRODUCERS_TAG],
+})
+
+async function fetchProducersBySourceUncached(source: ProductSource): Promise<PublicProducersResult> {
+  const client = getAnonClient()
+  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  return fetchProducersBySource(client, source)
+}
+
+export const getCachedProducersBySource = unstable_cache(fetchProducersBySourceUncached, ["kabia-producers-by-source-v1"], {
+  revalidate: 300,
+  tags: [CATALOG_PRODUCERS_TAG],
+})
+
+async function fetchProducerBySlugUncached(slug: string): Promise<ProducerBySlugResult> {
+  const client = getAnonClient()
+  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  return fetchPublishedProducerBySlug(client, slug)
+}
+
+export const getCachedProducerBySlug = unstable_cache(fetchProducerBySlugUncached, ["kabia-producer-by-slug-v1"], {
+  revalidate: 300,
+  tags: [CATALOG_PRODUCERS_TAG],
+})

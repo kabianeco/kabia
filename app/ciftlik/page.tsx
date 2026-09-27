@@ -41,6 +41,8 @@ export default function FarmPage() {
                 fill
                 sizes="(min-width: 768px) 60vw, 100vw"
                 className="object-cover"
+                priority
+                fetchPriority="high"
               />
             </div>
             <figcaption className="mt-3 text-xs text-olive">

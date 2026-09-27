@@ -131,6 +131,8 @@ export function mapProduct(row: ProductRow, includeReviews = false): Product {
       : [0, 0, 0, 0, 0],
     shortDescription: row.short_description ?? "",
     description: row.description ?? "",
+    seoTitle: row.seo_title ?? "",
+    seoDescription: row.seo_description ?? "",
     origin: row.origin ?? "",
     productionMethod: row.production_method ?? "",
     shelfLife: row.shelf_life ?? "",
@@ -147,7 +149,7 @@ const PRODUCT_SELECT = `
   origin, production_method, shelf_life, storage_conditions, certifications, source,
   certification, producer_id, harvest_year, lot_code, variety, rootstock,
   processing, allergens, net_weight,
-  short_description, description, is_active, is_featured, created_at, updated_at,
+  short_description, description, seo_title, seo_description, is_active, is_featured, created_at, updated_at,
   rating_avg, rating_count, rating_breakdown,
   category:categories(slug, name, sort_order),
   producer:producers(slug, name, why_selected),
@@ -300,7 +302,66 @@ export const getCachedFeaturedFullProducts = unstable_cache(fetchFeaturedFullUnc
   tags: ["catalog-featured"],
 })
 
+/**
+ * Storefront catalogue cache. Listing and detail reads below go through the
+ * shared anon client and refresh every 5 minutes; admin product/producer/
+ * category mutations and review submissions bust the tags with updateTag, so
+ * an edit is visible on the next request, never stuck behind the ceiling.
+ */
+export const CATALOG_PRODUCTS_TAG = "catalog-products"
+
+async function fetchPublicProductsUncached(): Promise<PublicProductsResult> {
+  const client = getAnonClient()
+  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  return fetchPublicProducts(client)
+}
+
+export const getCachedPublicProducts = unstable_cache(fetchPublicProductsUncached, ["kabia-public-products-v1"], {
+  revalidate: 300,
+  tags: [CATALOG_PRODUCTS_TAG],
+})
+
+async function fetchProductBaseUncached(slug: string): Promise<Product | null> {
+  const client = getAnonClient()
+  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  return fetchProductBase(client, slug)
+}
+
+export const getCachedProductBase = unstable_cache(fetchProductBaseUncached, ["kabia-product-base-v1"], {
+  revalidate: 300,
+  tags: [CATALOG_PRODUCTS_TAG],
+})
+
+async function fetchProducerProductsUncached(producerId: string): Promise<Product[]> {
+  const client = getAnonClient()
+  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  return fetchProductsByProducer(client, producerId)
+}
+
+export const getCachedProducerProducts = unstable_cache(fetchProducerProductsUncached, ["kabia-producer-products-v1"], {
+  revalidate: 300,
+  tags: [CATALOG_PRODUCTS_TAG],
+})
+
 export async function fetchProductBySlug(
+  client: SupabaseClient,
+  slug: string,
+): Promise<Product | null> {
+  const base = await fetchProductBase(client, slug)
+  if (!base) return null
+  // S17: reviews come from the public_reviews view (no user_id column), not
+  // the base table — a separate keyed read keeps the shape mapProduct expects.
+  const reviews = await fetchProductReviews(client, base.id)
+  return { ...base, reviews }
+}
+
+/**
+ * The product row without reviews. The product page fetches this first, then
+ * fires the reviews read and the related-products reads in parallel — the
+ * related shelf needs the product's category, not its reviews, so waiting for
+ * reviews before starting it cost a full sequential round trip.
+ */
+export async function fetchProductBase(
   client: SupabaseClient,
   slug: string,
 ): Promise<Product | null> {
@@ -316,16 +377,21 @@ export async function fetchProductBySlug(
   // stays in the server log; the boundary never shows it.
   if (error) throw new Error(`[catalog] product read failed for "${slug}": ${error.message}`)
   if (!data) return null
-  // S17: reviews come from the public_reviews view (no user_id column), not
-  // the base table — a separate keyed read keeps the shape mapProduct expects.
-  const productId = (data as { id: string }).id
+  return mapProduct(data as unknown as ProductRow, false)
+}
+
+/** Reviews for a product already read — runs alongside related products. */
+export async function fetchProductReviews(
+  client: SupabaseClient,
+  productId: string,
+): Promise<ProductReview[]> {
   const { data: reviewRows, error: reviewError } = await client
     .from("public_reviews")
     .select("id, reviewer_name, rating, review_text, is_verified_purchase, created_at, account_backed")
     .eq("product_id", productId)
     .order("created_at", { ascending: false })
-  if (reviewError) throw new Error(`[catalog] review read failed for "${slug}": ${reviewError.message}`)
-  return mapProduct({ ...(data as object), reviews: reviewRows ?? [] } as unknown as ProductRow, true)
+  if (reviewError) throw new Error(`[catalog] review read failed: ${reviewError.message}`)
+  return (reviewRows ?? []).map((r) => mapReview(r as unknown as ReviewRow))
 }
 
 export async function fetchRelatedProducts(
@@ -333,16 +399,19 @@ export async function fetchRelatedProducts(
   product: Product,
   count = 4,
 ): Promise<Product[]> {
-  const categoryId = await categoryIdBySlug(client, product.category)
   // Same category first, then anything else, so a thin category still fills the
   // row. Both reads degrade to an empty list; related products are a courtesy,
   // never a reason to fail the product page.
-  const [sameRes, restRes] = await Promise.all([
-    categoryId
-      ? client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).eq("category_id", categoryId).neq("slug", product.slug).order("created_at", { ascending: true }).limit(count)
-      : Promise.resolve({ data: [] as unknown[] | null }),
-    client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).neq("slug", product.slug).order("created_at", { ascending: true }).limit(count),
-  ])
+  //
+  // The unfiltered read has no dependency, so it fires immediately; only the
+  // same-category read waits on the category id lookup. Previously the lookup
+  // gated both reads, costing a sequential round trip.
+  const restPromise = client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).neq("slug", product.slug).order("created_at", { ascending: true }).limit(count)
+  const categoryId = await categoryIdBySlug(client, product.category)
+  const samePromise = categoryId
+    ? client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).eq("category_id", categoryId).neq("slug", product.slug).order("created_at", { ascending: true }).limit(count)
+    : Promise.resolve({ data: [] as unknown[] | null })
+  const [sameRes, restRes] = await Promise.all([samePromise, restPromise])
   const combined = [
     ...(sameRes.data ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),
     ...(restRes.data ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),
