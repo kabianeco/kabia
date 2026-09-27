@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
-import { fetchPublicProducts } from "@/lib/catalog"
-import { fetchPublicProducers } from "@/lib/producers"
+import { getCachedPublicProducts } from "@/lib/catalog"
+import { getCachedPublicProducers } from "@/lib/producers"
 import { journalEntries } from "@/content/journal"
 import { site, routes, sitemapStaticPaths } from "@/lib/site"
 import { absoluteUrl } from "@/lib/seo"
@@ -19,9 +18,7 @@ import { absoluteUrl } from "@/lib/seo"
 export const revalidate = 3600
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = await createSupabaseServerClient()
-
-  const productsResult = await fetchPublicProducts(supabase)
+  const productsResult = await getCachedPublicProducts()
 
   const staticEntries: MetadataRoute.Sitemap = sitemapStaticPaths.map((entry) => ({
     // The homepage is "/" in the route table; the sitemap wants the bare origin.
@@ -49,7 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     productsResult.status === "ok" ? productsResult.products.map((p) => p.producerSlug).filter(Boolean) : [],
   )
 
-  const producersResult = await fetchPublicProducers(supabase)
+  const producersResult = await getCachedPublicProducers()
   const producers = producersResult.status === "ok" ? producersResult.producers : []
   // Producer rows carry no update timestamp, so no lastmod is claimed for
   // them rather than a made-up one.

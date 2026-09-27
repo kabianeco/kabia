@@ -2,13 +2,30 @@
  * Centralized site facts. Every value here is taken from the existing
  * Kabia project — do not add claims that cannot be verified there.
  */
+
+/**
+ * The single configured site URL. Every absolute URL — canonical, OG,
+ * sitemap, structured data, robots, auth redirects, emails — derives from
+ * this. Switching to kabiaekolojik.com (or back) is one environment variable
+ * change: set NEXT_PUBLIC_SITE_URL. Unset means the production domain.
+ */
+function resolveSiteUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL ?? ""
+  const trimmed = raw.trim().replace(/\/+$/, "")
+  if (trimmed === "") return "https://kabiaekolojik.com"
+  if (/^https?:\/\//.test(trimmed)) return trimmed
+  return "https://kabiaekolojik.com"
+}
+
+export const siteUrl = resolveSiteUrl()
+
 export const site = {
   name: "Kabia Ekolojik",
   /* Kabia Ekolojik is the brand. The company behind it — the one that sells,
      invoices and holds the organic certificate — is Epilantis, so anywhere the
      law asks who the seller is, this is the name that belongs there. */
   legalName: "Epilantis Kozmetik Estetik Medikal San. Dış Tic. Ltd. Şti.",
-  url: "https://kabiaekolojik.com",
+  url: siteUrl,
   email: "info@kabia.com",
   phone: "+90 553 744 76 74",
   phoneHref: "tel:+905537447674",
@@ -58,9 +75,11 @@ export const routes = {
   // stays as it is and remains the story route that Seçki links into.
   secki: "/secki",
   mutfak: "/mutfak",
-  // Producer slugs are story slugs, not product slugs: /magaza/<producer>
-  // has no route and 404s. Map each producer to its real product instead —
-  // the single source is the shop catalogue, keyed by product slug.
+  // Producer slugs are story slugs: the producer's shelf lives at
+  // /magaza/<producer-slug> (see app/magaza/[producer-slug]), and the story
+  // at /ureticiler/<slug>. Map each producer to a representative product for
+  // surfaces that need a single product link — the single source is the shop
+  // catalogue, keyed by product slug.
   producerProduct: {
     "kabia-ciftligi": "kabuklu-badem",
     "geyce-setce-findik": "findik-ici",
@@ -134,6 +153,7 @@ export const sitemapStaticPaths: readonly SitemapStaticPath[] = [
   { path: routes.farm, changeFrequency: "monthly", priority: 0.8 },
   { path: routes.producers, changeFrequency: "monthly", priority: 0.7 },
   { path: routes.journal, changeFrequency: "weekly", priority: 0.6 },
+  { path: routes.contact, changeFrequency: "monthly", priority: 0.5 },
 
   { path: routes.distanceSalesAgreement, changeFrequency: "monthly", priority: 0.5 },
   { path: routes.preliminaryInfo, changeFrequency: "monthly", priority: 0.5 },

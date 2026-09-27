@@ -17,6 +17,7 @@ import { defaultMailer, sendWelcomeEmail, supabaseNotificationStore } from "@/li
 import { RECOVERY_COOKIE, verifyRecoveryGrant } from "@/lib/auth/recovery-grant"
 import { newPasswordField } from "@/lib/auth/password-policy"
 import { parseRegistration, type RegistrationFieldErrors } from "@/lib/auth/registration"
+import { siteUrl } from "@/lib/site"
 
 /**
  * SEC-05: Customer authentication server actions.
@@ -219,7 +220,7 @@ export async function customerResetPasswordAction(
   await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: new URL(
       "/auth/confirm?type=recovery&next=/sifre-yenile",
-      process.env.NEXT_PUBLIC_SITE_URL ?? "https://kabia-revised.vercel.app",
+      siteUrl,
     ).toString(),
   })
 

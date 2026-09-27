@@ -80,6 +80,8 @@ export interface ProductRow {
   net_weight: string | null;
   short_description: string | null;
   description: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
   is_active: boolean;
   is_featured: boolean;
   created_at: string;

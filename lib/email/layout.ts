@@ -14,6 +14,8 @@
  * imported so this module stays dependency-free.
  */
 
+import { siteUrl as configuredSiteUrl } from "@/lib/site";
+
 export interface EmailResult {
   subject: string;
   html: string;
@@ -42,13 +44,20 @@ export function formatTRY(amount: number): string {
 
 /**
  * Absolute base for every link and image in Group B emails.
- * Uses the existing site URL variable; falls back to the production domain
- * so a missing env never produces a relative URL in an inbox.
+ * The single configured site URL from lib/site (one env var to switch);
+ * a missing env never produces a relative URL in an inbox.
  */
 export function siteUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL ?? "";
-  const trimmed = raw.trim().replace(/\/+$/, "");
-  return trimmed === "" ? "https://kabiaekolojik.com" : trimmed;
+  return configuredSiteUrl;
+}
+
+/** Host display for footers, derived from the same configured URL. */
+export function siteHost(): string {
+  try {
+    return new URL(configuredSiteUrl).hostname;
+  } catch {
+    return "kabiaekolojik.com";
+  }
 }
 
 const LOGO_PATH = "/email/kabia-logo@2x.png";
@@ -148,7 +157,7 @@ ${cta}
 </tr>
 <tr>
 <td align="center" style="padding: 24px 40px 48px 40px;">
-<p class="em-muted" style="margin: 0; font-family: ${SANS}; font-size: 13px; line-height: 20px; color: ${MUTED};">Kabia · <a href="${siteUrl()}" style="color: ${MUTED}; text-decoration: underline;">kabiaekolojik.com</a></p>
+<p class="em-muted" style="margin: 0; font-family: ${SANS}; font-size: 13px; line-height: 20px; color: ${MUTED};">Kabia · <a href="${siteUrl()}" style="color: ${MUTED}; text-decoration: underline;">${siteHost()}</a></p>
 <p class="em-muted" style="margin: 8px 0 0 0; font-family: ${SANS}; font-size: 12px; line-height: 18px; color: ${MUTED};">${input.footerReason}</p>
 </td>
 </tr>

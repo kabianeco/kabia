@@ -40,6 +40,8 @@ export const previewProducts: PreviewProduct[] = sourceProducers.map(
       "Önizleme ürünü — fiyat, ağırlık ve stok örnektir. Sipariş verilemez.",
     description:
       "Tasarım önizlemesi için örnek ürün. Yalnızca misafir sepetinde denenebilir.",
+    seoTitle: "",
+    seoDescription: "",
     origin: "",
     productionMethod: "",
     shelfLife: "",

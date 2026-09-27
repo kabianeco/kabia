@@ -7,7 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isBrandPreview } from "@/lib/brand-preview";
 import { isPreviewItem } from "@/lib/preview-identity";
 import { previewProducts } from "@/content/preview-products";
-import { fetchProductBySlug, fetchRelatedProducts } from "@/lib/catalog";
+import { getCachedProductBase, fetchProductReviews, fetchRelatedProducts } from "@/lib/catalog";
 import { site } from "@/lib/site";
 import { absoluteUrl, pageMetadata } from "@/lib/seo";
 import type { Product } from "@/lib/products";
@@ -89,9 +89,9 @@ function breadcrumbJsonLd(product: Product) {
   };
 }
 
-/** One catalogue read per request, shared by generateMetadata and the page. */
-const getProduct = cache(async (slug: string) =>
-  fetchProductBySlug(await createSupabaseServerClient(), slug),
+/** One catalogue read per request, shared by generateMetadata and the page. Metadata needs no reviews. */
+const getProductBase = cache(async (slug: string) =>
+  getCachedProductBase(slug),
 );
 
 export async function generateMetadata({
@@ -103,14 +103,16 @@ export async function generateMetadata({
   const preview = isBrandPreview();
   const product = preview
     ? previewProducts.find((product) => product.slug === slug)
-    : isPreviewItem({ slug }) ? null : await getProduct(slug);
-  if (!product) return { title: "Ürün bulunamadı" };
+    : isPreviewItem({ slug }) ? null : await getProductBase(slug);
+  if (!product) return { title: "Ürün bulunamadı", robots: { index: false, follow: false } };
+  // Administered SEO copy wins when present; otherwise name + short, as before.
   const metadata = await pageMetadata({
-    title: product.name,
-    description: product.shortDescription || product.description,
+    title: product.seoTitle || product.name,
+    description: product.seoDescription || product.shortDescription || product.description,
     path: `/shop/${product.slug}`,
     keywords: [product.name, product.categoryName, "Kabia Ekolojik", "Geyve", "doğal ürün"],
-    image: product.mainImageUrl ? { url: product.mainImageUrl, alt: product.name } : undefined,
+    // No image here: app/shop/[slug]/opengraph-image.tsx serves the single
+    // branded 1200×630 card (real photo embedded), so scrapers see one image.
   });
   return preview ? { ...metadata, robots: { index: false, follow: false } } : metadata;
 }
@@ -128,9 +130,16 @@ export default async function ProductDetailPage({
     return <PageShell><ProductDetail product={product} related={related} /></PageShell>;
   }
   if (isPreviewItem({ slug })) notFound();
-  const product = await getProduct(slug);
-  if (!product) notFound();
-  const related = await fetchRelatedProducts(await createSupabaseServerClient(), product, 4);
+  const base = await getProductBase(slug);
+  if (!base) notFound();
+  // The related shelf needs the product's category, not its reviews: fire
+  // both reads together on one client instead of waiting for reviews first.
+  const supabase = await createSupabaseServerClient();
+  const [reviews, related] = await Promise.all([
+    fetchProductReviews(supabase, base.id),
+    fetchRelatedProducts(supabase, base, 4),
+  ]);
+  const product = { ...base, reviews };
 
   return (
     <PageShell>

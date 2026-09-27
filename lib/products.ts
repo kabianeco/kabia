@@ -133,6 +133,9 @@ export interface Product {
   ratingBreakdown: [number, number, number, number, number]
   shortDescription: string
   description: string
+  /** Administered SEO overrides; empty means "derive from name + short". */
+  seoTitle: string
+  seoDescription: string
   origin: string
   productionMethod: string
   shelfLife: string

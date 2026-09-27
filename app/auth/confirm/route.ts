@@ -6,6 +6,7 @@ import { confirmLink, invalidLinkPath, parseConfirmation } from "@/lib/auth/cust
 import { issueRecoveryGrant, RECOVERY_COOKIE } from "@/lib/auth/recovery-grant"
 import { defaultMailer, sendWelcomeEmail, supabaseNotificationStore } from "@/lib/email/notify"
 import { FLOW_COOKIES, flowCookieOptions, issueFlowMarker } from "@/lib/auth/flow-marker"
+import { siteUrl } from "@/lib/site"
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
 
   const local = url.hostname === "localhost" || url.hostname === "127.0.0.1"
   const trustedOrigin = process.env.NEXT_PUBLIC_SITE_URL
-    ?? (local ? url.origin : "https://kabia-revised.vercel.app")
+    ?? (local ? url.origin : siteUrl)
   const response = NextResponse.redirect(new URL(destination, trustedOrigin), 303)
   response.headers.set("Cache-Control", "no-store")
   response.headers.set("Referrer-Policy", "no-referrer")

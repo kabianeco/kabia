@@ -5,9 +5,8 @@ import Image from "next/image"
 import Link from "next/link"
 import { PageShell } from "@/components/layout/page-shell"
 import { ProductEntry } from "@/components/shop/product-entry"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
-import { fetchPublishedProducerBySlug, splitStoryParagraphs, type Producer } from "@/lib/producers"
-import { fetchProductsByProducer } from "@/lib/catalog"
+import { getCachedProducerBySlug, splitStoryParagraphs, type Producer } from "@/lib/producers"
+import { getCachedProducerProducts } from "@/lib/catalog"
 import type { Product } from "@/lib/products"
 import { sourceProducers } from "@/content/producers"
 import { previewProducts } from "@/content/preview-products"
@@ -22,14 +21,13 @@ const getProducer = cache(async (slug: string) => {
     const producer = sourceProducers.find((producer) => producer.slug === slug)
     return producer ? { status: "ok" as const, producer } : { status: "not_found" as const }
   }
-  const supabase = await createSupabaseServerClient()
-  return fetchPublishedProducerBySlug(supabase, slug)
+  return getCachedProducerBySlug(slug)
 })
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   const result = await getProducer(slug)
-  if (result.status !== "ok") return { title: "Üretici" }
+  if (result.status !== "ok") return { title: "Üretici", robots: { index: false, follow: false } }
 
   const producer = result.producer
   // §8.2: the administered tagline surfaces invisibly in the meta
@@ -40,7 +38,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: producer.name,
     description: tagline ? `${producer.story ?? storyFallback} ${tagline}` : (producer.story ?? storyFallback),
     path: routes.producer(producer.slug),
-    image: producer.photoUrl ? { url: producer.photoUrl, alt: producer.name } : undefined,
+    // No image here: app/ureticiler/[slug]/opengraph-image.tsx serves the
+    // single branded 1200×630 card (real photo embedded).
     type: "article",
   })
   return isBrandPreview() ? { ...metadata, robots: { index: false, follow: false } } : metadata
@@ -115,7 +114,7 @@ export default async function ProducerDetailPage({ params }: { params: Promise<{
   const producer: Omit<Producer, "createdAt" | "tagline" | "sortOrder"> = result.producer
   const products: Product[] = isBrandPreview()
     ? previewProducts.filter((product) => product.producerSlug === producer.slug)
-    : await fetchProductsByProducer(await createSupabaseServerClient(), producer.id)
+    : await getCachedProducerProducts(producer.id)
 
   return (
     <PageShell>
@@ -130,7 +129,7 @@ export default async function ProducerDetailPage({ params }: { params: Promise<{
 
         {producer.photoUrl && isAllowedImageUrl(producer.photoUrl) && (
           <div className="relative mx-auto mt-10 aspect-[16/9] max-w-4xl overflow-hidden rounded-media bg-paper md:mt-14">
-            <Image src={producer.photoUrl} alt={producer.name} fill sizes="(min-width: 1024px) 56rem, 100vw" className="object-cover" />
+            <Image src={producer.photoUrl} alt={producer.name} fill sizes="(min-width: 1024px) 56rem, 100vw" className="object-cover" priority fetchPriority="high" />
           </div>
         )}
 
@@ -164,6 +163,15 @@ export default async function ProducerDetailPage({ params }: { params: Promise<{
                 <ProductEntry key={product.slug} product={product} />
               ))}
             </ul>
+            {/* The producer's shelf: keeps /magaza/<slug> linked, not sitemap-only. */}
+            <Link
+              href={`/magaza/${producer.slug}`}
+              prefetch={false}
+              className="mt-10 inline-flex min-h-11 items-center gap-2 text-sm text-brand transition-colors duration-300 hover:text-ink"
+            >
+              Mağazada tümünü gör
+              <span aria-hidden="true">→</span>
+            </Link>
           </div>
         )}
       </article>

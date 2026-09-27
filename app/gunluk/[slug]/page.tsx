@@ -22,7 +22,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   const entry = getEntry(slug)
-  if (!entry) return { title: "Günlük" }
+  if (!entry) return { title: "Günlük", robots: { index: false, follow: false } }
   return pageMetadata({
     title: `${formatEntryDate(entry.date)} — ${entry.location}`,
     description: entry.observation,
@@ -128,6 +128,26 @@ export default async function JournalEntryPage({ params }: { params: Promise<{ s
             <Field label="Uygulama" value={entry.application} />
             <Field label="Sonuç" value={entry.outcome} />
           </dl>
+
+          {/* Field notes feed the shop: this orchard's almond and the farm story. */}
+          <nav aria-label="İlgili sayfalar" className="mt-10 flex flex-wrap gap-x-8 gap-y-3 border-t border-ink/10 pt-8">
+            <Link
+              href={routes.product("kabuklu-badem")}
+              prefetch={false}
+              className="inline-flex min-h-11 items-center gap-2 text-sm text-brand transition-colors duration-300 hover:text-ink"
+            >
+              Bu bahçenin bademi
+              <span aria-hidden="true">→</span>
+            </Link>
+            <Link
+              href={routes.farm}
+              prefetch={false}
+              className="inline-flex min-h-11 items-center gap-2 text-sm text-brand transition-colors duration-300 hover:text-ink"
+            >
+              Çiftliği tanı
+              <span aria-hidden="true">→</span>
+            </Link>
+          </nav>
         </div>
       </article>
     </PageShell>

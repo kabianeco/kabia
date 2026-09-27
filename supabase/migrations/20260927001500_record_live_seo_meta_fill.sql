@@ -1,0 +1,47 @@
+-- ============================================================================
+-- DO NOT RE-APPLY — documentation only. Applied live via MCP execute_sql on
+-- 2026-09-27 (SEO/perf pass, §2 Database: SEO meta fields, empty → filled).
+--
+-- WHAT (live statements):
+--   1. UPDATE public.products SET seo_title = v.t, seo_description = v.d,
+--      updated_at = now() FROM (VALUES (...10 rows...)) AS v(slug,t,d)
+--      WHERE products.slug = v.slug AND products.is_active
+--      AND (seo_title IS NULL OR seo_title = '')
+--      AND (seo_description IS NULL OR seo_description = '');
+--      All 10 active products had empty seo_title/seo_description (snapshot:
+--      db-snapshots/20260927T-seo-meta-pre.json). Titles 19–35 chars
+--      (template appends " | Kabia Ekolojik", total stays ≤ 60);
+--      descriptions 64–110 chars (≤ 160). Brand voice (calm, plain,
+--      concrete), facts only from products.short_description and
+--      content/producers.ts + content/homepage.ts:
+--        kabuklu-badem:   "Kabuklu Badem — Kabia Çiftliği"
+--        ceviz-ici:       "Kabuklu Ceviz — Kayadibi Köyü"
+--        findik-ici:      "Kabuklu Fındık — Setçe Köyü"
+--        cicek-bali:      "Kılıçkaya Vadisi Balı — Sabit Kovan"
+--        domates-salcasi: "Domates Salçası — Kazan Salçası"
+--        elma-sirkesi:    "Elma Sirkesi — Doğal Fermentasyon"
+--        eriste:          "Erişte — Elde Kesme"
+--        tarhana:         "Ev Tarhanası — Geleneksel"
+--        ihlamur:         "Ihlamur — Akıncı Köyü"
+--        alic-sirkesi:    "Alıç Sirkesi — Doğal Fermentasyon"
+--      Verified live: all 10 rows filled, lengths in range.
+--   2. UPDATE public.site_settings SET value = to_jsonb('/og-default.jpg'),
+--      updated_at = now() WHERE key = 'seo_social_image'
+--      AND value = to_jsonb('/images/almonds-drying.jpg');
+--      The old default was a 2200×1466 photo served as the share image for
+--      every text page; the new default is a true 1200×630 crop of the same
+--      photo (public/og-default.jpg, generated from it). Verified live.
+--
+-- WHY: product pages derived meta from name + short_description; empty
+--   administered fields meant no unique SEO title/description control and a
+--   wrong-size share default. The storefront prefers seo_title/seo_description
+--   when present (app/shop/[slug]/page.tsx), falling back as before.
+--
+-- ROLLBACK: set the ten rows' seo_title/seo_description back to '' (values
+--   in db-snapshots/20260927T-seo-meta-pre.json) and seo_social_image back
+--   to '/images/almonds-drying.jpg'. Replaying this file as SQL would be a
+--   no-op on filled rows (guarded by the empty-checks) — but do not replay;
+--   it is documentation only.
+--
+-- BACKWARD COMPATIBILITY: data only. No schema, function or RLS change.
+-- ============================================================================

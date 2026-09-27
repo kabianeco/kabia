@@ -8,7 +8,27 @@ export default function robots(): MetadataRoute.Robots {
   //
   // /_next/ is not disallowed: it holds the scripts and styles a crawler needs
   // to render the pages it is allowed to see.
-  const privatePaths = ["/admin", "/api", "/sepet", "/odeme", "/hesabim", "/giris", "/kayit", "/private"]
+  //
+  // The auth/status pages are noindex by metadata; they are also disallowed
+  // here so crawlers do not spend budget fetching pages that can never index.
+  const privatePaths = [
+    "/admin",
+    "/api",
+    "/sepet",
+    "/odeme",
+    "/hesabim",
+    "/giris",
+    "/kayit",
+    "/sifremi-unuttum",
+    "/sifre-yenile",
+    "/eposta-onay-bekleniyor",
+    "/eposta-onaylandi",
+    "/eposta-degisikligi-onaylandi",
+    "/baglanti-gecersiz",
+    "/dogrulama-kodu",
+    "/hesap-silindi",
+    "/private",
+  ]
   return {
     rules: [
       { userAgent: "*", allow: "/", disallow: privatePaths },

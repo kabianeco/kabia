@@ -14,6 +14,7 @@ import { loadAuthSummary } from "@/lib/admin/queries/customers"
 import { checkRateLimit, getClientIp, RATE_LIMIT_MESSAGE } from "@/lib/auth/rate-limit"
 import { createSupabaseAdminClient, hasServiceRoleKey } from "@/lib/supabase/admin"
 import { adminPasswordResetEmail } from "@/lib/email"
+import { siteUrl } from "@/lib/site"
 import { sendEmail } from "@/lib/email/send"
 
 /**
@@ -60,7 +61,7 @@ export async function sendCustomerRecoveryAction(
     const { error } = await supabase.auth.resetPasswordForEmail(auth.email, {
       redirectTo: new URL(
         "/auth/confirm?type=recovery&next=/sifre-yenile",
-        process.env.NEXT_PUBLIC_SITE_URL ?? "https://kabia-revised.vercel.app",
+        siteUrl,
       ).toString(),
     })
     if (error) return toActionState(error, "sendCustomerRecovery")

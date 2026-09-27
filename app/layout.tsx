@@ -67,8 +67,8 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: settings.storeName,
       title: settings.seoDefaultTitle,
       description: settings.seoDefaultDescription,
-      // The image is administered, so its dimensions are not known here; the
-      // previous fixed 1536x2040 did not match the default image (2200x1466).
+      // The image is administered, so its dimensions are not known here, except
+      // for the default: /og-default.jpg is a true 1200×630 share crop.
       images: [{ url: settings.seoSocialImage, alt: settings.storeName }],
     },
     twitter: {

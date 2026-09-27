@@ -78,7 +78,7 @@ export const SETTINGS_FALLBACK: PublicSettings = {
   seoDefaultTitle: "Kabia Ekolojik | Toprağa Saygıyla Üretilenler",
   seoDefaultDescription:
     "Toprağa saygıyla üretilenleri bir araya getiriyoruz. Kendi çiftliğimizden ve güvendiğimiz üreticilerden.",
-  seoSocialImage: "/images/almonds-drying.jpg",
+  seoSocialImage: "/og-default.jpg",
   shopBannerEnabled: false,
   shopBannerHeadline: "",
   shopBannerSubtext: "",

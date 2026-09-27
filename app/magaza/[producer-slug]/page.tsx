@@ -7,15 +7,14 @@ import { StoreListing, type StoreSearch } from "@/components/shop/store-listing"
 import { isBrandPreview } from "@/lib/brand-preview";
 import { sourceProducers } from "@/content/producers";
 import { previewProducts } from "@/content/preview-products";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { fetchPublishedProducerBySlug } from "@/lib/producers";
-import { fetchProductsByProducer } from "@/lib/catalog";
+import { getCachedProducerBySlug } from "@/lib/producers";
+import { getCachedProducerProducts } from "@/lib/catalog";
 
 type Params = Promise<{ "producer-slug": string }>;
 
 /** One producer read per request, shared by generateMetadata and the page. */
 const getProducer = cache(async (slug: string) =>
-  fetchPublishedProducerBySlug(await createSupabaseServerClient(), slug),
+  getCachedProducerBySlug(slug),
 );
 
 export async function generateMetadata({
@@ -32,7 +31,7 @@ export async function generateMetadata({
     };
   }
   const result = await getProducer(slug);
-  if (result.status !== "ok") return { title: "Mağaza bulunamadı" };
+  if (result.status !== "ok") return { title: "Mağaza bulunamadı", robots: { index: false, follow: false } };
   const producer = result.producer;
   const detail = [producer.productType, producer.region].filter(Boolean).join(" — ");
   // Distinct from /ureticiler/<slug>, which carries the story: this page is
@@ -91,11 +90,10 @@ export default async function ProducerStore({
   // so /magaza/[slug] reads like the main store with a narrower catalogue.
   // A read failure answers like an unknown slug — the test-double catalogue
   // has no producers, which keeps the off-state 404 expectations intact.
-  const supabase = await createSupabaseServerClient();
   const result = await getProducer(slug);
   if (result.status !== "ok") notFound();
   const producer = result.producer;
-  const products = await fetchProductsByProducer(supabase, producer.id);
+  const products = await getCachedProducerProducts(producer.id);
   const subtitle = [producer.productType, producer.region]
     .filter(Boolean)
     .join(" — ");
