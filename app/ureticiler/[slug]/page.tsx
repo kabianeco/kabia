@@ -130,7 +130,7 @@ export default async function ProducerDetailPage({ params }: { params: Promise<{
 
         {producer.photoUrl && isAllowedImageUrl(producer.photoUrl) && (
           <div className="relative mx-auto mt-10 aspect-[16/9] max-w-4xl overflow-hidden rounded-media bg-paper md:mt-14">
-            <Image src={producer.photoUrl} alt={producer.name} fill sizes="(min-width: 1024px) 56rem, 100vw" className="object-cover" priority fetchPriority="high" />
+            <Image src={producer.photoUrl} alt={producer.name} fill sizes="(min-width: 1024px) 56rem, 100vw" className="object-cover" />
           </div>
         )}
 
