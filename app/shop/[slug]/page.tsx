@@ -113,6 +113,7 @@ export async function generateMetadata({
     keywords: [product.name, product.categoryName, "Kabia Ekolojik", "Geyve", "doğal ürün"],
     // No image here: app/shop/[slug]/opengraph-image.tsx serves the single
     // branded 1200×630 card (real photo embedded), so scrapers see one image.
+    skipImage: true,
   });
   return preview ? { ...metadata, robots: { index: false, follow: false } } : metadata;
 }

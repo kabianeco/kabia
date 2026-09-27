@@ -25,6 +25,8 @@ export interface PageSeo {
   /** Root-relative canonical path, e.g. "/magaza". */
   path: string
   image?: { url: string; alt?: string }
+  /** Skip the default share image: a colocated opengraph-image file serves it. */
+  skipImage?: boolean
   type?: "website" | "article"
   keywords?: string[]
   /** Private or transactional pages: kept out of the index, links still followed. */
@@ -35,7 +37,9 @@ export async function pageMetadata(seo: PageSeo): Promise<Metadata> {
   const settings = await getPublicSettings()
   const socialTitle = seo.absoluteTitle ? seo.title : `${seo.title} | ${settings.storeName}`
   const description = metaDescription(seo.description)
-  const image = seo.image ?? { url: settings.seoSocialImage, alt: settings.storeName }
+  // A colocated opengraph-image file serves the card: setting images here as
+  // well suppresses the file-convention tags, so skip the default entirely.
+  const image = seo.skipImage ? undefined : (seo.image ?? { url: settings.seoSocialImage, alt: settings.storeName })
 
   return {
     title: seo.absoluteTitle ? { absolute: seo.title } : seo.title,
@@ -49,13 +53,13 @@ export async function pageMetadata(seo: PageSeo): Promise<Metadata> {
       url: seo.path,
       title: socialTitle,
       description,
-      images: [image],
+      ...(image ? { images: [image] } : {}),
     },
     twitter: {
       card: "summary_large_image",
       title: socialTitle,
       description,
-      images: [image.url],
+      ...(image ? { images: [image.url] } : {}),
     },
     ...(seo.noindex ? { robots: { index: false, follow: true } } : {}),
   }

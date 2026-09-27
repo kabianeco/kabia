@@ -40,6 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     path: routes.producer(producer.slug),
     // No image here: app/ureticiler/[slug]/opengraph-image.tsx serves the
     // single branded 1200×630 card (real photo embedded).
+    skipImage: true,
     type: "article",
   })
   return isBrandPreview() ? { ...metadata, robots: { index: false, follow: false } } : metadata
