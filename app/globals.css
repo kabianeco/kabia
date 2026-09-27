@@ -262,10 +262,6 @@ body::before {
    Written here rather than as utilities because the links set their own
    `text-ink` classes and a rule of this shape is what outranks them. */
 .site-header--over-film :is(a, button) {
-  color: color-mix(in srgb, var(--color-on-brand) 78%, transparent);
-}
-
-.site-header--over-film :is(a, button):hover {
   color: var(--color-on-brand);
 }
 

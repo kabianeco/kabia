@@ -40,7 +40,7 @@ function Breadcrumbs({ label, slug }: { label: string; slug: string }) {
   ]
   return (
     <nav aria-label="Breadcrumb" className="mb-8">
-      <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink/45">
+      <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink/70">
         {items.map((item, i) => (
           <li key={item.href} className="flex items-center gap-2">
             {i > 0 && <span aria-hidden="true">/</span>}
