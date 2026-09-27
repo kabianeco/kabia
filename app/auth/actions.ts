@@ -7,6 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import type { ActionState } from "@/lib/admin/errors"
 import { checkRateLimit, getClientIp, RATE_LIMIT_MESSAGE } from "@/lib/auth/rate-limit"
 import { validateSignupCode } from "@/lib/auth/customer-confirm"
+import { defaultMailer, sendWelcomeEmail, supabaseNotificationStore } from "@/lib/email/notify"
 import { RECOVERY_COOKIE, verifyRecoveryGrant } from "@/lib/auth/recovery-grant"
 import { newPasswordField } from "@/lib/auth/password-policy"
 import { parseRegistration, type RegistrationFieldErrors } from "@/lib/auth/registration"
@@ -213,7 +214,26 @@ export async function customerVerifyCodeAction(
   const supabase = await createSupabaseServerClient()
   const { error } = await supabase.auth.verifyOtp({ ...validated, type: "email" })
   if (error) return { ok: false, message: GENERIC_CODE_ERROR }
-  // WELCOME EMAIL HOOK: verified signup code is here; do not send until enabled.
+  // Welcome: kodla doğrulanan kayıt — bir kez gönderilir (idempotency
+  // anahtarı user_id+kind). Doğrulama sonucunu asla bozmaz.
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user?.email) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle()
+      const name = (profile as { full_name?: unknown } | null)?.full_name
+      await sendWelcomeEmail(supabaseNotificationStore(supabase), defaultMailer, {
+        userId: user.id,
+        email: user.email,
+        name: typeof name === "string" ? name : "",
+      })
+    }
+  } catch (sendError) {
+    console.error("[email] welcome after code confirm failed:", sendError instanceof Error ? sendError.message : sendError)
+  }
   return { ok: true, redirectTo: "/eposta-onaylandi" }
 }
 

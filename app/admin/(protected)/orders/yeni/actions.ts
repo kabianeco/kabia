@@ -11,6 +11,7 @@ import {
   fieldErrorsFrom,
 } from "@/lib/admin/schemas"
 import { checkRateLimit, getClientIp, RATE_LIMIT_MESSAGE } from "@/lib/auth/rate-limit"
+import { defaultMailer, isUuid, sendOrderReceivedEmail, supabaseNotificationStore } from "@/lib/email/notify"
 
 export interface CustomerLookupState extends ActionState {
   customer?: {
@@ -150,6 +151,20 @@ export async function createAdminOrderAction(
     if (result.order_id) revalidatePath(`/admin/orders/${result.order_id}`)
     revalidatePath("/admin")
     revalidatePath("/hesabim/siparislerim")
+
+    // Transactional "sipariş alındı" e-postası — yönetici yolunda da gider.
+    // Gönderici idempotent'tir ve asla throw etmez; e-posta hatası oluşumu
+    // bozmaz, `failed` olarak kayda düşer.
+    try {
+      if (result.order_id && isUuid(result.order_id)) {
+        await sendOrderReceivedEmail(supabaseNotificationStore(supabase), defaultMailer, {
+          orderId: result.order_id,
+          ownerUserId: parsed.data.customer_id,
+        })
+      }
+    } catch (error) {
+      console.error("[email] order_received after admin_create failed:", error instanceof Error ? error.message : error)
+    }
 
     return {
       ok: true,

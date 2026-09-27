@@ -60,6 +60,7 @@ export type AuditAction =
   | "order.tracking"
   | "order.admin_create"
   | "order.status_override"
+  | "order.email_resend"
   | "customer.recovery_sent"
   | "customer.password_set"
   | "administrator.create"
@@ -133,6 +134,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "order.tracking": "Kargo bilgisi güncellendi",
   "order.admin_create": "Yönetici sipariş oluşturdu",
   "order.status_override": "Sipariş durumu geçersiz kılındı",
+  "order.email_resend": "Sipariş e-postası yeniden gönderildi",
   "customer.recovery_sent": "Müşteriye şifre yenileme bağlantısı gönderildi",
   "customer.password_set": "Müşteri şifresi yönetici tarafından belirlendi",
   "settings.update": "Ayar güncellendi",

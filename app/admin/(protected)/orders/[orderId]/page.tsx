@@ -8,7 +8,7 @@ import { logQueryError } from "@/lib/admin/errors"
 import { InlineAlert, PageHeader, Panel } from "@/components/admin/ui/surfaces"
 import { OrderStatusTag, ORDER_STATUS_LABELS, type OrderStatusValue } from "@/components/admin/ui/status"
 import { Table, TableScroll, Td, Th, Tr } from "@/components/admin/ui/table"
-import { OrderNoteForm, OrderStatusControls, TrackingForm } from "./order-controls"
+import { OrderNoteForm, OrderStatusControls, TrackingForm, EmailNotifications, type OrderEmailRow } from "./order-controls"
 
 export const metadata: Metadata = { title: "Sipariş Detayı" }
 export const dynamic = "force-dynamic"
@@ -49,7 +49,7 @@ export default async function OrderDetailPage({
   if (error) logQueryError("orders:detail", error)
   if (!data) notFound()
 
-  const [historyRes, notesRes] = await Promise.all([
+  const [historyRes, notesRes, emailsRes] = await Promise.all([
     supabase
       .from("order_status_history")
       .select("id, status, changed_at")
@@ -60,10 +60,16 @@ export default async function OrderDetailPage({
       .select("id, note, created_at, admin_user_id")
       .eq("order_id", orderId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("email_notifications")
+      .select("kind,status,provider_message_id,error,sent_at,created_at")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: true }),
   ])
 
   if (historyRes.error) logQueryError("orders:history", historyRes.error)
   if (notesRes.error) logQueryError("orders:notes", notesRes.error)
+  if (emailsRes.error) logQueryError("orders:emails", emailsRes.error)
 
   type OrderRecord = {
     id: string
@@ -101,6 +107,7 @@ export default async function OrderDetailPage({
   const address = order.shipping_address ?? {}
   const history = (historyRes.data ?? []) as { id: string; status: OrderStatusValue; changed_at: string }[]
   const notes = (notesRes.data ?? []) as { id: string; note: string; created_at: string }[]
+  const emails = (emailsRes.data ?? []) as OrderEmailRow[]
 
   return (
     <>
@@ -220,6 +227,13 @@ export default async function OrderDetailPage({
               carrier={order.tracking_carrier}
               number={order.tracking_number}
             />
+          </Panel>
+
+          <Panel
+            title="E-posta bildirimleri"
+            description="Hangi transactional e-postanın ne zaman gittiği. Başarısız olan denetim kaydıyla yeniden gönderilebilir."
+          >
+            <EmailNotifications orderId={order.id} emails={emails} />
           </Panel>
 
           <Panel title="İç notlar" description="Yalnızca yöneticilere görünür.">

@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { checkRateLimit, getClientIp } from "@/lib/auth/rate-limit"
 import { confirmLink, invalidLinkPath, parseConfirmation } from "@/lib/auth/customer-confirm"
 import { issueRecoveryGrant, RECOVERY_COOKIE } from "@/lib/auth/recovery-grant"
+import { defaultMailer, sendWelcomeEmail, supabaseNotificationStore } from "@/lib/email/notify"
 import { FLOW_COOKIES, flowCookieOptions, issueFlowMarker } from "@/lib/auth/flow-marker"
 
 export async function GET(request: NextRequest) {
@@ -35,6 +36,28 @@ export async function GET(request: NextRequest) {
               path: "/sifre-yenile",
               maxAge: 3600,
             })
+          }
+        }
+        if (destination === "/eposta-onaylandi" && parsed.type === "email") {
+          // Welcome: doğrulanmış kayıt — bir kez gönderilir (idempotency
+          // anahtarı user_id+kind). Yönlendirmeyi asla bozmaz.
+          try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user?.email) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("full_name")
+                .eq("id", user.id)
+                .maybeSingle()
+              const name = (profile as { full_name?: unknown } | null)?.full_name
+              await sendWelcomeEmail(supabaseNotificationStore(supabase), defaultMailer, {
+                userId: user.id,
+                email: user.email,
+                name: typeof name === "string" ? name : "",
+              })
+            }
+          } catch (error) {
+            console.error("[email] welcome after link confirm failed:", error instanceof Error ? error.message : error)
           }
         }
       } catch {

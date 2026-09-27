@@ -20,6 +20,7 @@ import { EASE } from "@/lib/motion";
 import { StepIndicator } from "./step-indicator";
 import { hasPreviewItems, PREVIEW_MESSAGE } from "@/lib/preview-identity";
 import { submitOrder } from "@/lib/checkout-order";
+import { sendOrderReceivedAction } from "@/app/odeme/actions";
 import { PaymentStep } from "./payment-step";
 import { ReviewStep } from "./review-step";
 import { ConfirmationStep } from "./confirmation-step";
@@ -140,6 +141,7 @@ export function CheckoutFlow() {
     }
 
     const result = (data ?? {}) as {
+      order_id?: string;
       order_number?: string;
       total?: number | string;
     };
@@ -159,6 +161,12 @@ export function CheckoutFlow() {
     setAgreedKvkk(false);
     clearCart();
     await refresh();
+    // Transactional "sipariş alındı" e-postası: onay ekranı çizildikten
+    // sonra sessizce tetiklenir. Sunucu aksiyonu sahiplik + tazelik
+    // doğrular; e-posta hatası burada gösterilmez, kayda düşer.
+    if (typeof result.order_id === "string" && result.order_id !== "") {
+      void sendOrderReceivedAction(result.order_id).catch(() => {});
+    }
   };
 
   // While the guards above decide, render nothing but keep the page height so

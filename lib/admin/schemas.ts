@@ -330,6 +330,15 @@ export const orderTrackingSchema = z.object({
     .nullable(),
 })
 
+export const orderEmailResendSchema = z.object({
+  order_id: uuid,
+  kind: z.enum(["order_received", "order_shipped", "order_delivered"], {
+    message: "Geçersiz e-posta türü.",
+  }),
+})
+
+export type OrderEmailResendInput = z.infer<typeof orderEmailResendSchema>
+
 /**
  * Settings are validated against the row's declared type, which is read from
  * the database — the form cannot decide that a boolean setting is now a string.

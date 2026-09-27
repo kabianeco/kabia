@@ -7,8 +7,10 @@ import {
   updateOrderStatusAction,
   updateTrackingAction,
   overrideOrderStatusAction,
+  resendOrderEmailAction,
 } from "../actions"
 import { ACTION_IDLE } from "@/lib/admin/errors"
+import { formatDateTime } from "@/lib/admin/format"
 import { ORDER_STATUSES, ORDER_TRANSITIONS } from "@/lib/admin/orders"
 import {
   ORDER_STATUS_LABELS,
@@ -282,6 +284,93 @@ export function OrderNoteForm({ orderId }: { orderId: string }) {
       <FormMessage state={state} />
       <SubmitButton variant="outline" pendingLabel="Ekleniyor…">
         Not ekle
+      </SubmitButton>
+    </form>
+  )
+}
+
+export interface OrderEmailRow {
+  kind: string
+  status: string
+  provider_message_id: string | null
+  error: string | null
+  sent_at: string | null
+  created_at: string
+}
+
+const EMAIL_KIND_LABELS: Record<string, string> = {
+  order_received: "Sipariş alındı",
+  order_shipped: "Kargoda",
+  order_delivered: "Teslim edildi",
+  welcome: "Hoş geldin",
+}
+
+const EMAIL_STATUS_LABELS: Record<string, string> = {
+  sending: "Gönderiliyor",
+  sent: "Gönderildi",
+  failed: "Başarısız",
+  skipped: "Atlandı (bildirim kapalı)",
+}
+
+const RESENDABLE_KINDS = ["order_received", "order_shipped", "order_delivered"]
+
+/**
+ * Transactional e-posta kaydı (public.email_notifications).
+ *
+ * Hangi türün hangi durumda olduğu ve zamanı listelenir; başarısız ya da
+ * tercih nedeniyle atlanmış satır, denetim kaydıyla (order.email_resend)
+ * yeniden gönderilebilir. Yeniden gönderim aynı satırı günceller — çift
+ * gönderim olmaz.
+ */
+export function EmailNotifications({
+  orderId,
+  emails,
+}: {
+  orderId: string
+  emails: OrderEmailRow[]
+}) {
+  if (emails.length === 0) {
+    return <p className="text-sm text-ink/45">Henüz e-posta kaydı yok.</p>
+  }
+  return (
+    <ul className="space-y-3">
+      {emails.map((row) => (
+        <li key={row.kind} className="rounded-[3px] border border-ink/10 bg-ivory/60 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-ink">{EMAIL_KIND_LABELS[row.kind] ?? row.kind}</p>
+            <p className="text-xs text-ink/45">{EMAIL_STATUS_LABELS[row.status] ?? row.status}</p>
+          </div>
+          <p className="mt-0.5 text-xs text-ink/45">
+            {formatDateTime(row.sent_at ?? row.created_at)}
+          </p>
+          {row.status === "failed" && row.error && (
+            <p className="mt-1 break-words text-xs text-ink/60">{row.error}</p>
+          )}
+          {(row.status === "failed" || row.status === "skipped") &&
+            RESENDABLE_KINDS.includes(row.kind) && (
+              <EmailResendForm orderId={orderId} kind={row.kind} />
+            )}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function EmailResendForm({ orderId, kind }: { orderId: string; kind: string }) {
+  const [state, formAction] = useActionState(resendOrderEmailAction, ACTION_IDLE)
+  const router = useRouter()
+
+  useEffect(() => {
+    if (state.ok) router.refresh()
+  }, [state.ok, router])
+
+  return (
+    <form action={formAction} className="mt-2 space-y-2" noValidate>
+      <input type="hidden" name="order_id" value={orderId} />
+      <input type="hidden" name="kind" value={kind} />
+      <FormMessage state={state} />
+      <SubmitButton variant="outline" pendingLabel="Gönderiliyor…">
+        Yeniden gönder
       </SubmitButton>
     </form>
   )

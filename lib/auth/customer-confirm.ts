@@ -41,7 +41,9 @@ export async function confirmLink(url: URL, client: VerificationClient): Promise
   if (!parsed) return invalidLinkPath(url.searchParams.get("type"))
   const { error } = await client.auth.verifyOtp({ token_hash: parsed.token_hash, type: parsed.type })
   if (error) return invalidLinkPath(parsed.type)
-  // WELCOME EMAIL HOOK: send only when parsed.type === "email"; not enabled yet.
+  // Welcome e-postası bu saf fonksiyonda değil, route'ta gönderilir
+  // (app/auth/confirm/route.ts): burada oturum/alıcı bilgisi yok, yalnızca
+  // doğrulama sonucu var. parsed.type === "email" olan başarı oraya taşınır.
   return parsed.next
 }
 
