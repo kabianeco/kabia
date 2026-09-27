@@ -83,7 +83,7 @@ export default async function OrderDetailPage({
     shipping_address: ShippingAddress | null
     payment_method_snapshot: { method?: string; label?: string; brand?: string; last4?: string } | null
     created_at: string
-    user_id: string
+    user_id: string | null
     tracking_carrier: string | null
     tracking_number: string | null
     admin_created_by: string | null
@@ -272,13 +272,17 @@ export default async function OrderDetailPage({
                 </div>
               )}
               <div className="pt-1">
-                <Link
-                  href={`/admin/customers/${order.user_id}`}
-                  prefetch={false}
-                  className="text-sm text-brand transition-colors duration-300 hover:text-forest"
-                >
-                  Müşteri kaydını aç →
-                </Link>
+                {order.user_id ? (
+                  <Link
+                    href={`/admin/customers/${order.user_id}`}
+                    prefetch={false}
+                    className="text-sm text-brand transition-colors duration-300 hover:text-forest"
+                  >
+                    Müşteri kaydını aç →
+                  </Link>
+                ) : (
+                  <p className="text-sm text-ink/45">Silinmiş müşteri</p>
+                )}
               </div>
             </dl>
           </Panel>
