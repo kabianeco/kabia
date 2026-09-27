@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "@/lib/cart-context";
@@ -16,15 +17,17 @@ import { routes } from "@/lib/site";
  */
 export function BestSellerCard({ product }: { product: Product }) {
   const { addItem } = useCart();
+  const router = useRouter();
   const [added, setAdded] = useState(false);
 
   const variant =
     product.variants.find((v) => v.stock > 0) ?? product.variants[0];
   const available = !!variant && variant.stock > 0;
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!variant || !available) return;
-    const accepted = addItem({
+    // The write must complete (or fail loudly) before the toast offers navigation.
+    const accepted = await addItem({
       id: `${product.slug}__${variant.weight}`,
       slug: product.slug,
       name: product.name,
@@ -35,13 +38,16 @@ export function BestSellerCard({ product }: { product: Product }) {
       variantId: variant.id,
       productId: product.id,
     });
-    if (!accepted) return;
+    if (!accepted) {
+      toast.error("Sepete eklenemedi. Lütfen tekrar deneyin.");
+      return;
+    }
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
     toast.success(`Sepete eklendi — ${product.name}`, {
       action: {
         label: "Sepete git",
-        onClick: () => (window.location.href = routes.cart),
+        onClick: () => router.push(routes.cart),
       },
     });
   };

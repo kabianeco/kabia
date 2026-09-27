@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useOrders, type OrderLookup } from "@/lib/orders-context";
@@ -21,6 +21,7 @@ export default function OrderDetailClient() {
   const params = useParams<{ orderId: string }>();
   const { fetchOrder, hydrated } = useOrders();
   const { addItem } = useCart();
+  const router = useRouter();
   const [lookup, setLookup] = useState<OrderLookup | undefined>(undefined);
   const [attempt, setAttempt] = useState(0);
 
@@ -79,7 +80,7 @@ export default function OrderDetailClient() {
 
   const order = lookup.order;
 
-  const handleReorder = () => {
+  const handleReorder = async () => {
     // Items whose product or variant has since been removed can no longer be
     // added back to the cart — the cart is keyed on live database ids.
     const reorderable = order.items.filter(
@@ -91,11 +92,20 @@ export default function OrderDetailClient() {
       toast.error(result.text);
       return;
     }
-    reorderable.forEach((item) => addItem(item));
+    // Every write must complete before navigation is offered; a rejection
+    // surfaces instead of a phantom cart.
+    let failed = 0;
+    for (const item of reorderable) {
+      if (!(await addItem(item))) failed += 1;
+    }
+    if (failed > 0) {
+      toast.error("Bazı ürünler sepete eklenemedi. Lütfen tekrar deneyin.");
+      return;
+    }
     toast.success(result.text, {
       action: {
         label: "Sepete git",
-        onClick: () => (window.location.href = routes.cart),
+        onClick: () => router.push(routes.cart),
       },
     });
   };

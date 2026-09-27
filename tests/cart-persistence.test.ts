@@ -87,3 +87,79 @@ describe("cart-context writes synchronously (Bug 1 regression)", () => {
     assert.ok(src.includes("GUEST_CART_STORAGE_KEY"), "anahtar tek kaynaktan gelmiyor");
   });
 });
+
+describe("signed-in cart survives navigation and refresh (Bug 2)", () => {
+  const ctx = readFileSync("lib/cart-context.tsx", "utf8");
+  const addStart = ctx.indexOf("const addItem = useCallback");
+  const addEnd = ctx.indexOf("const updateQuantity = useCallback");
+  const block = ctx.slice(addStart, addEnd);
+
+  it("the cart read disambiguates the product_variants embed (PGRST201)", () => {
+    // cart_items has two FKs to product_variants (single-column + composite
+    // coherence guard). An unhinted embed returns 300/PGRST201 with data null,
+    // so the cart reads empty after every reload despite rows existing.
+    assert.ok(
+      ctx.includes("product_variants!cart_items_variant_id_fkey(label, price)"),
+      "CART_SELECT must hint the single-column FK",
+    );
+    assert.ok(
+      !ctx.includes('product_variants(label, price)'),
+      "unhinted embed still present — reads will 300",
+    );
+  });
+
+  it("addItem is awaitable: the DB write settles before callers navigate", () => {
+    assert.match(block, /async \(item\)/, "addItem must be async so navigation can wait for it");
+    assert.ok(block.includes('await supabase\n') || block.includes("await supabase"), "DB write must be awaited, not fire-and-forget");
+    assert.ok(!block.includes(";(async () => {"), "fire-and-forget IIFE still present");
+  });
+
+  it("a rejected write resolves false and never plants a phantom item", () => {
+    assert.ok(block.includes("if (error) return false"), "insert/update rejection must resolve false");
+    assert.ok(block.includes("} catch {") && block.includes("return false"), "transport failure must resolve false");
+    // The signed-in path reflects state only after the DB confirms (the guest
+    // early-return above is storage-synchronous and has no DB to wait for).
+    const confirmedAt = block.indexOf("only now reflect it in memory");
+    const confirmedWrite = block.indexOf("setItemsSync((prev) => nextGuestCartAfterAdd", confirmedAt);
+    assert.ok(confirmedAt !== -1 && confirmedWrite > confirmedAt, "in-memory update must come after the DB confirmation");
+    assert.ok(block.lastIndexOf("await supabase.from") < confirmedAt, "confirmation comment must follow the awaited writes");
+  });
+
+  it("concurrent duplicate inserts merge instead of dropping the add", () => {
+    assert.ok(block.includes("maybeSingle"), "409 fallback must re-read the stored row");
+    assert.ok(block.includes("base + qty"), "fallback must sum onto the stored quantity");
+  });
+
+  it('no "Sepete git" action uses a full page reload', () => {
+    for (const file of [
+      "components/shop/product-purchase.tsx",
+      "components/shop/product-detail.tsx",
+      "components/home/best-seller-card.tsx",
+      "app/hesabim/siparislerim/[orderId]/detail-client.tsx",
+    ]) {
+      const src = readFileSync(file, "utf8");
+      assert.ok(!src.includes("window.location.href"), `${file} still full-reloads to the cart`);
+      assert.ok(src.includes("router.push(routes.cart)"), `${file} must navigate client-side like the navbar`);
+    }
+  });
+
+  it("every add site awaits the write and shows a rejection", () => {
+    for (const file of [
+      "components/shop/product-purchase.tsx",
+      "components/shop/product-detail.tsx",
+      "components/home/best-seller-card.tsx",
+    ]) {
+      const src = readFileSync(file, "utf8");
+      assert.ok(src.includes("await addItem("), `${file} must await the confirmed write`);
+      assert.ok(src.includes('toast.error("Sepete eklenemedi.'), `${file} must surface a rejected write`);
+    }
+    const reorder = readFileSync("app/hesabim/siparislerim/[orderId]/detail-client.tsx", "utf8");
+    assert.ok(reorder.includes("await addItem(item)"), "reorder must await each write");
+    assert.ok(reorder.includes("Bazı ürünler sepete eklenemedi"), "reorder must report partial failure");
+  });
+
+  it("the product ledger has no add-to-cart to fix", () => {
+    const ledger = readFileSync("components/shop/product-entry.tsx", "utf8");
+    assert.ok(!ledger.includes("addItem"), "ledger gained an add path — cover it like the others");
+  });
+});

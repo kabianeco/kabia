@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check, Heart, Minus, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export function ProductPurchase({ product, image = product.mainImageUrl, selecte
 }) {
   const { addItem, hydrated: cartHydrated } = useCart();
   const { userId, hydrated: authHydrated } = useAuth();
+  const router = useRouter();
   const { isFavorite, toggleFavorite } = useFavorites();
   const quantityId = useId();
   const [weight, setWeight] = useState(product.defaultWeight);
@@ -28,9 +30,10 @@ export function ProductPurchase({ product, image = product.mainImageUrl, selecte
   const favorited = isFavorite(product.slug);
   const variant = product.variants.find((v) => v.weight === selectedVariant) ?? product.variants[0];
   const available = !!variant && variant.stock > 0;
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!variant || !available) return;
-    const accepted = addItem({
+    // The write must complete (or fail loudly) before the toast offers navigation.
+    const accepted = await addItem({
       id: `${product.slug}__${variant.weight}`,
       slug: product.slug,
       name: product.name,
@@ -41,11 +44,14 @@ export function ProductPurchase({ product, image = product.mainImageUrl, selecte
       variantId: variant.id,
       productId: product.id,
     });
-    if (!accepted) return;
+    if (!accepted) {
+      toast.error("Sepete eklenemedi. Lütfen tekrar deneyin.");
+      return;
+    }
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
     toast.success(`Sepete eklendi — ${product.name}, ${variant.weight}`, {
-      action: { label: "Sepete git", onClick: () => (window.location.href = routes.cart) },
+      action: { label: "Sepete git", onClick: () => router.push(routes.cart) },
     });
   };
 

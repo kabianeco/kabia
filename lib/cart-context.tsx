@@ -31,7 +31,8 @@ interface CartContextValue {
   itemCount: number
   subtotal: number
   hydrated: boolean
-  addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => boolean
+  /** Resolves true only after the write is confirmed (DB for signed-in, storage for guest). False means nothing was saved — callers must show an error, never navigate as if it succeeded. */
+  addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => Promise<boolean>
   updateQuantity: (id: string, quantity: number) => void
   removeItem: (id: string) => void
   clearCart: () => void
@@ -46,7 +47,7 @@ export const FREE_SHIPPING_THRESHOLD = 2000
 export const SHIPPING_COST = 107.91
 
 const CART_SELECT =
-  "id, quantity, variant_id, product_id, product_variants(label, price), products(slug, name, main_image_url)"
+  "id, quantity, variant_id, product_id, product_variants!cart_items_variant_id_fkey(label, price), products(slug, name, main_image_url)"
 
 function mapCartRow(r: CartItemRow): CartItem {
   const v = r.product_variants
@@ -202,28 +203,63 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, hydrated, userId, authHydrated, loadedFor])
 
   const addItem = useCallback<CartContextValue["addItem"]>(
-    (item) => {
+    async (item) => {
       const auth = authority.current
       if (!auth.authHydrated || (isPreviewItem(item) && auth.userId)) return false
       const qty = clampCartQuantity(item.quantity ?? 1)
-      if (auth.userId) {
-        const uid = auth.userId
-        const existing = itemsRef.current.find((i) => i.variantId === item.variantId)
-        ;(async () => {
-          const supabase = await getSupabaseBrowserClient()
-          const cid = cartIdRef.current ?? await ensureCart(uid)
-          if (!cid || authority.current.userId !== uid) return
-          if (existing) {
-            const newQty = Math.min(99, existing.quantity + qty)
-            await supabase.from("cart_items").update({ quantity: newQty }).eq("cart_id", cid).eq("variant_id", item.variantId)
-          } else {
-            await supabase
-              .from("cart_items")
-              .insert({ cart_id: cid, product_id: item.productId, variant_id: item.variantId, quantity: qty })
-          }
-        })()
+      if (!auth.userId) {
+        // Guest: synchronous localStorage persistence survives a full reload in the same tick.
+        setItemsSync((prev) => nextGuestCartAfterAdd(prev, { ...item, quantity: qty }))
+        return true
       }
-      // Optimistic local update + misafirde senkron kalıcılık (Bug 1 kök neden).
+      const uid = auth.userId
+      try {
+        const supabase = await getSupabaseBrowserClient()
+        const cid = cartIdRef.current ?? await ensureCart(uid)
+        if (!cid || authority.current.userId !== uid) return false
+        const existing = itemsRef.current.find((i) => i.variantId === item.variantId)
+        if (existing) {
+          const newQty = Math.min(99, existing.quantity + qty)
+          const { error } = await supabase
+            .from("cart_items")
+            .update({ quantity: newQty })
+            .eq("cart_id", cid)
+            .eq("variant_id", item.variantId)
+          if (error) return false
+        } else {
+          const { error: insertError } = await supabase.from("cart_items").insert({
+            cart_id: cid,
+            product_id: item.productId,
+            variant_id: item.variantId,
+            quantity: qty,
+          })
+          if (insertError) {
+            // A concurrent add (or a reload that re-hydrated from the DB)
+            // created the row first: sum onto the stored quantity instead of
+            // dropping the add. Any other rejection surfaces as failure.
+            const { data: current } = await supabase
+              .from("cart_items")
+              .select("quantity")
+              .eq("cart_id", cid)
+              .eq("variant_id", item.variantId)
+              .maybeSingle()
+            const base = typeof (current as { quantity?: unknown } | null)?.quantity === "number"
+              ? ((current as { quantity: number }).quantity)
+              : 0
+            if (!base) return false
+            const { error: mergeError } = await supabase
+              .from("cart_items")
+              .update({ quantity: Math.min(99, base + qty) })
+              .eq("cart_id", cid)
+              .eq("variant_id", item.variantId)
+            if (mergeError) return false
+          }
+        }
+      } catch {
+        return false
+      }
+      // The database confirmed the write — only now reflect it in memory.
+      // A rejected write never produces a phantom item.
       setItemsSync((prev) => nextGuestCartAfterAdd(prev, { ...item, quantity: qty }))
       return true
     },

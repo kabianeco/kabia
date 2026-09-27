@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ShoppingBag, Star } from "lucide-react";
 import { toast } from "sonner";
@@ -517,6 +518,7 @@ function StickyBuyBar({
 }) {
   const { addItem, hydrated: cartHydrated } = useCart();
   const { userId, hydrated: authHydrated } = useAuth();
+  const router = useRouter();
   const [added, setAdded] = useState(false);
   const preview = isPreviewItem(product);
   const variant =
@@ -525,9 +527,10 @@ function StickyBuyBar({
   const available = !!variant && variant.stock > 0;
   const blocked = !available || !cartHydrated || (preview && (!authHydrated || !!userId));
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!variant || !available) return;
-    const accepted = addItem({
+    // The write must complete (or fail loudly) before the toast offers navigation.
+    const accepted = await addItem({
       id: `${product.slug}__${variant.weight}`,
       slug: product.slug,
       name: product.name,
@@ -538,11 +541,14 @@ function StickyBuyBar({
       variantId: variant.id,
       productId: product.id,
     });
-    if (!accepted) return;
+    if (!accepted) {
+      toast.error("Sepete eklenemedi. Lütfen tekrar deneyin.");
+      return;
+    }
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
     toast.success(`Sepete eklendi — ${product.name}, ${variant.weight}`, {
-      action: { label: "Sepete git", onClick: () => (window.location.href = routes.cart) },
+      action: { label: "Sepete git", onClick: () => router.push(routes.cart) },
     });
   };
 
