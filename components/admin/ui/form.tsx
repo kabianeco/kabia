@@ -309,12 +309,15 @@ export function SubmitButton({
 /** Announces the outcome of a submission without stealing focus. */
 export function FormMessage({
   state,
+  className,
 }: {
   state: { ok: boolean; message?: string; warning?: string }
+  /** Opt-in width/offset so a notice can sit inside a constrained form column. */
+  className?: string
 }) {
   if (!state.message && !state.warning) return null
   return (
-    <div aria-live="polite" className="space-y-2">
+    <div aria-live="polite" className={cn("space-y-2", className)}>
       {state.message && (
         <p
           role={state.ok ? "status" : "alert"}

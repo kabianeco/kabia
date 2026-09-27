@@ -199,7 +199,10 @@ export function AdminOrderForm({ catalogue }: { catalogue: CatalogueProduct[] })
             Bul
           </SubmitButton>
         </form>
-        <FormMessage state={lookupState === LOOKUP_IDLE ? ACTION_IDLE : lookupState} />
+        <FormMessage
+          state={lookupState === LOOKUP_IDLE ? ACTION_IDLE : lookupState}
+          className="mt-4 max-w-xl empty:mt-0"
+        />
         {customer && (
           <dl className="mt-4 grid max-w-xl gap-3 rounded-[3px] border border-ink/10 bg-ivory/60 p-4 text-sm sm:grid-cols-2">
             <div>
@@ -256,7 +259,7 @@ export function AdminOrderForm({ catalogue }: { catalogue: CatalogueProduct[] })
                     type="button"
                     onClick={() => addVariant(p.name, v)}
                     disabled={v.stock <= 0}
-                    className="shrink-0 rounded-theme-button border border-ink/20 px-4 py-2 text-sm transition-colors duration-200 hover:border-brand hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-theme-button border border-ink/20 px-4 py-2 text-sm transition-colors duration-200 hover:border-brand hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {v.stock <= 0 ? "Yok" : "Ekle"}
                   </button>
@@ -285,7 +288,7 @@ export function AdminOrderForm({ catalogue }: { catalogue: CatalogueProduct[] })
                     type="button"
                     aria-label="Adedi azalt"
                     onClick={() => setQty(item.variantId, item.quantity - 1)}
-                    className="flex h-9 w-9 items-center justify-center border border-ink/20 text-ink hover:text-brand"
+                    className="flex h-11 w-11 items-center justify-center border border-ink/20 text-ink hover:text-brand"
                   >
                     −
                   </button>
@@ -294,21 +297,21 @@ export function AdminOrderForm({ catalogue }: { catalogue: CatalogueProduct[] })
                     type="button"
                     aria-label="Adedi artır"
                     onClick={() => setQty(item.variantId, Math.min(99, item.quantity + 1))}
-                    className="flex h-9 w-9 items-center justify-center border border-ink/20 text-ink hover:text-brand"
+                    className="flex h-11 w-11 items-center justify-center border border-ink/20 text-ink hover:text-brand"
                   >
                     +
                   </button>
                   <button
                     type="button"
                     onClick={() => setQty(item.variantId, 0)}
-                    className="ml-1 text-xs text-ink/50 hover:text-clay"
+                    className="ml-1 inline-flex min-h-11 items-center text-xs text-ink/50 hover:text-clay"
                   >
                     Kaldır
                   </button>
                 </span>
               </li>
             ))}
-            <li className="flex justify-between px-1 pt-1 text-sm">
+            <li className="flex justify-between gap-4 px-4 pt-1 text-sm">
               <span className="text-ink/60">Ön tahmin (ara toplam)</span>
               <span className="figure font-medium text-ink">{formatCurrency(estimate)}</span>
             </li>
@@ -421,7 +424,7 @@ export function AdminOrderForm({ catalogue }: { catalogue: CatalogueProduct[] })
                     name="odeme-secim"
                     checked={payment === method}
                     onChange={() => setPayment(method)}
-                    className="h-4 w-4"
+                    className="h-4 w-4 accent-[var(--color-brand)]"
                   />
                   {ADMIN_ORDER_PAYMENT_LABELS[method]}
                 </label>
