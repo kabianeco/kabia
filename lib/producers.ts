@@ -175,7 +175,13 @@ function getAnonClient(): SupabaseClient | null {
 
 async function fetchPublicProducersUncached(): Promise<PublicProducersResult> {
   const client = getAnonClient()
-  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  // Build containers may lack Supabase env: degrade honestly like a failed
+  // query (the server client's placeholder philosophy) instead of throwing
+  // and failing the whole build. Runtime heals via ISR.
+  if (!client) {
+    console.error("[producers] Supabase env eksik — build-time reads degrade.")
+    return { status: "error" }
+  }
   return fetchPublicProducers(client)
 }
 
@@ -186,7 +192,10 @@ export const getCachedPublicProducers = unstable_cache(fetchPublicProducersUncac
 
 async function fetchSeckiProducersUncached(): Promise<PublicProducersResult> {
   const client = getAnonClient()
-  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  if (!client) {
+    console.error("[producers] Supabase env eksik — build-time reads degrade.")
+    return { status: "error" }
+  }
   return fetchSeckiProducers(client)
 }
 
@@ -197,7 +206,10 @@ export const getCachedSeckiProducers = unstable_cache(fetchSeckiProducersUncache
 
 async function fetchProducersBySourceUncached(source: ProductSource): Promise<PublicProducersResult> {
   const client = getAnonClient()
-  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  if (!client) {
+    console.error("[producers] Supabase env eksik — build-time reads degrade.")
+    return { status: "error" }
+  }
   return fetchProducersBySource(client, source)
 }
 
@@ -208,7 +220,10 @@ export const getCachedProducersBySource = unstable_cache(fetchProducersBySourceU
 
 async function fetchProducerBySlugUncached(slug: string): Promise<ProducerBySlugResult> {
   const client = getAnonClient()
-  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  if (!client) {
+    console.error(`[producers] Supabase env eksik — "${slug}" build-time reads error.`)
+    return { status: "error" }
+  }
   return fetchPublishedProducerBySlug(client, slug)
 }
 

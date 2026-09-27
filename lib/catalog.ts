@@ -312,7 +312,14 @@ export const CATALOG_PRODUCTS_TAG = "catalog-products"
 
 async function fetchPublicProductsUncached(): Promise<PublicProductsResult> {
   const client = getAnonClient()
-  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  // Build containers (e.g. Vercel) may lack Supabase env: degrade to the
+  // honest error state like a failed query does, instead of throwing and
+  // failing the whole build. Runtime heals via ISR; the server client's
+  // placeholder philosophy, same shape.
+  if (!client) {
+    console.error("[catalog] Supabase env eksik — build-time sitemap degrades to statics.")
+    return { status: "error" }
+  }
   return fetchPublicProducts(client)
 }
 
@@ -323,7 +330,10 @@ export const getCachedPublicProducts = unstable_cache(fetchPublicProductsUncache
 
 async function fetchProductBaseUncached(slug: string): Promise<Product | null> {
   const client = getAnonClient()
-  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  if (!client) {
+    console.error(`[catalog] Supabase env eksik — "${slug}" build-time reads null.`)
+    return null
+  }
   return fetchProductBase(client, slug)
 }
 
@@ -334,7 +344,10 @@ export const getCachedProductBase = unstable_cache(fetchProductBaseUncached, ["k
 
 async function fetchProducerProductsUncached(producerId: string): Promise<Product[]> {
   const client = getAnonClient()
-  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  if (!client) {
+    console.error("[catalog] Supabase env eksik — build-time producer shelf degrades to empty.")
+    return []
+  }
   return fetchProductsByProducer(client, producerId)
 }
 
@@ -353,7 +366,10 @@ export const getCachedProducerProducts = unstable_cache(fetchProducerProductsUnc
  */
 async function fetchProductReviewsUncached(productId: string): Promise<ProductReview[]> {
   const client = getAnonClient()
-  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  if (!client) {
+    console.error("[catalog] Supabase env eksik — build-time reviews degrade to empty.")
+    return []
+  }
   return fetchProductReviews(client, productId)
 }
 
@@ -364,7 +380,10 @@ export const getCachedProductReviews = unstable_cache(fetchProductReviewsUncache
 
 async function fetchRelatedUncached(category: string, slug: string, count: number): Promise<Product[]> {
   const client = getAnonClient()
-  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
+  if (!client) {
+    console.error("[catalog] Supabase env eksik — build-time related degrades to empty.")
+    return []
+  }
   const categoryId = await categoryIdBySlug(client, category)
   const restPromise = client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).neq("slug", slug).order("created_at", { ascending: true }).limit(count)
   const samePromise = categoryId
