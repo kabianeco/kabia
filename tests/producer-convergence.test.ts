@@ -34,20 +34,20 @@ describe("producer_convergence migration", () => {
 describe("producer read paths", () => {
   it("/secki reads the database with an honest outage state", () => {
     const src = readFileSync("app/secki/page.tsx", "utf8");
-    assert.match(src, /fetchSeckiProducers/);
+    assert.match(src, /getCachedSeckiProducers/);
     assert.match(src, /Üretici profilleri şu anda yüklenemiyor\./);
     assert.ok(!src.includes("const producers = producerCollections.secki"));
   });
 
   it("/mutfak reads the database with an honest outage state", () => {
     const src = readFileSync("app/mutfak/page.tsx", "utf8");
-    assert.match(src, /fetchProducersBySource\(await createSupabaseServerClient\(\), "mutfak"\)/);
+    assert.match(src, /getCachedProducersBySource\("mutfak"\)/);
     assert.match(src, /Üretici profilleri şu anda yüklenemiyor\./);
   });
 
   it("homepage strip reads the database", () => {
     const src = readFileSync("components/home/producers.tsx", "utf8");
-    assert.match(src, /fetchSeckiProducers/);
+    assert.match(src, /getCachedSeckiProducers/);
     assert.ok(!src.includes("const producers = producerCollections.secki"));
   });
 
@@ -55,7 +55,7 @@ describe("producer read paths", () => {
     const src = readFileSync("app/ureticiler/page.tsx", "utf8");
     assert.ok(!src.includes("const ORDER"), "hardcoded ORDER removed");
     assert.ok(!src.includes("inCuratedOrder"), "curated sorter removed");
-    assert.match(src, /fetchPublicProducers/);
+    assert.match(src, /getCachedPublicProducers/);
   });
 
   it("cards render the administered tagline", () => {

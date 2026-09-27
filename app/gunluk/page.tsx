@@ -56,6 +56,14 @@ export default function JournalIndexPage() {
             Çiftlik kronolojisini gör
             <span aria-hidden="true">→</span>
           </Link>
+          <Link
+            href={routes.product("kabuklu-badem")}
+            prefetch={false}
+            className="mt-5 ml-8 inline-flex min-h-11 items-center gap-2 text-sm text-brand transition-colors duration-300 hover:text-ink"
+          >
+            Bu bahçenin bademi
+            <span aria-hidden="true">→</span>
+          </Link>
         </div>
 
         <div className="wrap">
