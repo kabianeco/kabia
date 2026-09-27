@@ -81,7 +81,7 @@ export default async function AdminOverviewPage({
         title="Genel Bakış"
         description={`Son ${days} günün özeti. Gelir rakamları iptal edilen siparişleri içermez.`}
         actions={
-          <nav aria-label="Tarih aralığı" className="flex flex-wrap gap-1">
+          <nav aria-label="Tarih aralığı" className="flex flex-wrap gap-2">
             {RANGES.map((option) => {
               const active = option.days === days
               return (

@@ -131,7 +131,6 @@ export default async function OrdersPage({
         <SearchField
           label="Ara"
           placeholder="Sipariş no, ad soyad veya e-posta"
-          hint="En az 2 karakter"
         />
         <FilterSelect
           label="Durum"
@@ -250,7 +249,7 @@ export default async function OrdersPage({
                           <Link
                             href={`/admin/orders/${order.id}`}
                             prefetch={false}
-                            className="inline-flex min-h-11 items-center text-sm text-brand transition-colors duration-300 hover:text-forest"
+                            className="inline-flex min-h-11 items-center px-3 -mr-3 text-sm text-brand transition-colors duration-300 hover:text-forest"
                           >
                             Detay
                           </Link>

@@ -121,7 +121,7 @@ export default async function AuditLogsPage({
       </div>
 
       <FilterBar>
-        <SearchField label="Kayıt kimliği" placeholder="Ürün / sipariş kimliği" hint="En az 2 karakter" />
+        <SearchField label="Kayıt kimliği" placeholder="Ürün / sipariş kimliği" />
         <FilterSelect
           label="İşlem"
           paramName="islem"
@@ -176,7 +176,7 @@ export default async function AuditLogsPage({
                           {row.entity_id && (
                             <>
                               {" · "}
-                              <span className="font-mono">{row.entity_id}</span>
+                              <span className="break-all font-mono">{row.entity_id}</span>
                             </>
                           )}
                         </p>

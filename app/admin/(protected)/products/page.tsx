@@ -282,7 +282,7 @@ export default async function ProductsPage({
                           <Link
                             href={`/admin/products/${product.id}`}
                             prefetch={false}
-                            className="inline-flex min-h-11 items-center text-sm text-brand transition-colors duration-300 hover:text-forest"
+                            className="inline-flex min-h-11 items-center px-3 -mr-3 text-sm text-brand transition-colors duration-300 hover:text-forest"
                           >
                             Düzenle
                           </Link>

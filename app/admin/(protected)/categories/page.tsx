@@ -48,7 +48,7 @@ export default async function CategoriesPage() {
                         <span className="font-medium text-ink">{category.name}</span>
                       </Td>
                       <Td>
-                        <span className="text-sm text-ink/60">/{category.slug}</span>
+                        <span className="break-all text-sm text-ink/60">/{category.slug}</span>
                       </Td>
                       <Td align="right" numeric>
                         {category.sortOrder}

@@ -56,7 +56,7 @@ export function PageHeader({
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="font-serif text-2xl leading-tight text-ink md:text-3xl">{title}</h1>
+          <h1 className="break-words font-serif text-2xl leading-tight text-ink md:text-3xl">{title}</h1>
           {description && (
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink/60">{description}</p>
           )}

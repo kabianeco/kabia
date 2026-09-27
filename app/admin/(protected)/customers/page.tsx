@@ -119,7 +119,7 @@ export default async function CustomersPage({
       )}
 
       <FilterBar>
-        <SearchField label="Ara" placeholder="Ad soyad, telefon veya müşteri no (KE-…)" hint="En az 2 karakter" />
+        <SearchField label="Ara" placeholder="Ad soyad, telefon veya müşteri no (KE-…)" />
         <FilterSelect
           label="Sipariş"
           paramName="durum"

@@ -92,7 +92,6 @@ export default async function MediaPage({
             <SearchField
               placeholder="badem…"
               label="Görsel ara"
-              hint="Dosya adı, görünen ad ve alt metinde arar."
             />
             <FilterSelect
               paramName="tur"

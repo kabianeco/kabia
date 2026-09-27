@@ -97,7 +97,7 @@ export default async function InventoryPage({
       />
 
       <FilterBar>
-        <SearchField label="Ara" placeholder="Ürün adı, seçenek veya SKU" hint="En az 2 karakter" />
+        <SearchField label="Ara" placeholder="Ürün adı, seçenek veya SKU" />
         <FilterSelect
           label="Stok durumu"
           paramName="durum"
@@ -163,11 +163,11 @@ export default async function InventoryPage({
                             {row.product_name}
                           </Link>
                           {!row.is_active && (
-                            <span className="label ml-2 text-ink/40">Arşivde</span>
+                            <span className="label ml-2 whitespace-nowrap text-ink/40">Arşivde</span>
                           )}
                         </Td>
                         <Td>{row.variant_label}</Td>
-                        <Td>{row.sku ?? "—"}</Td>
+                        <Td className="break-all">{row.sku ?? "—"}</Td>
                         <Td align="right" numeric>
                           {formatCurrency(toNumber(row.price))}
                         </Td>

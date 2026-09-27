@@ -34,7 +34,7 @@ export default async function ProducersPage({
           <Link
             href="/admin/producers/new"
             prefetch={false}
-            className="inline-flex min-h-11 items-center rounded-full bg-brand px-4 text-sm text-on-brand transition-colors duration-300 hover:bg-forest"
+            className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm text-on-brand transition-colors duration-300 hover:bg-forest"
           >
             Yeni üretici
           </Link>
