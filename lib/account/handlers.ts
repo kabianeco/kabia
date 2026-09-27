@@ -348,6 +348,36 @@ export async function setMarketingConsent(input: unknown, deps: MarketingDeps): 
   return { ok: true, message: granted ? "Kampanya e-postalarına izin verdiniz." : "Kampanya e-postaları kapatıldı.", granted }
 }
 
+// ---------------------------------------------------------------------------
+// Order-status e-mail preference (kargo + teslimat bildirimleri)
+// ---------------------------------------------------------------------------
+
+export const orderStatusSchema = z.object({ granted: z.enum(["true", "false"]) })
+
+export interface OrderStatusDeps extends BaseDeps {
+  /** notification_preferences.order_status upsert for the signed-in user. */
+  setOrderStatus(granted: boolean): Promise<boolean>
+}
+
+/**
+ * Kargo/teslimat e-postaları tercihi (opt-out, default açık). Sipariş
+ * alındı ve iptal e-postaları transactional'dır, bu anahtardan bağımsız
+ * her zaman gider. Kayıt yazılamazsa hata döner; arayan, anahtarı yalnızca
+ * başarıda çevirir (iyimser çevirme yok).
+ */
+export async function setOrderStatus(input: unknown, deps: OrderStatusDeps): Promise<AccountResult & { granted?: boolean }> {
+  const user = await deps.getUser()
+  if (!user) return { ok: false, message: MESSAGES.signedOut }
+  const owed = passwordChangeOwed(user)
+  if (owed) return owed
+  const parsed = orderStatusSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, message: MESSAGES.generic }
+  if (!(await deps.allow("account_update", user.id))) return { ok: false, message: MESSAGES.rateLimited }
+  const granted = parsed.data.granted === "true"
+  if (!(await deps.setOrderStatus(granted))) return { ok: false, message: "Tercihiniz kaydedilemedi. Lütfen tekrar deneyin." }
+  return { ok: true, message: granted ? "Kargo ve teslimat bildirimleri açıldı." : "Kargo ve teslimat bildirimleri kapatıldı.", granted }
+}
+
 /** FormData → plain object for the schemas above (only string values). */
 export function formObject(formData: FormData): Record<string, string> {
   const out: Record<string, string> = {}

@@ -8,6 +8,7 @@ import {
   exportData,
   formObject,
   setMarketingConsent,
+  setOrderStatus,
   signOutEverywhere,
   updateProfile,
   type AccountResult,
@@ -22,6 +23,7 @@ import {
   requestEmailChange,
   saveProfile,
   setMarketingConsent as setMarketingConsentRpc,
+  setOrderStatusPreference,
   signOutGlobal,
   updatePasswordWithProof,
   verifyPassword,
@@ -111,5 +113,16 @@ export async function setMarketingConsentAction(_prev: ActionState, formData: Fo
   return setMarketingConsent(formObject(formData), {
     ...deps,
     setMarketingConsent: (granted) => setMarketingConsentRpc(deps.client, granted),
+  })
+}
+
+export async function setOrderStatusAction(_prev: ActionState, formData: FormData) {
+  const deps = await baseDeps()
+  const user = await deps.getUser()
+  return setOrderStatus(formObject(formData), {
+    ...deps,
+    getUser: async () => user,
+    setOrderStatus: (granted) =>
+      user ? setOrderStatusPreference(deps.client, user.id, granted) : Promise.resolve(false),
   })
 }

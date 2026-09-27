@@ -114,6 +114,23 @@ export async function setMarketingConsent(client: SupabaseClient, granted: boole
   return !error
 }
 
+/**
+ * Kargo/teslimat bildirimi tercihi. Satır yoksa açılır (opt-out modeli,
+ * default açık); RLS (np_insert/update_own) yazmayı oturum sahibine
+ * kilitler. userId arayanın doğrulanmış oturumundan gelir.
+ */
+export async function setOrderStatusPreference(
+  client: SupabaseClient,
+  userId: string,
+  granted: boolean,
+): Promise<boolean> {
+  const { error } = await client
+    .from("notification_preferences")
+    .upsert({ user_id: userId, order_status: granted }, { onConflict: "user_id" })
+  if (error) console.error("[account] order-status preference failed:", error.code)
+  return !error
+}
+
 export async function hasStaffRole(userId: string): Promise<boolean> {
   const admin = createSupabaseAdminClient()
   const { count, error } = await admin.from("user_roles").select("user_id", { count: "exact", head: true }).eq("user_id", userId)
