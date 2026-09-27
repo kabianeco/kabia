@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
 import { useCheckout, type SavedAddress } from "@/lib/checkout-context";
@@ -21,6 +21,9 @@ export function AddressForm({ editing, onSaved, onCancel }: AddressFormProps) {
   const { addAddress, updateAddress } = useCheckout();
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  // State flips async: a rapid double submit would pass the `saving` check
+  // twice and insert two identical rows. The ref closes that window.
+  const submitting = useRef(false);
   const [fields, setFields] = useState<NewAddressFields>(
     editing
       ? {
@@ -45,12 +48,18 @@ export function AddressForm({ editing, onSaved, onCancel }: AddressFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!valid || saving) return;
+    if (!valid || saving || submitting.current) return;
+    submitting.current = true;
     setSaving(true);
     setFailed(false);
     const payload = { ...fields, label: fields.label.trim() || "Adresim" };
-    const ok = editing ? await updateAddress(editing.id, payload) : await addAddress(payload);
-    setSaving(false);
+    let ok = false;
+    try {
+      ok = editing ? await updateAddress(editing.id, payload) : await addAddress(payload);
+    } finally {
+      submitting.current = false;
+      setSaving(false);
+    }
     if (!ok) {
       // Keep what was typed; say so next to the button.
       setFailed(true);

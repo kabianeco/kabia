@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useAuth } from "@/lib/auth-context"
 import type { AddressRow } from "@/lib/supabase/rows"
+import { dedupeAddresses, isSameAddress } from "@/lib/addresses/normalize"
 
 export interface SavedAddress {
   id: string
@@ -112,6 +113,14 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const contactSeeded = useRef(false)
+  // Double-submit guard: AddressForm also disables, but state updates are
+  // async — a rapid second submit would otherwise insert a second identical
+  // row before `saving` flips. The ref makes the second call a reuse.
+  const addInFlight = useRef(false)
+  // Guest-merge guard: the load effect must run once per sign-in. Depending
+  // on `user` (profile object) re-ran the merge on profile load, and leaving
+  // the guest key until after the inserts let a second run re-insert.
+  const mergedFor = useRef<string | null>(null)
 
   useEffect(() => {
     localStorage.setItem(CONTACT_KEY, JSON.stringify(contact))
@@ -121,14 +130,20 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     if (selectedAddressId) localStorage.setItem(SELECTED_KEY, selectedAddressId)
   }, [selectedAddressId])
 
-  // Load addresses (DB for authed, localStorage for guest) + merge on login
+  // Load addresses (DB for authed, localStorage for guest) + merge on login.
+  // An address is created only by an explicit save (addAddress below). Using
+  // a saved address in checkout or in admin order creation never inserts —
+  // both paths submit a snapshot (create_order / admin_create_order take a
+  // jsonb address, no address_id FK, no addresses write).
   useEffect(() => {
     if (!authHydrated) return
     let cancelled = false
     ;(async () => {
       const supabase = await getSupabaseBrowserClient()
       if (userId) {
-        // merge guest addresses into DB
+        // Read the guest stash synchronously and drop the key immediately,
+        // before any await: a second effect run (StrictMode, profile load)
+        // must see an empty stash, never the same list twice.
         let guest: SavedAddress[] = []
         try {
           const raw = localStorage.getItem(GUEST_ADDR_KEY)
@@ -136,10 +151,8 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         } catch {
           guest = []
         }
-        for (const g of guest) {
-          await supabase.from("addresses").insert({ ...toDbRow(g, userId), is_default: g.isDefault ?? false })
-        }
         if (guest.length) localStorage.removeItem(GUEST_ADDR_KEY)
+        const dedupedGuest = dedupeAddresses(guest.filter((g) => g && g.addressLine1))
         // Scoped to the signed-in user explicitly rather than leaning on RLS to
         // do it. Administrators can now SELECT every address for the customer
         // screens, so "whatever the policy returns" is no longer the same thing
@@ -149,14 +162,42 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
           .select("*")
           .eq("user_id", userId)
           .order("created_at", { ascending: false })
-        const mapped = (data ?? []).map(mapAddrRow)
-        if (!cancelled) setLoadError(!!readError)
-        if (!cancelled && !readError) {
-          setAddresses(mapped)
-          const def = mapped.find((a) => a.isDefault)?.id ?? mapped[0]?.id ?? null
+        if (cancelled) return
+        if (readError) {
+          setLoadError(true)
+          // Guest stash already dropped: re-queue it so nothing is lost.
+          if (dedupedGuest.length) {
+            try {
+              localStorage.setItem(GUEST_ADDR_KEY, JSON.stringify(dedupedGuest))
+            } catch { /* quota — drop */ }
+          }
+        } else {
+          setLoadError(false)
+          const mapped = (data ?? []).map(mapAddrRow)
+          // Merge only once per sign-in and only rows not already saved
+          // (normalized compare): a guest list re-read can never duplicate.
+          if (dedupedGuest.length && mergedFor.current !== userId) {
+            mergedFor.current = userId
+            for (const g of dedupedGuest) {
+              if (cancelled) break
+              if (mapped.some((m) => isSameAddress(m, g))) continue
+              const { data: inserted } = await supabase
+                .from("addresses")
+                .insert({ ...toDbRow(g, userId), is_default: g.isDefault ?? false })
+                .select("*")
+                .maybeSingle()
+              if (inserted) mapped.push(mapAddrRow(inserted as AddressRow))
+            }
+            // Re-read order after merge so selection is stable.
+            mapped.sort((a, b) => (a.isDefault === b.isDefault ? 0 : a.isDefault ? -1 : 1))
+          }
+          const unique = dedupeAddresses(mapped)
+          setAddresses(unique)
+          const def = unique.find((a) => a.isDefault)?.id ?? unique[0]?.id ?? null
           setSelectedAddressId((prev) => prev ?? def)
         }
       } else {
+        mergedFor.current = null
         let guest: SavedAddress[] = []
         try {
           const raw = localStorage.getItem(GUEST_ADDR_KEY)
@@ -165,30 +206,34 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
           guest = []
         }
         if (!cancelled) {
-          setAddresses(guest)
-          setSelectedAddressId((prev) => prev ?? guest[0]?.id ?? null)
+          const unique = dedupeAddresses(guest)
+          setAddresses(unique)
+          setSelectedAddressId((prev) => prev ?? unique[0]?.id ?? null)
         }
-      }
-      // Seed the checkout contact fields from the signed-in profile once, and
-      // only where the visitor has not typed something of their own.
-      if (!cancelled && userId && user && !contactSeeded.current) {
-        contactSeeded.current = true
-        setContactState((prev) =>
-          prev.fullName
-            ? prev
-            : {
-                fullName: user.name,
-                email: user.email,
-                phone: user.phone || prev.phone,
-              },
-        )
       }
       if (!cancelled) setHydrated(true)
     })()
     return () => {
       cancelled = true
     }
-  }, [userId, user, authHydrated])
+  }, [userId, authHydrated])
+
+  // Seed the checkout contact fields from the signed-in profile once, and
+  // only where the visitor has not typed something of their own. Split from
+  // the address load so profile arrival never re-runs the guest merge.
+  useEffect(() => {
+    if (!authHydrated || !userId || !user || contactSeeded.current) return
+    contactSeeded.current = true
+    setContactState((prev) =>
+      prev.fullName
+        ? prev
+        : {
+            fullName: user.name,
+            email: user.email,
+            phone: user.phone || prev.phone,
+          },
+    )
+  }, [authHydrated, userId, user])
 
   const setContact = useCallback((patch: Partial<ContactInfo>) => {
     setContactState((prev) => ({ ...prev, ...patch }))
@@ -198,21 +243,48 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
   const addAddress = useCallback(
     async (address: Omit<SavedAddress, "id">) => {
-      if (userId) {
-        const supabase = await getSupabaseBrowserClient()
-        const { data, error } = await supabase.from("addresses").insert({ ...toDbRow(address, userId), is_default: false }).select("*").maybeSingle()
-        if (error || !data) return false
-        const mapped = mapAddrRow(data)
-        setAddresses((prev) => [...prev, mapped])
-        setSelectedAddressId(mapped.id)
-      } else {
-        const id = `addr_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
-        setAddresses((prev) => [...prev, { ...address, id }])
-        setSelectedAddressId(id)
+      // Identical save reuses: compare normalized fields against the current
+      // list first so retries and double types never insert a second row.
+      const existing = addresses.find((a) => isSameAddress(a, address))
+      if (existing) {
+        setSelectedAddressId(existing.id)
+        return true
       }
-      return true
+      if (addInFlight.current) return false
+      addInFlight.current = true
+      try {
+        if (userId) {
+          const supabase = await getSupabaseBrowserClient()
+          const { data, error } = await supabase.from("addresses").insert({ ...toDbRow(address, userId), is_default: false }).select("*").maybeSingle()
+          if (error || !data) return false
+          const mapped = mapAddrRow(data)
+          let reusedId: string | null = null
+          setAddresses((prev) => {
+            const dup = prev.find((a) => isSameAddress(a, mapped))
+            if (dup) {
+              reusedId = dup.id
+              return prev
+            }
+            return [...prev, mapped]
+          })
+          setSelectedAddressId(reusedId ?? mapped.id)
+        } else {
+          const id = `addr_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+          setAddresses((prev) => {
+            if (prev.some((a) => isSameAddress(a, address))) return prev
+            return [...prev, { ...address, id }]
+          })
+          setSelectedAddressId((prev) => {
+            const dup = addresses.find((a) => isSameAddress(a, address))
+            return dup?.id ?? prev ?? id
+          })
+        }
+        return true
+      } finally {
+        addInFlight.current = false
+      }
     },
-    [userId],
+    [userId, addresses],
   )
 
   const updateAddress = useCallback(

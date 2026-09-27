@@ -9,6 +9,7 @@ import { PasswordField } from "@/components/auth/password-field";
 import { routes } from "@/lib/site";
 import { ACTION_IDLE, type ActionState } from "@/lib/admin/errors";
 import { customerLoginAction } from "@/app/auth/actions";
+import { useAuth } from "@/lib/auth-context";
 import { writePendingEmail } from "@/lib/auth/pending";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -26,6 +27,7 @@ type LoginState = ActionState & { needsEmailConfirm?: boolean; redirectTo?: stri
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { refreshSession } = useAuth();
   const next = safeNext(searchParams.get("next"));
   const signedOutEverywhere = searchParams.get("cikis") === "tum";
 
@@ -34,6 +36,7 @@ export function LoginForm() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const submittedEmail = useRef("");
   const form = useRef<HTMLFormElement>(null);
+  const navigatedFor = useRef<string | null>(null);
 
   // SEC-05: password login goes through the rate-limited server action.
   const [state, action, pending] = useActionState(customerLoginAction, ACTION_IDLE);
@@ -41,9 +44,26 @@ export function LoginForm() {
 
   useEffect(() => {
     if (result === ACTION_IDLE) return;
-    if (result.ok && result.redirectTo) router.push(result.redirectTo);
-    else if (result.needsEmailConfirm) writePendingEmail(submittedEmail.current);
-  }, [result, router]);
+    // Success: sync the browser session first so the account guard sees a
+    // user on arrival. Without this the fresh sign-in bounces back to /giris
+    // with no message and the retry "works" only because the session arrived
+    // by then. Exactly one navigation per success.
+    if (result.ok && result.redirectTo) {
+      if (navigatedFor.current === result.redirectTo) return;
+      navigatedFor.current = result.redirectTo;
+      const target = result.redirectTo;
+      ;(async () => {
+        try {
+          await refreshSession();
+        } finally {
+          router.push(target);
+          router.refresh();
+        }
+      })()
+      return;
+    }
+    if (result.needsEmailConfirm) writePendingEmail(submittedEmail.current);
+  }, [result, router, refreshSession]);
 
   const serverError = result !== ACTION_IDLE && !result.ok && !result.needsEmailConfirm ? result.message : undefined;
 

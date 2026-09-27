@@ -6,6 +6,12 @@ import { z } from "zod"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import type { ActionState } from "@/lib/admin/errors"
 import { checkRateLimit, getClientIp, RATE_LIMIT_MESSAGE } from "@/lib/auth/rate-limit"
+import {
+  LOGIN_GENERIC_ERROR,
+  LOGIN_SERVER_ERROR,
+  LOGIN_UNCONFIRMED_MESSAGE,
+  mapLoginError,
+} from "@/lib/auth/customer-login-errors"
 import { validateSignupCode } from "@/lib/auth/customer-confirm"
 import { defaultMailer, sendWelcomeEmail, supabaseNotificationStore } from "@/lib/email/notify"
 import { RECOVERY_COOKIE, verifyRecoveryGrant } from "@/lib/auth/recovery-grant"
@@ -45,64 +51,97 @@ const GENERIC_SENT_MESSAGE = "Bu adres için bir hesap varsa e-posta gönderdik.
 const GENERIC_CODE_ERROR = "Kod doğrulanamadı. Bilgileri kontrol edip tekrar deneyin."
 
 /**
- * Returns the same result shape for every failure mode, so the client cannot
- * distinguish "wrong password" from "rate limited" from "no such account".
+ * Every login failure returns an inline Turkish message — a silent reload is
+ * impossible. Supabase per-IP 429 (shared Vercel egress) maps to the rate
+ * message, wrong credentials to their own message, transport failures to the
+ * network message, and any thrown fault (limiter, env, profile read) to the
+ * server message. The real client IP is forwarded as Sb-Forwarded-For so
+ * Supabase limits per end user once the secret key + dashboard switch exist.
  */
-const GENERIC_AUTH_ERROR = "Giriş yapılamadı. Bilgilerinizi kontrol edip tekrar deneyin."
+const GENERIC_AUTH_ERROR = LOGIN_GENERIC_ERROR
 const GENERIC_REGISTER_ERROR = "Kayıt tamamlanamadı. Bilgilerinizi kontrol edip tekrar deneyin."
 
 export async function customerLoginAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState & { needsEmailConfirm?: boolean; redirectTo?: string }> {
-  const parsed = loginSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-    next: formData.get("next") ?? undefined,
-  })
+  try {
+    const parsed = loginSchema.safeParse({
+      email: formData.get("email"),
+      password: formData.get("password"),
+      next: formData.get("next") ?? undefined,
+    })
 
-  if (!parsed.success) {
-    return { ok: false, message: GENERIC_AUTH_ERROR }
+    if (!parsed.success) {
+      const emailIssue = parsed.error.issues.find((i) => i.path[0] === "email")
+      if (emailIssue) return { ok: false, message: emailIssue.message }
+      return { ok: false, message: GENERIC_AUTH_ERROR }
+    }
+
+    const { email, password, next } = parsed.data
+
+    // SEC-05: Rate-limit before calling Supabase Auth.
+    const h = await headers()
+    const ip = getClientIp(h)
+    let rl: { allowed: boolean }
+    try {
+      rl = await checkRateLimit("customer_login", ip, email)
+    } catch (rlError) {
+      console.error("[auth] customer_login limiter failed:", rlError instanceof Error ? rlError.message : rlError)
+      return { ok: false, message: LOGIN_SERVER_ERROR }
+    }
+    if (!rl.allowed) {
+      return { ok: false, message: RATE_LIMIT_MESSAGE }
+    }
+
+    const supabase = await createSupabaseServerClient({ forwardedFor: ip })
+    type SignInData = { user: { id: string } | null; session: unknown | null }
+    type SignInError = { code?: string; status?: number | string; message?: string; name?: string }
+    let signInData: SignInData | null = null
+    let signInError: SignInError | null = null
+    try {
+      const result = await supabase.auth.signInWithPassword({ email, password })
+      signInData = result.data as unknown as SignInData | null
+      signInError = (result.error as unknown as SignInError | null) ?? null
+    } catch (thrown) {
+      console.error("[auth] signInWithPassword threw:", thrown instanceof Error ? thrown.message : thrown)
+      return { ok: false, message: LOGIN_SERVER_ERROR }
+    }
+
+    if (signInError?.code === "email_not_confirmed") {
+      return { ok: false, needsEmailConfirm: true, message: LOGIN_UNCONFIRMED_MESSAGE }
+    }
+    if (signInError || !signInData || !signInData.user) {
+      return { ok: false, message: mapLoginError(signInError) }
+    }
+
+    if (!signInData.session) {
+      return { ok: false, needsEmailConfirm: true, message: LOGIN_UNCONFIRMED_MESSAGE }
+    }
+
+    // Yönetici parola belirlediyse ilk iş şifre yenileme: güvenlik sayfasına
+    // yönlendir; diğer hesap eylemleri sunucuda zaten kilitli.
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("must_change_password")
+        .eq("id", signInData.user.id)
+        .maybeSingle()
+      if ((profile as { must_change_password?: boolean } | null)?.must_change_password === true) {
+        return { ok: true, redirectTo: "/hesabim/guvenlik" }
+      }
+    } catch (profileError) {
+      console.error("[auth] profile flag read failed:", profileError instanceof Error ? profileError.message : profileError)
+      return { ok: false, message: LOGIN_SERVER_ERROR }
+    }
+
+    // Only same-origin paths are acceptable return targets.
+    const safeNext = next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "/hesabim"
+    return { ok: true, redirectTo: safeNext }
+  } catch (unexpected) {
+    console.error("[auth] customerLoginAction unexpected:", unexpected instanceof Error ? unexpected.message : unexpected)
+    return { ok: false, message: LOGIN_SERVER_ERROR }
   }
-
-  const { email, password, next } = parsed.data
-
-  // SEC-05: Rate-limit before calling Supabase Auth.
-  const h = await headers()
-  const ip = getClientIp(h)
-  const rl = await checkRateLimit("customer_login", ip, email)
-  if (!rl.allowed) {
-    return { ok: false, message: RATE_LIMIT_MESSAGE }
-  }
-
-  const supabase = await createSupabaseServerClient()
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-
-  if (error?.code === "email_not_confirmed") {
-    return { ok: false, needsEmailConfirm: true, message: "Devam etmek için e-postanızı doğrulayın." }
-  }
-  if (error || !data.user) {
-    return { ok: false, message: GENERIC_AUTH_ERROR }
-  }
-
-  if (!data.session) {
-    return { ok: false, needsEmailConfirm: true, message: "Devam etmek için e-postanızı doğrulayın." }
-  }
-
-  // Yönetici parola belirlediyse ilk iş şifre yenileme: güvenlik sayfasına
-  // yönlendir; diğer hesap eylemleri sunucuda zaten kilitli.
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("must_change_password")
-    .eq("id", data.user.id)
-    .maybeSingle()
-  if ((profile as { must_change_password?: boolean } | null)?.must_change_password === true) {
-    return { ok: true, redirectTo: "/hesabim/guvenlik" }
-  }
-
-  // Only same-origin paths are acceptable return targets.
-  const safeNext = next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "/hesabim"
-  return { ok: true, redirectTo: safeNext }
 }
 
 export async function customerRegisterAction(

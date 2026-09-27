@@ -14,6 +14,7 @@ const files = [
   "producer-convergence", "homepage-intro", "client-deferral",
   "account-actions", "auth-components", "cart-persistence", "order-override",
   "customer-number", "admin-create-order", "customer-password", "transactional-email",
+  "customer-login-errors", "proxy-skip", "address-dedup",
 ].map(name => `tests/${name}.test.ts`);
 files.push("tests/client-boundary.test.js");
 const env = { ...process.env };

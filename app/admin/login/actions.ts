@@ -46,7 +46,7 @@ export async function adminLoginAction(
     return { ok: false, message: RATE_LIMIT_MESSAGE }
   }
 
-  const supabase = await createSupabaseServerClient()
+  const supabase = await createSupabaseServerClient({ forwardedFor: ip })
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error || !data.user) {

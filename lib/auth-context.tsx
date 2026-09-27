@@ -30,6 +30,17 @@ interface AuthContextValue {
   updateProfile: (patch: Partial<AuthUser>) => Promise<AuthResult>
   /** Reflects a profile saved on the server (updateProfileAction) without a refetch. */
   applyProfile: (row: { full_name: string; phone: string | null; birth_date: string | null; customer_number?: string | null }) => void
+  /**
+   * Re-reads the browser session after a server-action sign-in.
+   *
+   * The customer login runs on the server (rate-limited there), so its
+   * Set-Cookie lands in the browser without touching this context's
+   * `supabaseUser`. Without an explicit re-read the account guard still sees
+   * "logged out" and bounces the fresh sign-in back to /giris with no
+   * message. The login form awaits this before navigating so the first
+   * attempt lands every time.
+   */
+  refreshSession: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -182,6 +193,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const refreshSession = useCallback(async () => {
+    const supabase = await getSupabaseBrowserClient()
+    try {
+      const { data } = await supabase.auth.getSession()
+      setSupabaseUser(data.session?.user ?? null)
+    } catch {
+      // A failed re-read leaves the previous state: the server layout is the
+      // authority on the next navigation, never a thrown client error.
+    }
+  }, [])
+
   const value: AuthContextValue = useMemo(
     () => ({
       isLoggedIn: !!supabaseUser,
@@ -193,8 +215,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       updateProfile,
       applyProfile,
+      refreshSession,
     }),
-    [supabaseUser, user, hydrated, login, register, logout, updateProfile, applyProfile],
+    [supabaseUser, user, hydrated, login, register, logout, updateProfile, applyProfile, refreshSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import { classifyAuthError, isPublicAdminPath } from "@/lib/admin/access"
+import { shouldSkipAdminRefresh } from "@/lib/auth/refresh-skip"
 
 /**
  * The single Next.js proxy (formerly "middleware" — Next 16 renamed the file
@@ -201,6 +202,34 @@ async function adminSessionSync(request: NextRequest): Promise<NextResponse> {
   const guard = (response: NextResponse): NextResponse => {
     response.headers.set("x-kabia-admin-guard", "1")
     return response
+  }
+
+  // Cut unnecessary /token + /user load: prefetch, server actions, static
+  // assets, anonymous requests and sessions far from expiry never touch Auth
+  // here. Document navigations with a live session still validate below, and
+  // the protected layout re-validates the role on every document request, so
+  // skipping here cannot open the gate — it only saves the shared per-IP
+  // /token bucket (Supabase Auth 150/5min, burst 30).
+  if (
+    shouldSkipAdminRefresh({
+      headers: request.headers,
+      pathname,
+      cookies: request.cookies.getAll().map((c) => ({ name: c.name, value: c.value })),
+    })
+  ) {
+    // Anonymous prefetch/static still needs the login redirect for document
+    // navigations only. Prefetches must never redirect (they would poison the
+    // router cache); return next and let the document request decide.
+    const isPrefetch =
+      request.headers.get("Next-Router-Prefetch") === "1" ||
+      (request.headers.get("Sec-Purpose") ?? "").toLowerCase().includes("prefetch")
+    const hasSession = request.cookies.getAll().some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"))
+    if (!hasSession && !isPrefetch && !isPublicAdminPath(pathname) && request.method === "GET" && !request.headers.get("rsc")) {
+      const loginUrl = new URL("/admin/login", request.url)
+      if (pathname !== "/admin") loginUrl.searchParams.set("next", pathname)
+      return guard(NextResponse.redirect(loginUrl))
+    }
+    return guard(NextResponse.next({ request }))
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
