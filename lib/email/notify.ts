@@ -1,6 +1,6 @@
 /**
  * Transactional e-posta orkestrasyonu — welcome, order-received, order-shipped,
- * order-delivered (yalnızca sunucu).
+ * order-delivered, order-cancelled (yalnızca sunucu).
  *
  * Tetikleyiciler:
  *   welcome        — müşteri e-postasını doğrulayınca (link: app/auth/confirm,
@@ -11,6 +11,9 @@
  *   order_shipped  — sipariş `kargoda`'ya geçince (durum aksiyonları) ya da
  *                    `kargoda` durumundaki siparişe kargo bilgisi girilince.
  *   order_delivered— sipariş `teslim_edildi`'ye geçince.
+ *   order_cancelled— sipariş `iptal_edildi`'ye geçince (durum aksiyonları ya
+ *                    da süper-yönetici override'u), restock RPC'si commit
+ *                    ettikten sonra.
  *
  * Kurallar:
  *   - Idempotent: her deneme public.email_notifications satırıdır. Otomatik
@@ -21,9 +24,9 @@
  *   - E-posta hatası asla siparişi ya da durum değişikliğini bozmaz: bu
  *     modüldeki göndericiler operasyonel hatalarda throw etmez; `failed`
  *     kaydeder ve `{ mailed: false }` döner. Arayan yine de try/catch sarar.
- *   - order_received her zaman gönderilir (transactional). shipped/delivered,
- *     müşterinin persist edilmiş order_status tercihine saygı gösterir
- *     (satır yoksa gönderir); welcome tercihten bağımsızdır.
+ *   - order_received ve order_cancelled her zaman gönderilir (transactional).
+ *     shipped/delivered, müşterinin persist edilmiş order_status tercihine
+ *     saygı gösterir (satır yoksa gönderir); welcome tercihten bağımsızdır.
  *   - Girdi doğrulama: uuid, kind allowlist, e-posta biçimi, tutar/adres
  *     şekli. Yeni bağımlılık yok; gönderim lib/email/send.ts (fetch, Resend).
  */
@@ -36,14 +39,15 @@ import { welcomeEmail } from "./welcome"
 import { orderReceivedEmail } from "./order-received"
 import { carrierTrackingUrl, orderShippedEmail } from "./order-shipped"
 import { orderDeliveredEmail } from "./order-delivered"
+import { orderCancelledEmail, type CancelPaymentMethod } from "./order-cancelled"
 import type { OrderSummaryInput } from "./order-types"
 
 /** public.email_notifications.kind ile birebir. */
-export const EMAIL_KINDS = ["welcome", "order_received", "order_shipped", "order_delivered"] as const
+export const EMAIL_KINDS = ["welcome", "order_received", "order_shipped", "order_delivered", "order_cancelled"] as const
 export type EmailKind = (typeof EMAIL_KINDS)[number]
 
 /** Siparişe bağlı türler (admin detayında yeniden gönderilebilir olanlar). */
-export const ORDER_EMAIL_KINDS = ["order_received", "order_shipped", "order_delivered"] as const
+export const ORDER_EMAIL_KINDS = ["order_received", "order_shipped", "order_delivered", "order_cancelled"] as const
 export type OrderEmailKind = (typeof ORDER_EMAIL_KINDS)[number]
 
 export type NotifyReason =
@@ -141,6 +145,8 @@ export interface OrderDetail {
   address: unknown
   trackingCarrier: unknown
   trackingNumber: unknown
+  /** payment_method_snapshot.method — iptal e-postasının metni buna göre seçilir. */
+  paymentMethod?: unknown
   createdAt: unknown
   items: OrderItemDetail[]
 }
@@ -274,7 +280,7 @@ function isConflict(error: unknown): boolean {
 }
 
 const ORDER_COLUMNS =
-  "id,user_id,order_number,status,subtotal,shipping_cost,total,full_name,email,shipping_address,tracking_carrier,tracking_number,created_at"
+  "id,user_id,order_number,status,subtotal,shipping_cost,total,full_name,email,shipping_address,payment_method_snapshot,tracking_carrier,tracking_number,created_at"
 const ITEM_COLUMNS = "product_name_snapshot,variant_label_snapshot,unit_price_snapshot,quantity"
 
 export function supabaseNotificationStore(client: SupabaseClient): NotificationStore {
@@ -390,6 +396,10 @@ export function supabaseNotificationStore(client: SupabaseClient): NotificationS
         address: o.shipping_address,
         trackingCarrier: o.tracking_carrier,
         trackingNumber: o.tracking_number,
+        paymentMethod:
+          typeof o.payment_method_snapshot === "object" && o.payment_method_snapshot !== null
+            ? (o.payment_method_snapshot as Record<string, unknown>).method ?? null
+            : null,
         createdAt: o.created_at,
         items,
       }
@@ -707,6 +717,78 @@ export async function sendOrderDeliveredEmail(
   })
 }
 
+function cancelMethodOf(order: OrderDetail): CancelPaymentMethod {
+  const m = typeof order.paymentMethod === "string" ? order.paymentMethod.trim() : ""
+  if (m === "cod" || m === "bank_transfer" || m === "card") return m
+  return null
+}
+
+/**
+ * Order cancelled — transactional, her zaman gönderilir (tercihten
+ * bağımsız, tıpkı order_received gibi). İptal RPC'si commit ettikten
+ * sonra çağrılır; e-posta hatası iptali geri almaz.
+ */
+export async function sendOrderCancelledEmail(
+  store: NotificationStore,
+  mail: Mailer,
+  input: { orderId: unknown; ownerUserId: unknown },
+): Promise<NotifyResult> {
+  const kind: EmailKind = "order_cancelled"
+  if (!isUuid(input.orderId) || !isUuid(input.ownerUserId)) {
+    return { mailed: false, reason: "invalid" }
+  }
+  const orderId = input.orderId
+  const ownerUserId = input.ownerUserId
+  const found = await safeFind(store, orderId, ownerUserId, kind)
+  if (!found.ok) return { mailed: false, reason: "store_error" }
+  if (found.existing) return { mailed: false, reason: "duplicate" }
+  if (!(await safeClaim(store, orderId, ownerUserId, kind))) {
+    return { mailed: false, reason: "duplicate" }
+  }
+  let order: OrderDetail | null
+  try {
+    order = await store.loadOrder(orderId)
+  } catch (error) {
+    logError("loadOrder", error)
+    await settle(store, orderId, ownerUserId, kind, {
+      status: "failed",
+      error: "sipariş okunamadı (depo hatası)",
+    })
+    return { mailed: false, reason: "store_error" }
+  }
+  if (!order || order.userId !== ownerUserId) {
+    await settle(store, orderId, ownerUserId, kind, {
+      status: "failed",
+      error: "sipariş bulunamadı ya da oturum sahibine ait değil",
+    })
+    return { mailed: false, reason: "not_found" }
+  }
+  if (typeof order.orderNumber !== "string" || order.orderNumber.trim() === "") {
+    await settle(store, orderId, ownerUserId, kind, {
+      status: "failed",
+      error: "sipariş numarası yok",
+    })
+    return { mailed: false, reason: "invalid" }
+  }
+  if (!isValidEmail(order.email)) {
+    await settle(store, orderId, ownerUserId, kind, {
+      status: "failed",
+      error: "siparişte geçerli e-posta yok",
+    })
+    return { mailed: false, reason: "invalid" }
+  }
+  const built = orderCancelledEmail({
+    orderNumber: order.orderNumber.trim(),
+    paymentMethod: cancelMethodOf(order),
+  })
+  return sendBuilt(
+    store,
+    mail,
+    { orderId, userId: ownerUserId, kind },
+    { to: (order.email as string).trim(), ...built },
+  )
+}
+
 /**
  * Admin "yeniden gönder" — yalnızca failed/skipped satırı sending'e
  * çekilebildiyse gönderir (claimResend çift tıklamayı yutar).
@@ -747,7 +829,7 @@ export async function resendOrderEmail(
     })
     return { mailed: false, reason: "not_found" }
   }
-  if (kind !== "order_received") {
+  if (kind === "order_shipped" || kind === "order_delivered") {
     const pref = await loadPreferenceSafe(store, String(order.userId ?? ownerUserId))
     if (pref === "error") return { mailed: false, reason: "store_error" }
     if (!orderStatusEmailsAllowed(pref)) {
@@ -769,6 +851,9 @@ export async function resendOrderEmail(
   }
   if (kind === "order_shipped") {
     return sendOrderShippedAfterClaim(store, mail, orderId, ownerUserId, order)
+  }
+  if (kind === "order_cancelled") {
+    return sendOrderCancelledAfterClaim(store, mail, orderId, ownerUserId, order)
   }
   return sendOrderDeliveredAfterClaim(store, mail, orderId, ownerUserId, order)
 }
@@ -796,6 +881,29 @@ async function sendOrderShippedAfterClaim(
     store,
     mail,
     { orderId, userId, kind: "order_shipped" },
+    { to: (order.email as string).trim(), ...built },
+  )
+}
+
+async function sendOrderCancelledAfterClaim(
+  store: NotificationStore,
+  mail: Mailer,
+  orderId: string,
+  userId: string,
+  order: OrderDetail,
+): Promise<NotifyResult> {
+  if (typeof order.orderNumber !== "string" || order.orderNumber.trim() === "") {
+    await settle(store, orderId, userId, "order_cancelled", { status: "failed", error: "sipariş numarası yok" })
+    return { mailed: false, reason: "invalid" }
+  }
+  const built = orderCancelledEmail({
+    orderNumber: order.orderNumber.trim(),
+    paymentMethod: cancelMethodOf(order),
+  })
+  return sendBuilt(
+    store,
+    mail,
+    { orderId, userId, kind: "order_cancelled" },
     { to: (order.email as string).trim(), ...built },
   )
 }

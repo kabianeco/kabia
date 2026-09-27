@@ -9,6 +9,7 @@ import {
   defaultMailer,
   isUuid,
   resendOrderEmail,
+  sendOrderCancelledEmail,
   sendOrderDeliveredEmail,
   sendOrderShippedEmail,
   supabaseNotificationStore,
@@ -38,19 +39,20 @@ function revalidateOrder(orderId: string) {
 }
 
 /**
- * Transactional durum e-postaları (kargoda / teslim_edildi).
+ * Transactional durum e-postaları (kargoda / teslim_edildi / iptal_edildi).
  *
- * Durum değişikliği RPC'si çoktan commit edildi; burası yalnızca e-posta
- * dener. Sahip id DB'den okunur (forma güvenilmez). Gönderici idempotent'tir
- * (satır varsa durur) ve asla throw etmez — e-posta hatası durum
- * değişikliğini geri almaz, `failed` olarak kayda düşer.
+ * Durum değişikliği RPC'si çoktan commit edildi (iptalde restock dahil);
+ * burası yalnızca e-posta dener. Sahip id DB'den okunur (forma güvenilmez).
+ * Gönderici idempotent'tir (satır varsa durur) ve asla throw etmez —
+ * e-posta hatası durum değişikliğini geri almaz, `failed` olarak kayda
+ * düşer.
  */
 async function fireStatusEmail(
   supabase: SupabaseClient,
   orderId: string,
   status: string,
 ): Promise<void> {
-  if (status !== "kargoda" && status !== "teslim_edildi") return
+  if (status !== "kargoda" && status !== "teslim_edildi" && status !== "iptal_edildi") return
   try {
     const store = supabaseNotificationStore(supabase)
     let owner: string | null = null
@@ -63,8 +65,10 @@ async function fireStatusEmail(
     if (!owner) return
     if (status === "kargoda") {
       await sendOrderShippedEmail(store, defaultMailer, { orderId, ownerUserId: owner })
-    } else {
+    } else if (status === "teslim_edildi") {
       await sendOrderDeliveredEmail(store, defaultMailer, { orderId, ownerUserId: owner })
+    } else {
+      await sendOrderCancelledEmail(store, defaultMailer, { orderId, ownerUserId: owner })
     }
   } catch (error) {
     console.error("[email] status email failed:", error instanceof Error ? error.message : error)
@@ -268,8 +272,8 @@ export async function overrideOrderStatusAction(
 
     const result = (data ?? {}) as { order_number?: string }
     revalidateOrder(parsed.data.order_id)
-    // Override ile kargoda/teslim_edildi'ye geçiş de e-posta dener; satır
-    // varsa gönderici durur — geçersiz kılma asla çift gönderemez.
+    // Override ile kargoda/teslim_edildi/iptal_edildi'ye geçiş de e-posta
+    // dener; satır varsa gönderici durur — geçersiz kılma asla çift gönderemez.
     await fireStatusEmail(supabase, parsed.data.order_id, parsed.data.status)
 
     return {

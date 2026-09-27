@@ -332,7 +332,7 @@ export const orderTrackingSchema = z.object({
 
 export const orderEmailResendSchema = z.object({
   order_id: uuid,
-  kind: z.enum(["order_received", "order_shipped", "order_delivered"], {
+  kind: z.enum(["order_received", "order_shipped", "order_delivered", "order_cancelled"], {
     message: "Geçersiz e-posta türü.",
   }),
 })

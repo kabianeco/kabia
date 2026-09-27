@@ -302,6 +302,7 @@ const EMAIL_KIND_LABELS: Record<string, string> = {
   order_received: "Sipariş alındı",
   order_shipped: "Kargoda",
   order_delivered: "Teslim edildi",
+  order_cancelled: "İptal edildi",
   welcome: "Hoş geldin",
 }
 
@@ -312,7 +313,7 @@ const EMAIL_STATUS_LABELS: Record<string, string> = {
   skipped: "Atlandı (bildirim kapalı)",
 }
 
-const RESENDABLE_KINDS = ["order_received", "order_shipped", "order_delivered"]
+const RESENDABLE_KINDS = ["order_received", "order_shipped", "order_delivered", "order_cancelled"]
 
 /**
  * Transactional e-posta kaydı (public.email_notifications).

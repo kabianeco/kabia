@@ -15,6 +15,8 @@ export {
 export type { OrderShippedInput } from "./order-shipped";
 export { orderDeliveredEmail } from "./order-delivered";
 export type { OrderDeliveredInput } from "./order-delivered";
+export { cancelPaymentLine, orderCancelledEmail } from "./order-cancelled";
+export type { CancelPaymentMethod, OrderCancelledInput } from "./order-cancelled";
 export { adminPasswordResetEmail } from "./password-admin-reset";
 export type { AdminPasswordResetInput } from "./password-admin-reset";
 export type {

@@ -8,6 +8,7 @@ import {
   isUuid,
   orderStatusEmailsAllowed,
   resendOrderEmail,
+  sendOrderCancelledEmail,
   sendOrderDeliveredEmail,
   sendOrderReceivedEmail,
   sendOrderShippedEmail,
@@ -17,6 +18,7 @@ import {
   type NotificationStore,
   type OrderDetail,
 } from "../lib/email/notify.ts"
+import { cancelPaymentLine, orderCancelledEmail } from "../lib/email/order-cancelled.ts"
 import type { SendEmailResult } from "../lib/email/send.ts"
 
 // Transactional e-postalar: idempotency, sahiplik denetimi ve
@@ -536,5 +538,88 @@ describe("single source of truth: confirmed Auth e-mail", () => {
     const fnBody = deps.slice(fnStart, fnEnd)
     assert.ok(fnBody.includes("auth.updateUser"), "change starts in Auth only")
     assert.ok(!fnBody.includes("profiles"), "no premature profiles write in the change path")
+  })
+})
+
+describe("order_cancelled: transactional, payment-honest, idempotent", () => {
+  it("sends once for the owner, then duplicates", async () => {
+    const store = fakeStore()
+    const mail = fakeMailer()
+    assert.deepEqual(
+      await sendOrderCancelledEmail(store, mail, { orderId: ORDER_ID, ownerUserId: USER_ID }),
+      { mailed: true, reason: "sent" },
+    )
+    assert.equal(mail.calls, 1)
+    assert.deepEqual(
+      await sendOrderCancelledEmail(store, mail, { orderId: ORDER_ID, ownerUserId: USER_ID }),
+      { mailed: false, reason: "duplicate" },
+    )
+    assert.equal(mail.calls, 1)
+  })
+
+  it("always sends even when order_status is false (transactional)", async () => {
+    const store = fakeStore({ pref: { order_status: false } })
+    const mail = fakeMailer()
+    assert.deepEqual(
+      await sendOrderCancelledEmail(store, mail, { orderId: ORDER_ID, ownerUserId: USER_ID }),
+      { mailed: true, reason: "sent" },
+    )
+    assert.equal(mail.calls, 1)
+  })
+
+  it("cod promises no payment taken; bank_transfer only conditional refund contact", () => {
+    const cod = orderCancelledEmail({ orderNumber: "KB-ABC1234", paymentMethod: "cod" })
+    assert.ok(cod.text.includes("herhangi bir ödeme alınmadı"), "cod copy missing")
+    assert.ok(!cod.text.toLowerCase().includes("iade"), "cod must not mention refunds")
+    const bt = orderCancelledEmail({ orderNumber: "KB-ABC1234", paymentMethod: "bank_transfer" })
+    assert.ok(bt.text.includes("ulaştıysa"), "bank_transfer copy must be conditional")
+    assert.ok(bt.text.includes("iade"), "bank_transfer copy must mention refund contact")
+    assert.ok(!bt.text.includes("iade edildi"), "must not promise a completed refund")
+    assert.equal(cancelPaymentLine("card"), cancelPaymentLine("cod"))
+    assert.ok(cancelPaymentLine(null).length > 0, "unknown method needs neutral copy")
+  })
+
+  it("failed cancelled row resends (transactional, no preference gate)", async () => {
+    const store = fakeStore({ pref: { order_status: false } })
+    const failing = fakeMailer("reject")
+    assert.deepEqual(
+      await sendOrderCancelledEmail(store, failing, { orderId: ORDER_ID, ownerUserId: USER_ID }),
+      { mailed: false, reason: "failed" },
+    )
+    const ok = fakeMailer()
+    assert.deepEqual(
+      await resendOrderEmail(store, ok, {
+        orderId: ORDER_ID,
+        ownerUserId: USER_ID,
+        kind: "order_cancelled",
+      }),
+      { mailed: true, reason: "sent" },
+    )
+    assert.equal(ok.calls, 1)
+  })
+
+  it("cancellation fires after the status RPC in both admin paths and never blocks it", () => {
+    const src = readFileSync("app/admin/(protected)/orders/actions.ts", "utf8")
+    assert.ok(src.includes("sendOrderCancelledEmail"), "cancelled sender missing")
+    assert.ok(src.includes('status !== "iptal_edildi"') || src.includes("iptal_edildi"), "cancel trigger missing")
+    const updateIdx = src.indexOf("admin_update_order_status")
+    const fireIdx = src.indexOf("fireStatusEmail(supabase, parsed.data.order_id, parsed.data.status)")
+    assert.ok(updateIdx > 0 && fireIdx > updateIdx, "email must fire after the RPC commits")
+    assert.ok(src.includes("[email] status email failed"), "failure must be caught, never thrown")
+  })
+
+  it("cancelled kind is resendable and logged", () => {
+    const sql = readFileSync(
+      "supabase/migrations/20260927000900_email_notification_cancelled.sql",
+      "utf8",
+    )
+    assert.match(sql, /order_cancelled/)
+    const controls = readFileSync(
+      "app/admin/(protected)/orders/[orderId]/order-controls.tsx",
+      "utf8",
+    )
+    assert.ok(controls.includes('"order_cancelled"'), "resend list missing cancelled")
+    assert.ok(controls.includes("İptal edildi"), "kind label missing")
+    assert.ok(isOrderEmailKind("order_cancelled"), "resend allowlist missing cancelled")
   })
 })
