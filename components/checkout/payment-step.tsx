@@ -1,19 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { TextField } from "@/components/ui/field";
-import { CardPreview } from "./card-preview";
-import {
-  formatCVV,
-  formatCardNumber,
-  formatExpiry,
-  isPaymentValid,
-} from "./validation";
+import { isPaymentValid } from "./validation";
 import type { PaymentData, PaymentMethod } from "./types";
 
 const METHODS: { id: PaymentMethod; label: string; detail: string }[] = [
-  { id: "card", label: "Kredi / banka kartı", detail: "Tek çekim" },
   { id: "cod", label: "Kapıda ödeme", detail: "Teslimatta nakit veya kart" },
 ];
 
@@ -28,7 +19,6 @@ export function PaymentStep({
   onContinue: () => void;
   onBack: () => void;
 }) {
-  const [cvvFocused, setCvvFocused] = useState(false);
   const valid = isPaymentValid(payment);
   const set = (patch: Partial<PaymentData>) =>
     onPaymentChange({ ...payment, ...patch });
@@ -64,60 +54,6 @@ export function PaymentStep({
         </ul>
       </fieldset>
 
-      {payment.method === "card" && (
-        <div className="mt-12 grid gap-12 md:grid-cols-2 md:gap-14">
-          <div className="order-2 space-y-7 md:order-1">
-            <TextField
-              label="Kart üzerindeki isim"
-              value={payment.cardName}
-              onChange={(e) => set({ cardName: e.target.value })}
-              autoComplete="cc-name"
-              required
-            />
-            <TextField
-              label="Kart numarası"
-              value={payment.cardNumber}
-              onChange={(e) =>
-                set({ cardNumber: formatCardNumber(e.target.value) })
-              }
-              inputMode="numeric"
-              autoComplete="cc-number"
-              placeholder="0000 0000 0000 0000"
-              className="figure"
-              required
-            />
-            <div className="grid grid-cols-2 gap-6">
-              <TextField
-                label="Son kullanma"
-                value={payment.expiry}
-                onChange={(e) => set({ expiry: formatExpiry(e.target.value) })}
-                inputMode="numeric"
-                autoComplete="cc-exp"
-                placeholder="MM/YY"
-                className="figure"
-                required
-              />
-              <TextField
-                label="CVV"
-                value={payment.cvv}
-                onChange={(e) => set({ cvv: formatCVV(e.target.value) })}
-                onFocus={() => setCvvFocused(true)}
-                onBlur={() => setCvvFocused(false)}
-                inputMode="numeric"
-                autoComplete="cc-csc"
-                placeholder="000"
-                className="figure"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="order-1 md:order-2">
-            <CardPreview payment={payment} flipped={cvvFocused} />
-          </div>
-        </div>
-      )}
-
       <div className="mt-14 flex flex-wrap items-center gap-7">
         <Button size="lg" disabled={!valid} onClick={onContinue}>
           Özete geç
@@ -130,11 +66,6 @@ export function PaymentStep({
           Sepete dön
         </button>
       </div>
-      {!valid && payment.method === "card" && (
-        <p className="mt-4 text-xs text-ink/50">
-          Devam etmek için kart bilgilerini eksiksiz girin.
-        </p>
-      )}
     </section>
   );
 }

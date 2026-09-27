@@ -9,8 +9,6 @@ import { formatTL } from "@/lib/products";
 import { routes } from "@/lib/site";
 import type { CartItem } from "@/lib/cart-context";
 import type { SavedAddress } from "@/lib/checkout-context";
-import { maskedCardNumber } from "./validation";
-import type { PaymentData } from "./types";
 
 function Block({
   title,
@@ -48,7 +46,6 @@ export function ReviewStep({
   fullName,
   email,
   address,
-  payment,
   onEditAddress,
   onEditPayment,
   onBack,
@@ -66,7 +63,6 @@ export function ReviewStep({
   fullName: string;
   email: string;
   address: SavedAddress;
-  payment: PaymentData;
   onEditAddress: () => void;
   onEditPayment: () => void;
   onBack: () => void;
@@ -98,15 +94,7 @@ export function ReviewStep({
       </Block>
 
       <Block title="Ödeme" onEdit={onEditPayment} editLabel="Değiştir">
-        {payment.method === "cod" ? (
-          <p>Kapıda ödeme</p>
-        ) : (
-          <p>
-            <span className="figure">{maskedCardNumber(payment.cardNumber)}</span>
-            <br />
-            {payment.cardName}
-          </p>
-        )}
+        <p>Kapıda ödeme</p>
       </Block>
 
       <section className="border-t border-ink/10 py-7">

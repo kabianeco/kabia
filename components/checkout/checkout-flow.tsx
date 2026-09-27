@@ -24,7 +24,6 @@ import { sendOrderReceivedAction } from "@/app/odeme/actions";
 import { PaymentStep } from "./payment-step";
 import { ReviewStep } from "./review-step";
 import { ConfirmationStep } from "./confirmation-step";
-import { detectNetwork } from "./card-preview";
 import { EMPTY_PAYMENT, STEP_ORDER, type PaymentData, type StepId } from "./types";
 import { estimateDeliveryDate } from "./order-utils";
 
@@ -118,18 +117,18 @@ export function CheckoutFlow() {
       district: selectedAddress.district,
       postalCode: selectedAddress.postalCode,
     };
-    const isCard = payment.method === "card";
-    const digits = isCard ? payment.cardNumber.replace(/\s/g, "") : "";
 
     // Order totals and the order number are produced by the `create_order`
-    // Postgres function, not by the browser.
+    // Postgres function, not by the browser. The only payment method
+    // checkout offers is cash on delivery; card parameters stay null and
+    // the server rejects any other method.
     const submission = await submitOrder(currentItems.current, getSupabaseBrowserClient, {
       p_shipping_address: addressSnapshot,
       p_payment_method: payment.method,
-      p_card_last4: isCard ? digits.slice(-4) : null,
-      p_card_brand: isCard ? detectNetwork(digits) : null,
-      p_card_expiry: isCard ? payment.expiry : null,
-      p_card_name: isCard ? payment.cardName : null,
+      p_card_last4: null,
+      p_card_brand: null,
+      p_card_expiry: null,
+      p_card_name: null,
       p_full_name: fullName,
       p_email: email,
       // Consent was already gated above; the server records it with its clock.
@@ -224,7 +223,6 @@ export function CheckoutFlow() {
                 fullName={fullName}
                 email={email}
                 address={selectedAddress}
-                payment={payment}
                 onEditAddress={() => router.push(routes.cart)}
                 onEditPayment={() => goToStep("payment")}
                 onBack={() => setStep("payment")}

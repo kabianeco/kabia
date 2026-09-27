@@ -1,19 +1,11 @@
-export type PaymentMethod = "card" | "cod"
+export type PaymentMethod = "cod"
 
 export interface PaymentData {
   method: PaymentMethod
-  cardName: string
-  cardNumber: string // formatted, spaces every 4 digits
-  expiry: string // MM/YY
-  cvv: string
 }
 
 export const EMPTY_PAYMENT: PaymentData = {
-  method: "card",
-  cardName: "",
-  cardNumber: "",
-  expiry: "",
-  cvv: "",
+  method: "cod",
 }
 
 export type StepId = "payment" | "review" | "confirmation"
