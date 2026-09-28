@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache"
+import { honestCache } from "@/lib/honest-cache"
 import { createClient } from "@supabase/supabase-js"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import {
@@ -279,82 +280,79 @@ export const getCachedHomepageProducts = unstable_cache(fetchProductsUncached, [
   tags: ["catalog-homepage"],
 })
 
-async function fetchFeaturedFullUncached(): Promise<Product[]> {
-  const client = getAnonClient()
-  if (!client) throw new Error("Supabase env eksik — Vercel build env kontrol edin")
-  const { data, error } = await client
-    .from("products")
-    .select(PRODUCT_SELECT)
-    .eq("is_active", true)
-    .eq("is_featured", true)
-    .order("created_at", { ascending: true })
-  if (error || !data) return []
-  return data.map((row) => mapProduct(row as unknown as ProductRow, false))
-}
-
 /**
  * Öne çıkanlar şeridi varyant ister (stok + ağırlık + sepete ekle id'si);
  * lean satırlar yetmez. Stok bilinmiyorken "Stokta yok" yazmak yasaktır —
  * o yüzden bu şerit tam satır okur.
  */
-export const getCachedFeaturedFullProducts = unstable_cache(fetchFeaturedFullUncached, ["kabia-featured-full-v2"], {
-  revalidate: 300,
-  tags: ["catalog-featured"],
-})
+export const getCachedFeaturedFullProducts = honestCache(
+  "featured",
+  async (client): Promise<Product[] | null> => {
+    const { data, error } = await client
+      .from("products")
+      .select(PRODUCT_SELECT)
+      .eq("is_active", true)
+      .eq("is_featured", true)
+      .order("created_at", { ascending: true })
+    if (error || !data) return null
+    return data.map((row) => mapProduct(row as unknown as ProductRow, false))
+  },
+  (r) => r === null,
+  [],
+  ["kabia-featured-full-v2"],
+  { revalidate: 300, tags: ["catalog-featured"] },
+) as () => Promise<Product[]>
 
 /**
  * Storefront catalogue cache. Listing and detail reads below go through the
  * shared anon client and refresh every 5 minutes; admin product/producer/
  * category mutations and review submissions bust the tags with updateTag, so
  * an edit is visible on the next request, never stuck behind the ceiling.
+ * A failed read is never cached (lib/honest-cache.ts): the honest error or
+ * empty shape is returned for that request only.
  */
 export const CATALOG_PRODUCTS_TAG = "catalog-products"
 
-async function fetchPublicProductsUncached(): Promise<PublicProductsResult> {
-  const client = getAnonClient()
-  // Build containers (e.g. Vercel) may lack Supabase env: degrade to the
-  // honest error state like a failed query does, instead of throwing and
-  // failing the whole build. Runtime heals via ISR; the server client's
-  // placeholder philosophy, same shape.
-  if (!client) {
-    console.error("[catalog] Supabase env eksik — build-time sitemap degrades to statics.")
-    return { status: "error" }
-  }
-  return fetchPublicProducts(client)
-}
+export const getCachedPublicProducts = honestCache(
+  "public products",
+  fetchPublicProducts,
+  (r) => r.status === "error",
+  { status: "error" } as PublicProductsResult,
+  ["kabia-public-products-v1"],
+  { revalidate: 300, tags: [CATALOG_PRODUCTS_TAG] },
+)
 
-export const getCachedPublicProducts = unstable_cache(fetchPublicProductsUncached, ["kabia-public-products-v1"], {
-  revalidate: 300,
-  tags: [CATALOG_PRODUCTS_TAG],
-})
+/** A query error throws (the page shows its error state); null is a real miss. */
+export const getCachedProductBase = honestCache(
+  "product base",
+  fetchProductBase,
+  () => false,
+  null,
+  ["kabia-product-base-v1"],
+  { revalidate: 300, tags: [CATALOG_PRODUCTS_TAG] },
+)
 
-async function fetchProductBaseUncached(slug: string): Promise<Product | null> {
-  const client = getAnonClient()
-  if (!client) {
-    console.error(`[catalog] Supabase env eksik — "${slug}" build-time reads null.`)
-    return null
-  }
-  return fetchProductBase(client, slug)
-}
-
-export const getCachedProductBase = unstable_cache(fetchProductBaseUncached, ["kabia-product-base-v1"], {
-  revalidate: 300,
-  tags: [CATALOG_PRODUCTS_TAG],
-})
-
-async function fetchProducerProductsUncached(producerId: string): Promise<Product[]> {
-  const client = getAnonClient()
-  if (!client) {
-    console.error("[catalog] Supabase env eksik — build-time producer shelf degrades to empty.")
-    return []
-  }
-  return fetchProductsByProducer(client, producerId)
-}
-
-export const getCachedProducerProducts = unstable_cache(fetchProducerProductsUncached, ["kabia-producer-products-v1"], {
-  revalidate: 300,
-  tags: [CATALOG_PRODUCTS_TAG],
-})
+export const getCachedProducerProducts = honestCache(
+  "producer shelf",
+  async (client, producerId: string): Promise<Product[] | null> => {
+    const { data, error } = await client
+      .from("products")
+      .select(PRODUCT_LEAN_SELECT)
+      .eq("is_active", true)
+      .eq("producer_id", producerId)
+      // The producer's shelf is curated in the product editor via display_order,
+      // the same field that orders the admin catalogue. created_at keeps the
+      // order total where display_order is tied.
+      .order("display_order", { ascending: true })
+      .order("created_at", { ascending: true })
+    if (error || !data) return null
+    return data.map((row) => mapProduct(row as unknown as ProductRow, false))
+  },
+  (r) => r === null,
+  [],
+  ["kabia-producer-products-v1"],
+  { revalidate: 300, tags: [CATALOG_PRODUCTS_TAG] },
+) as (producerId: string) => Promise<Product[]>
 
 /**
  * Reviews and related products, cached with the same tag. Both change only
@@ -364,44 +362,60 @@ export const getCachedProducerProducts = unstable_cache(fetchProducerProductsUnc
  * still holds: the order RPC validates and decrements atomically, so a
  * display lag can never oversell.
  */
-async function fetchProductReviewsUncached(productId: string): Promise<ProductReview[]> {
-  const client = getAnonClient()
-  if (!client) {
-    console.error("[catalog] Supabase env eksik — build-time reviews degrade to empty.")
-    return []
-  }
-  return fetchProductReviews(client, productId)
-}
+export const getCachedProductReviews = honestCache(
+  "product reviews",
+  fetchProductReviews,
+  () => false,
+  [],
+  ["kabia-product-reviews-v1"],
+  { revalidate: 300, tags: [CATALOG_PRODUCTS_TAG] },
+)
 
-export const getCachedProductReviews = unstable_cache(fetchProductReviewsUncached, ["kabia-product-reviews-v1"], {
-  revalidate: 300,
-  tags: [CATALOG_PRODUCTS_TAG],
-})
+export const getCachedRelatedProducts = honestCache(
+  "related products",
+  async (client, category: string, slug: string, count: number): Promise<Product[] | null> => {
+    // The unfiltered read has no dependency, so it starts before the category
+    // lookup; only the same-category read waits on the id.
+    const restPromise = client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).neq("slug", slug).order("created_at", { ascending: true }).limit(count)
+    const categoryId = await categoryIdBySlug(client, category)
+    const samePromise = categoryId
+      ? client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).eq("category_id", categoryId).neq("slug", slug).order("created_at", { ascending: true }).limit(count)
+      : Promise.resolve({ data: [] as unknown[] | null, error: null })
+    const [sameRes, restRes] = await Promise.all([samePromise, restPromise])
+    if (sameRes.error || restRes.error) return null
+    const combined = [
+      ...(sameRes.data ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),
+      ...(restRes.data ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),
+    ]
+    const seen = new Set<string>()
+    return combined.filter((p) => (seen.has(p.slug) ? false : (seen.add(p.slug), true))).slice(0, count)
+  },
+  (r) => r === null,
+  [],
+  ["kabia-related-v1"],
+  { revalidate: 300, tags: [CATALOG_PRODUCTS_TAG] },
+) as (category: string, slug: string, count: number) => Promise<Product[]>
 
-async function fetchRelatedUncached(category: string, slug: string, count: number): Promise<Product[]> {
-  const client = getAnonClient()
-  if (!client) {
-    console.error("[catalog] Supabase env eksik — build-time related degrades to empty.")
-    return []
-  }
-  const categoryId = await categoryIdBySlug(client, category)
-  const restPromise = client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).neq("slug", slug).order("created_at", { ascending: true }).limit(count)
-  const samePromise = categoryId
-    ? client.from("products").select(PRODUCT_LEAN_SELECT).eq("is_active", true).eq("category_id", categoryId).neq("slug", slug).order("created_at", { ascending: true }).limit(count)
-    : Promise.resolve({ data: [] as unknown[] | null })
-  const [sameRes, restRes] = await Promise.all([samePromise, restPromise])
-  const combined = [
-    ...(sameRes.data ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),
-    ...(restRes.data ?? []).map((r) => mapProduct(r as unknown as ProductRow, false)),
-  ]
-  const seen = new Set<string>()
-  return combined.filter((p) => (seen.has(p.slug) ? false : (seen.add(p.slug), true))).slice(0, count)
-}
-
-export const getCachedRelatedProducts = unstable_cache(fetchRelatedUncached, ["kabia-related-v1"], {
-  revalidate: 300,
-  tags: [CATALOG_PRODUCTS_TAG],
-})
+/**
+ * The homepage's three curated entries: name, image and active flag for the
+ * administered slugs. Cached with the catalogue tag like every other storefront
+ * read (it used to be the one per-request database round trip on the homepage).
+ */
+export const getCachedIntroEntries = honestCache(
+  "intro entries",
+  async (client, slugs: string[]) => {
+    const { data, error } = await client
+      .from("products")
+      .select("slug, name, main_image_url, is_active")
+      .in("slug", slugs)
+    if (error || !data) return null
+    return data as { slug: string; name: string; main_image_url: string | null; is_active: boolean }[]
+  },
+  (r) => r === null,
+  null,
+  ["kabia-intro-entries-v1"],
+  { revalidate: 300, tags: [CATALOG_PRODUCTS_TAG] },
+)
 
 export async function fetchProductBySlug(
   client: SupabaseClient,

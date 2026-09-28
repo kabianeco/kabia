@@ -1,5 +1,5 @@
-import { unstable_cache } from "next/cache"
-import { createClient, type SupabaseClient } from "@supabase/supabase-js"
+import { honestCache } from "@/lib/honest-cache"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import type { ProducerRow } from "@/lib/supabase/rows"
 import type { ProductSource } from "@/lib/products"
 
@@ -166,68 +166,42 @@ export async function fetchPublishedProducerBySlug(
  */
 export const CATALOG_PRODUCERS_TAG = "catalog-producers"
 
-function getAnonClient(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) return null
-  return createClient(url, key, { auth: { persistSession: false } })
-}
+const producersFailed = (r: PublicProducersResult) => r.status === "error"
+const producersError: PublicProducersResult = { status: "error" }
 
-async function fetchPublicProducersUncached(): Promise<PublicProducersResult> {
-  const client = getAnonClient()
-  // Build containers may lack Supabase env: degrade honestly like a failed
-  // query (the server client's placeholder philosophy) instead of throwing
-  // and failing the whole build. Runtime heals via ISR.
-  if (!client) {
-    console.error("[producers] Supabase env eksik — build-time reads degrade.")
-    return { status: "error" }
-  }
-  return fetchPublicProducers(client)
-}
+export const getCachedPublicProducers = honestCache(
+  "public producers",
+  fetchPublicProducers,
+  producersFailed,
+  producersError,
+  ["kabia-public-producers-v1"],
+  { revalidate: 300, tags: [CATALOG_PRODUCERS_TAG] },
+)
 
-export const getCachedPublicProducers = unstable_cache(fetchPublicProducersUncached, ["kabia-public-producers-v1"], {
-  revalidate: 300,
-  tags: [CATALOG_PRODUCERS_TAG],
-})
+export const getCachedSeckiProducers = honestCache(
+  "secki producers",
+  fetchSeckiProducers,
+  producersFailed,
+  producersError,
+  ["kabia-secki-producers-v1"],
+  { revalidate: 300, tags: [CATALOG_PRODUCERS_TAG] },
+)
 
-async function fetchSeckiProducersUncached(): Promise<PublicProducersResult> {
-  const client = getAnonClient()
-  if (!client) {
-    console.error("[producers] Supabase env eksik — build-time reads degrade.")
-    return { status: "error" }
-  }
-  return fetchSeckiProducers(client)
-}
+export const getCachedProducersBySource = honestCache(
+  "producers by source",
+  fetchProducersBySource,
+  producersFailed,
+  producersError,
+  ["kabia-producers-by-source-v1"],
+  { revalidate: 300, tags: [CATALOG_PRODUCERS_TAG] },
+)
 
-export const getCachedSeckiProducers = unstable_cache(fetchSeckiProducersUncached, ["kabia-secki-producers-v1"], {
-  revalidate: 300,
-  tags: [CATALOG_PRODUCERS_TAG],
-})
-
-async function fetchProducersBySourceUncached(source: ProductSource): Promise<PublicProducersResult> {
-  const client = getAnonClient()
-  if (!client) {
-    console.error("[producers] Supabase env eksik — build-time reads degrade.")
-    return { status: "error" }
-  }
-  return fetchProducersBySource(client, source)
-}
-
-export const getCachedProducersBySource = unstable_cache(fetchProducersBySourceUncached, ["kabia-producers-by-source-v1"], {
-  revalidate: 300,
-  tags: [CATALOG_PRODUCERS_TAG],
-})
-
-async function fetchProducerBySlugUncached(slug: string): Promise<ProducerBySlugResult> {
-  const client = getAnonClient()
-  if (!client) {
-    console.error(`[producers] Supabase env eksik — "${slug}" build-time reads error.`)
-    return { status: "error" }
-  }
-  return fetchPublishedProducerBySlug(client, slug)
-}
-
-export const getCachedProducerBySlug = unstable_cache(fetchProducerBySlugUncached, ["kabia-producer-by-slug-v1"], {
-  revalidate: 300,
-  tags: [CATALOG_PRODUCERS_TAG],
-})
+/** not_found is a real answer and is cached; only a failed read is not. */
+export const getCachedProducerBySlug = honestCache(
+  "producer by slug",
+  fetchPublishedProducerBySlug,
+  (r) => r.status === "error",
+  { status: "error" } as ProducerBySlugResult,
+  ["kabia-producer-by-slug-v1"],
+  { revalidate: 300, tags: [CATALOG_PRODUCERS_TAG] },
+)

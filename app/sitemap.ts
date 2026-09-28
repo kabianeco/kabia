@@ -11,14 +11,21 @@ import { absoluteUrl } from "@/lib/seo"
  * included — they exist solely behind the design-review switch.
  *
  * The static list lives in lib/site.ts next to the route table, so a new brand
- * page cannot be added to the site and forgotten here. Producer and journal URLs
- * are appended from live data; a failed producer read advertises none of them
- * rather than failing the whole sitemap.
+ * page cannot be added to the site and forgotten here. Product and producer URLs
+ * are appended from live data.
+ *
+ * Rendered per request from the tag-cached catalogue (no build-time prerender,
+ * so a build container without Supabase env cannot bake in a shrunken list).
+ * A failed catalogue or producer read fails the response with a 5xx instead of
+ * advertising a silently shorter sitemap: crawlers keep their last good copy
+ * and Search Console shows the fetch error.
  */
-export const revalidate = 3600
+export const dynamic = "force-dynamic"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const productsResult = await getCachedPublicProducts()
+  const [productsResult, producersResult] = await Promise.all([getCachedPublicProducts(), getCachedPublicProducers()])
+  if (productsResult.status !== "ok") throw new Error("[sitemap] product read failed; refusing to publish a partial sitemap")
+  if (producersResult.status !== "ok") throw new Error("[sitemap] producer read failed; refusing to publish a partial sitemap")
 
   const staticEntries: MetadataRoute.Sitemap = sitemapStaticPaths.map((entry) => ({
     // The homepage is "/" in the route table; the sitemap wants the bare origin.
@@ -27,9 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: entry.priority,
   }))
 
-  const productEntries: MetadataRoute.Sitemap =
-    productsResult.status === "ok"
-      ? productsResult.products.map((p) => ({
+  const productEntries: MetadataRoute.Sitemap = productsResult.products.map((p) => ({
           url: `${site.url}${routes.product(p.slug)}`,
           // The row's own last change, not the time of the request.
           ...(p.updatedAt ? { lastModified: new Date(p.updatedAt) } : {}),
@@ -38,16 +43,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           // Sitemap image locations must be absolute.
           images: p.mainImageUrl ? [absoluteUrl(p.mainImageUrl)] : undefined,
         }))
-      : []
 
   // A producer's store page is advertised only while it has something on its
   // shelf, taken from the same product read (each row carries its producer).
-  const stockedProducers = new Set(
-    productsResult.status === "ok" ? productsResult.products.map((p) => p.producerSlug).filter(Boolean) : [],
-  )
+  const stockedProducers = new Set(productsResult.products.map((p) => p.producerSlug).filter(Boolean))
 
-  const producersResult = await getCachedPublicProducers()
-  const producers = producersResult.status === "ok" ? producersResult.producers : []
+  const producers = producersResult.producers
   // Producer rows carry no update timestamp, so no lastmod is claimed for
   // them rather than a made-up one.
   const producerEntries: MetadataRoute.Sitemap = producers.map((p) => ({

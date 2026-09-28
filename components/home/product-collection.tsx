@@ -5,7 +5,7 @@ import { Reveal } from "@/components/motion/reveal";
 import { ArrowLink } from "@/components/ui/button";
 import { routes } from "@/lib/site";
 import { getPublicSettings } from "@/lib/settings";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCachedIntroEntries } from "@/lib/catalog";
 import { isBrandPreview } from "@/lib/brand-preview";
 import { previewProducts } from "@/content/preview-products";
 
@@ -30,27 +30,17 @@ import { previewProducts } from "@/content/preview-products";
  * curated (products carry no alt).
  */
 export async function ProductCollection() {
-  // Settings are tag-cached and client creation is local: start both together
-  // instead of awaiting settings before even building the client.
-  const [settings, supabase] = await Promise.all([getPublicSettings(), createSupabaseServerClient()]);
+  const settings = await getPublicSettings();
   const administered: Record<string, string> = {
     ciftlik: settings.introProductCiftlik,
     secki: settings.introProductSecki,
     mutfak: settings.introProductMutfak,
   };
   const slugs = [...new Set(copy.entries.map((e) => administered[e.source] || e.slug))];
-  let catalog: Record<string, { name: string; main_image_url: string | null; is_active: boolean }> = {};
-  try {
-    const { data } = await supabase
-      .from("products")
-      .select("slug, name, main_image_url, is_active")
-      .in("slug", slugs);
-    for (const row of (data ?? []) as { slug: string; name: string; main_image_url: string | null; is_active: boolean }[]) {
-      catalog[row.slug] = row;
-    }
-  } catch {
-    catalog = {};
-  }
+  // Tag-cached like every storefront read; a failed read falls back to the
+  // curated entries below, exactly as the uncached query's catch did.
+  const rows = (await getCachedIntroEntries(slugs)) ?? [];
+  const catalog = Object.fromEntries(rows.map((row) => [row.slug, row]));
   const entries = copy.entries.map((entry) => {
     const slug = administered[entry.source] || entry.slug;
     const row = catalog[slug];
