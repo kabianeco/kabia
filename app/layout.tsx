@@ -8,6 +8,7 @@ import { ThemeVars } from "@/components/theme/theme-vars";
 import { Providers } from "@/components/providers";
 import { WhatsAppFloat } from "@/components/layout/whatsapp-float";
 import { themeInitScript } from "@/lib/theme-init";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 /**
@@ -182,6 +183,12 @@ export default async function RootLayout({
           {children}
           <WhatsAppFloat />
         </Providers>
+        {/* Real-user Core Web Vitals (Vercel Speed Insights): no cookies, no
+            personal data; the script and its beacon are same-origin
+            (/_vercel/speed-insights), injected by the trusted bundle so the
+            nonce CSP's 'strict-dynamic' admits it. Rendered only on Vercel,
+            where that path exists. */}
+        {process.env.VERCEL ? <SpeedInsights /> : null}
       </body>
     </html>
   );
