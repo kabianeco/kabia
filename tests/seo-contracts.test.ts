@@ -142,3 +142,19 @@ describe("Google Merchant feed", () => {
     assert.match(page, /base\.variants\.find\(\(v\) => v\.weight === boyut\)/)
   })
 })
+
+describe("llms.txt", () => {
+  it("is generated from the configured site URL and states only sourced facts", async () => {
+    const { existsSync } = await import("node:fs")
+    assert.ok(!existsSync("public/llms.txt"), "a static llms.txt would hardcode the domain")
+    const { GET } = await import("../app/llms.txt/route.ts")
+    const { siteUrl } = await import("../lib/site.ts")
+    const body = await GET().text()
+    const links = body.match(/https?:\/\/[^\s)]+/g) ?? []
+    assert.ok(links.length > 8)
+    for (const link of links) assert.ok(link.startsWith(siteUrl), link)
+    assert.ok(!/sentetik gübre ve zehirsiz/.test(body), "the old wording read as 'synthetic fertiliser is used'")
+    assert.match(body, /TR-OT-012-MS-510\/02/)
+    assert.match(body, /Seçki ve Mutfak üreticilerini kapsamaz/)
+  })
+})
