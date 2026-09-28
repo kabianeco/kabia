@@ -165,3 +165,10 @@ describe("Producer shelves", () => {
     assert.ok(!readFileSync("app/sitemap.ts", "utf8").includes("/magaza/${"))
   })
 })
+
+describe("Heading outline", () => {
+  it("footer column labels are not document headings", () => {
+    const footer = readFileSync("components/layout/site-footer.tsx", "utf8")
+    assert.ok(!/<h2 className="label text-olive">/.test(footer))
+  })
+})

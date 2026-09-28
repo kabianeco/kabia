@@ -149,7 +149,7 @@ export async function SiteFooter() {
           </div>
 
           <nav aria-label="Mağaza menüsü" className="lg:col-span-2">
-            <h2 className="label text-olive">Mağaza</h2>
+            <p className="label text-olive">Mağaza</p>
             <ul className="mt-5 space-y-3">
               {shopItems.map((item) => (
                 <li key={item.href}>
@@ -166,7 +166,7 @@ export async function SiteFooter() {
           </nav>
 
           <nav aria-label="Çiftlik menüsü" className="lg:col-span-2">
-            <h2 className="label text-olive">Çiftlik</h2>
+            <p className="label text-olive">Çiftlik</p>
             <ul className="mt-5 space-y-3">
               {farmItems.map((item) => (
                 <li key={item.href}>
@@ -182,7 +182,7 @@ export async function SiteFooter() {
           </nav>
 
           <nav aria-label="Destek menüsü" className="lg:col-span-2">
-            <h2 className="label text-olive">Destek</h2>
+            <p className="label text-olive">Destek</p>
             <ul className="mt-5 space-y-3">
               {supportItems.map((item) => (
                 <li key={item.href}>
