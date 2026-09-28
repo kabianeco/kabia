@@ -10,7 +10,7 @@ import { farm } from "@/content/pages";
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
-    title: "Çiftlik",
+    title: "Çiftlik — Geyve Sabırlar'da 946 Ağaçlık Badem Bahçesi",
     description: farmOpening.body,
     path: "/ciftlik",
     keywords: ["organik badem", "kabuklu badem", "Marinada", "ekolojik çiftlik", "Geyve", "Kılıçkaya"],

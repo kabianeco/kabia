@@ -11,7 +11,7 @@ import { isBrandPreview } from "@/lib/brand-preview"
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
-    title: "Seçki",
+    title: "Seçki — Küçük Üreticilerden Fındık, Ceviz, Bal",
     description:
       "Kendi çiftliğimizin ötesinde: üretim anlayışına güvendiğimiz, tanıdığımız küçük üreticiler.",
     path: "/secki",

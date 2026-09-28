@@ -13,7 +13,7 @@ import { isBrandPreview } from "@/lib/brand-preview"
  */
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
-    title: "Üreticiler",
+    title: "Üreticiler — Çiftliğimiz ve Dost Üreticiler",
     description:
       "Kabia'nın ürünlerini bir araya getirdiği, güvendiği küçük üreticiler.",
     path: "/ureticiler",

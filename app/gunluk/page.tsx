@@ -8,7 +8,7 @@ import { routes } from "@/lib/site"
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
-    title: "Saha Notları",
+    title: "Saha Notları — Geyve Badem Bahçesinden",
     description:
       "Günlük kısa saha notları arşivi: konum, hava, uygulama ve gözlem. Çiftliğin uzun hikâyesi /ciftlik kronolojisinde.",
     path: "/gunluk",

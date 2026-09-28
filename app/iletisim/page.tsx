@@ -6,7 +6,7 @@ import { site, whatsappHref } from "@/lib/site"
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
-    title: "İletişim",
+    title: "İletişim — Sabırlar, Geyve / Sakarya",
     description:
       "Kabia Ekolojik'e ulaşın: Geyve'deki bahçemizin adresi, telefon, e-posta ve doğrudan bize yazabileceğiniz form.",
     path: "/iletisim",

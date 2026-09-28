@@ -6,7 +6,7 @@ import { process } from "@/content/homepage"
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
-    title: "Badem",
+    title: "Geyve Bademi — Organik Sertifikalı Bahçemizden",
     description:
       "Bademimizi tanıyın: Marinada, Geyve/Sakarya, Kabia Çiftliği, organik sertifikalı. Bahçeden sofraya altı adımda.",
     path: "/badem",

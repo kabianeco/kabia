@@ -11,7 +11,7 @@ import { isBrandPreview } from "@/lib/brand-preview"
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
-    title: "Mutfak",
+    title: "Mutfak — Geleneksel Erişte, Tarhana, Salça, Sirke",
     description:
       "Üreticilerin mutfağından: erişte, tarhana, salça, sirke. Geleneksel yöntemler, tanıdığımız eller.",
     path: "/mutfak",

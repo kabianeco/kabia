@@ -32,7 +32,7 @@ export async function generateMetadata({
   const faceted = FACET_PARAMS.some((key) => params[key] !== undefined);
   return pageMetadata({
     noindex: faceted,
-    title: "Mağaza",
+    title: "Mağaza — Kabuklu Badem, Fındık, Ceviz, Bal",
     description:
       "Kabuklu badem, kabuklu fındık, kabuklu ceviz, bal, ıhlamur, salça, sirke, erişte, tarhana. Katkısız, izlenebilir, hikâyesiyle.",
     path: "/magaza",

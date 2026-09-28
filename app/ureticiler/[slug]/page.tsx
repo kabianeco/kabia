@@ -34,8 +34,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // description (magaza shelf pattern); preview rows carry desc instead.
   const tagline = "tagline" in producer && typeof producer.tagline === "string" ? producer.tagline : null
   const storyFallback = `${producer.name} — Kabia'nın güvendiği üreticilerden.`
+  // The name alone ("Erişte", "Tarhana") says little; the place the page shows
+  // under it — "Geyve — Elde Kesme" — makes it a title worth matching.
+  const region = "region" in producer && typeof producer.region === "string" ? producer.region.trim() : ""
   const metadata = await pageMetadata({
-    title: producer.name,
+    title: region ? `${producer.name} — ${region.replace(/\s+—\s+/g, ", ")}` : producer.name,
     description: tagline ? `${producer.story ?? storyFallback} ${tagline}` : (producer.story ?? storyFallback),
     path: routes.producer(producer.slug),
     // No image here: app/ureticiler/[slug]/opengraph-image.tsx serves the
