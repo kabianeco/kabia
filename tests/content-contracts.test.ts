@@ -32,6 +32,7 @@ const COPY = [
   "app/mutfak/page.tsx",
   "app/ureticiler/page.tsx",
   ...files("app/rehber"),
+  "supabase/migrations/20260928120228_enrich_product_descriptions.sql",
 ].filter((path) => existsSync(path))
 
 describe("published copy", () => {
