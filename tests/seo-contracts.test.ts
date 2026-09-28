@@ -37,3 +37,21 @@ describe("Product structured data", () => {
     assert.match(page, /product\.source === "ciftlik" \? \{ brand:/)
   })
 })
+
+describe("Store listing facets", () => {
+  it("keeps filtered and sorted views out of the index", () => {
+    const shop = readFileSync("app/shop/page.tsx", "utf8")
+    assert.match(shop, /FACET_PARAMS = \["kategori", "kaynak", "sirala"\]/)
+    assert.match(shop, /noindex: faceted/)
+  })
+
+  it("serves the listing at one URL: /shop redirects permanently to /magaza", async () => {
+    const { default: nextConfig } = await import("../next.config.ts")
+    const redirects = (await nextConfig.redirects?.()) ?? []
+    assert.deepEqual(
+      redirects.filter((entry) => entry.source === "/shop"),
+      [{ source: "/shop", destination: "/magaza", permanent: true }],
+    )
+    assert.ok(!redirects.some((entry) => entry.source.startsWith("/shop/")), "product URLs must not redirect")
+  })
+})

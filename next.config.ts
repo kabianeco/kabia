@@ -42,6 +42,10 @@ const nextConfig: NextConfig = {
       // The farm and contact pages are now sections of the homepage.
       { source: "/farm", destination: "/#ciftlik", permanent: true },
       { source: "/contact", destination: "/#iletisim", permanent: true },
+      // /magaza is the storefront's one listing URL; /shop rendered the same
+      // page under a second URL. Product pages stay at /shop/<slug> — this
+      // matches /shop exactly, and the query string carries over.
+      { source: "/shop", destination: "/magaza", permanent: true },
     ];
   },
 };

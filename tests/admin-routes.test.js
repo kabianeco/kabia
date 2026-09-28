@@ -157,7 +157,7 @@ describe("the unauthorized screen", () => {
 })
 
 describe("the public store is unaffected by the admin work", () => {
-  const routes = ["/", "/shop", "/magaza", "/sepet", "/giris", "/kayit", "/secki", "/odeme"]
+  const routes = ["/", "/magaza", "/sepet", "/giris", "/kayit", "/secki", "/odeme"]
 
   for (const route of routes) {
     it(`${route} still responds 200`, async () => {
@@ -167,13 +167,13 @@ describe("the public store is unaffected by the admin work", () => {
   }
 
   it("still lists real products with real prices", async () => {
-    const { body } = await get("/shop")
+    const { body } = await get("/magaza")
     assert.match(body, /₺\d/, "no price on the shop index")
     assert.match(body, /href="\/shop\//, "no product links on the shop index")
   })
 
   it("does not run the admin guard on storefront routes", async () => {
-    const { headers } = await get("/shop")
+    const { headers } = await get("/magaza")
     assert.equal(
       headers.get("x-kabia-admin-guard"),
       null,
@@ -182,7 +182,7 @@ describe("the public store is unaffected by the admin work", () => {
   })
 
   it("renders contact details from the settings table in the footer", async () => {
-    const { body } = await get("/shop")
+    const { body } = await get("/magaza")
     assert.match(body, /İletişim/, "footer contact block is missing")
   })
 })

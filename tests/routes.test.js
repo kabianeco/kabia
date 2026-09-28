@@ -50,8 +50,7 @@ async function get(path) {
 describe("public routes render", () => {
   const routes = [
     ["/", "homepage"],
-    ["/shop", "shop index"],
-    ["/magaza", "Turkish shop index"],
+    ["/magaza", "shop index"],
     ["/sepet", "cart"],
     ["/giris", "sign in"],
     ["/kayit", "sign up"],
@@ -64,11 +63,17 @@ describe("public routes render", () => {
       assert.equal(status, 200, `${path} returned ${status}`);
     });
   }
+
+  it("permanently redirects /shop to /magaza, query included", async () => {
+    const { status, location } = await get("/shop?kategori=bal");
+    assert.equal(status, 308);
+    assert.match(location ?? "", /\/magaza\?kategori=bal$/);
+  });
 });
 
 describe("shop is backed by real data", () => {
   it("lists products from the database", async () => {
-    const { status, body } = await get("/shop");
+    const { status, body } = await get("/magaza");
     assert.equal(status, 200);
     // The seeded catalogue prices are rendered as Turkish lira figures.
     assert.match(body, /₺\d/, "no price found on the shop index");
@@ -76,7 +81,7 @@ describe("shop is backed by real data", () => {
   });
 
   it("serves a product detail page for a real slug", async () => {
-    const { body } = await get("/shop");
+    const { body } = await get("/magaza");
     const slug = body.match(/href="\/shop\/([a-z0-9-]+)"/)?.[1];
     assert.ok(slug, "could not find a product slug to follow");
 
@@ -96,12 +101,12 @@ describe("shop is backed by real data", () => {
     // administrator can add or rename, so a slug written into the assertion
     // goes stale silently — this test spent its last while asserting
     // "kavrulmus", a category the database has not had for some time.
-    const all = await get("/shop");
+    const all = await get("/magaza");
     assert.equal(all.status, 200);
     const slug = all.body.match(/\?kategori=([a-z0-9-]+)/)?.[1];
-    assert.ok(slug, "no category filter offered by /shop");
+    assert.ok(slug, "no category filter offered by /magaza");
 
-    const { status, body } = await get(`/shop?kategori=${slug}`);
+    const { status, body } = await get(`/magaza?kategori=${slug}`);
     assert.equal(status, 200);
     assert.match(body, /href="\/shop\//, "category filter returned no products");
   });
@@ -147,7 +152,7 @@ describe("shared shell and design system", () => {
   });
 
   it("renders exactly one header and one footer per page", async () => {
-    for (const path of ["/", "/shop", "/giris", "/sepet"]) {
+    for (const path of ["/", "/magaza", "/giris", "/sepet"]) {
       const { body } = await get(path);
       const headers = body.match(/class="[^"]*site-header/g) ?? [];
       assert.equal(headers.length, 1, `${path} has ${headers.length} headers`);

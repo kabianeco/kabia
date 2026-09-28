@@ -14,9 +14,24 @@ import { shopBannerVisible, type ShopBannerSettings } from "@/lib/shop-banner";
 import { ShopHeroBanner } from "@/components/shop/shop-hero-banner";
 import { BannerErrorBoundary } from "@/components/shop/banner-error-boundary";
 
-/** /shop and /magaza render the same listing; both canonicalise to /magaza. */
-export async function generateMetadata(): Promise<Metadata> {
+/** Filter and sort parameters the listing reads (see ShopPage below). */
+const FACET_PARAMS = ["kategori", "kaynak", "sirala"] as const;
+
+/**
+ * /magaza renders the listing (/shop redirects to it, next.config.ts), and every
+ * filtered or sorted view canonicalises to the base listing. Those views are
+ * also kept out of the index — same products, another order — while their
+ * links are still followed through to the product pages.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const faceted = FACET_PARAMS.some((key) => params[key] !== undefined);
   return pageMetadata({
+    noindex: faceted,
     title: "Mağaza",
     description:
       "Kabuklu badem, kabuklu fındık, kabuklu ceviz, bal, ıhlamur, salça, sirke, erişte, tarhana. Katkısız, izlenebilir, hikâyesiyle.",

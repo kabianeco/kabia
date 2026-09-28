@@ -1,9 +1,8 @@
 import ShopPage from "@/app/shop/page"
 
 /**
- * Native Turkish storefront entry. It renders the same server component as
- * `/shop` without a redirect, so direct entry and hard refresh each have one
- * document request and keep the requested URL.
+ * The storefront listing. The component lives in app/shop/page.tsx for
+ * history; /shop itself now permanently redirects here (next.config.ts).
  */
 export { generateMetadata } from "@/app/shop/page"
 
