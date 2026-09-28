@@ -77,7 +77,8 @@ export async function generateMetadata(): Promise<Metadata> {
       title: settings.seoDefaultTitle,
       description: settings.seoDefaultDescription,
       images: [settings.seoSocialImage],
-      creator: "@kabiaekolojik",
+      // No twitter:creator: x.com/kabiaekolojik could not be confirmed to
+      // exist, so it is not claimed here either (see sameAs below).
     },
     robots: {
       index: true,
@@ -112,7 +113,25 @@ const organizationJsonLd = {
     streetAddress: "Sabırlar",
     addressCountry: "TR",
   },
-  sameAs: [site.social.instagram, site.social.facebook, site.social.x].filter(Boolean),
+  // What /iletisim shows: one line for phone and WhatsApp, the e-mail address,
+  // and "Hafta içi 09:00–18:00 içinde dönüyoruz". Organization, not
+  // LocalBusiness: Sabırlar is the orchard, not a shop with opening hours.
+  contactPoint: {
+    "@type": "ContactPoint",
+    contactType: "customer service",
+    telephone: site.phone,
+    email: site.email,
+    availableLanguage: "Turkish",
+    hoursAvailable: {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      opens: "09:00",
+      closes: "18:00",
+    },
+  },
+  // Only the profiles confirmed to exist (2026-09-28): the Instagram account
+  // and the Facebook page. x.com/kabiaekolojik could not be confirmed.
+  sameAs: [site.social.instagram, site.social.facebook],
 };
 
 const websiteJsonLd = {
