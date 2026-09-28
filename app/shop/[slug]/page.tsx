@@ -131,10 +131,12 @@ export async function generateMetadata({
 
 export default async function ProductDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ boyut?: string | string[] }>;
 }) {
-  const { slug } = await params;
+  const [{ slug }, { boyut }] = await Promise.all([params, searchParams]);
   if (isBrandPreview()) {
     const product = previewProducts.find((product) => product.slug === slug);
     if (!product) notFound();
@@ -150,7 +152,12 @@ export default async function ProductDetailPage({
     getCachedProductReviews(base.id),
     getCachedRelatedProducts(base.category, base.slug, 4),
   ]);
-  const product = { ...base, reviews };
+  // ?boyut=<size> opens the page on that size — the link each size's item in
+  // the Merchant feed carries, so the landing page shows the price the feed
+  // states. Anything else opens on the default size, as before. The canonical
+  // stays the bare product URL.
+  const requested = typeof boyut === "string" ? base.variants.find((v) => v.weight === boyut) : undefined;
+  const product = { ...base, reviews, ...(requested ? { defaultWeight: requested.weight } : {}) };
 
   return (
     <PageShell>

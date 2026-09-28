@@ -92,3 +92,53 @@ describe("404 responses", () => {
     }
   })
 })
+
+describe("Google Merchant feed", () => {
+  const product = (over: Record<string, unknown>) => ({
+    id: "p-1", slug: "kabuklu-badem", name: "Kabuklu Badem", category: "badem", categoryName: "Badem",
+    source: "ciftlik", mainImageUrl: "/images/a.jpg", images: ["/images/a.jpg", "/images/b.jpg"],
+    description: "Geyve'deki bahçemizden & kabuğuyla.", shortDescription: "",
+    variants: [
+      { id: "v-500", weight: "500g", price: 550, stock: 4 },
+      { id: "v-1kg", weight: "1kg", price: 990, stock: 0 },
+    ],
+    ...over,
+  })
+
+  it("emits one item per size with its own price, stock and landing URL", async () => {
+    const { buildMerchantFeed } = await import("../lib/merchant-feed.ts")
+    const { siteUrl } = await import("../lib/site.ts")
+    const feed = buildMerchantFeed([product({})] as never)
+    assert.equal(feed.items, 2)
+    assert.match(feed.xml, /<g:id>v-1kg<\/g:id>\n  <g:item_group_id>p-1<\/g:item_group_id>/)
+    assert.match(feed.xml, /<g:price>990\.00 TRY<\/g:price>/)
+    assert.match(feed.xml, /<g:availability>out_of_stock<\/g:availability>/)
+    assert.ok(feed.xml.includes(`<link>${siteUrl}/shop/kabuklu-badem?boyut=500g</link>`))
+    assert.ok(feed.xml.includes(`<g:image_link>${siteUrl}/images/a.jpg</g:image_link>`))
+    assert.equal((feed.xml.match(/g:additional_image_link/g) ?? []).length / 2, 2, "one extra image per item, de-duplicated")
+    assert.match(feed.xml, /bahçemizden &amp; kabuğuyla/)
+    assert.match(feed.xml, /<g:brand>Kabia Ekolojik<\/g:brand>/)
+  })
+
+  it("invents nothing: no shipping, no returns, no brand for producers' goods", async () => {
+    const { buildMerchantFeed } = await import("../lib/merchant-feed.ts")
+    const feed = buildMerchantFeed([product({ source: "secki", variants: [{ id: "v", weight: "460g", price: 495, stock: 1 }] })] as never)
+    assert.ok(!feed.xml.includes("g:shipping"))
+    assert.ok(!feed.xml.includes("return"))
+    assert.ok(!feed.xml.includes("g:brand"))
+    assert.ok(!feed.xml.includes("g:item_group_id"), "a single size is not a variant group")
+    assert.match(feed.xml, /<g:identifier_exists>no<\/g:identifier_exists>/)
+  })
+
+  it("skips, and reports, a product it cannot describe honestly", async () => {
+    const { buildMerchantFeed } = await import("../lib/merchant-feed.ts")
+    const feed = buildMerchantFeed([product({ variants: [] }), product({ slug: "x", mainImageUrl: "", images: [] })] as never)
+    assert.equal(feed.items, 0)
+    assert.deepEqual(feed.skipped.map((s) => s.product), ["kabuklu-badem", "x"])
+  })
+
+  it("opens the product page on the size the feed item links to", () => {
+    const page = readFileSync("app/shop/[slug]/page.tsx", "utf8")
+    assert.match(page, /base\.variants\.find\(\(v\) => v\.weight === boyut\)/)
+  })
+})
