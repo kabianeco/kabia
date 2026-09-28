@@ -35,8 +35,11 @@ export async function generateMetadata({
   const producer = result.producer;
   const detail = [producer.productType, producer.region].filter(Boolean).join(" — ");
   // Distinct from /ureticiler/<slug>, which carries the story: this page is
-  // the producer's shelf, so its snippet says so.
+  // the producer's shelf, so its snippet says so. Kept out of the index: a
+  // shelf of one to three product cards is a thin copy of the story page and
+  // the product pages it links to, which are the ones worth ranking.
   return pageMetadata({
+    noindex: true,
     title: `${producer.name} — Mağaza`,
     description: `${producer.name} ürünleri Kabia mağazasında${detail ? ` (${detail})` : ""}.${
       producer.tagline ? ` ${producer.tagline}` : ""

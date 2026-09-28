@@ -52,10 +52,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           images: imageList([p.mainImageUrl, ...p.images]),
         }))
 
-  // A producer's store page is advertised only while it has something on its
-  // shelf, taken from the same product read (each row carries its producer).
-  const stockedProducers = new Set(productsResult.products.map((p) => p.producerSlug).filter(Boolean))
-
   const producers = producersResult.producers
   // Producer rows carry no update timestamp, so no lastmod is claimed for
   // them rather than a made-up one.
@@ -66,13 +62,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // The story page shows the photo only when it passes the same allowlist.
     images: imageList(p.photoUrl && isAllowedImageUrl(p.photoUrl) ? [p.photoUrl] : []),
   }))
-  const producerStoreEntries: MetadataRoute.Sitemap = producers
-    .filter((p) => stockedProducers.has(p.slug))
-    .map((p) => ({
-      url: `${site.url}/magaza/${p.slug}`,
-      changeFrequency: "weekly" as const,
-      priority: 0.6,
-    }))
+  // /magaza/<producer> shelves are noindex (thin copies of the story and
+  // product pages), so they are not advertised here.
 
   const journalSitemapEntries: MetadataRoute.Sitemap = journalEntries.map((e) => ({
     url: `${site.url}${routes.journalEntry(e.slug)}`,
@@ -81,5 +72,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }))
 
-  return [...staticEntries, ...productEntries, ...producerEntries, ...producerStoreEntries, ...journalSitemapEntries]
+  return [...staticEntries, ...productEntries, ...producerEntries, ...journalSitemapEntries]
 }

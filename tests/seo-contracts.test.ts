@@ -158,3 +158,10 @@ describe("llms.txt", () => {
     assert.match(body, /Seçki ve Mutfak üreticilerini kapsamaz/)
   })
 })
+
+describe("Producer shelves", () => {
+  it("/magaza/<producer> is noindex and not in the sitemap", () => {
+    assert.match(readFileSync("app/magaza/[producer-slug]/page.tsx", "utf8"), /return pageMetadata\(\{\s+noindex: true,/)
+    assert.ok(!readFileSync("app/sitemap.ts", "utf8").includes("/magaza/${"))
+  })
+})
