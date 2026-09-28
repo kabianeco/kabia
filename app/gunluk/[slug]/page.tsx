@@ -5,7 +5,8 @@ import Link from "next/link"
 import { PageShell } from "@/components/layout/page-shell"
 import { journalEntries, type JournalEntry } from "@/content/journal"
 import { routes } from "@/lib/site"
-import { articleJsonLd, breadcrumbJsonLd, pageMetadata } from "@/lib/seo"
+import { articleJsonLd, pageMetadata } from "@/lib/seo"
+import { Breadcrumbs } from "@/components/layout/breadcrumbs"
 
 function getEntry(slug: string): JournalEntry | undefined {
   return journalEntries.find((e) => e.slug === slug)
@@ -47,41 +48,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   })
 }
 
-function Breadcrumbs({ label, slug }: { label: string; slug: string }) {
-  const items = [
-    { label: "Ana sayfa", href: routes.home },
-    { label: "Günlük", href: routes.journal },
-    { label, href: routes.journalEntry(slug) },
-  ]
-  return (
-    <nav aria-label="Breadcrumb" className="mb-8">
-      <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink/70">
-        {items.map((item, i) => (
-          <li key={item.href} className="flex items-center gap-2">
-            {i > 0 && <span aria-hidden="true">/</span>}
-            {i === items.length - 1 ? (
-              <span aria-current="page" className="truncate text-ink/60">
-                {item.label}
-              </span>
-            ) : (
-              <Link href={item.href} prefetch={false} className="transition-colors duration-300 hover:text-ink">
-                {item.label}
-              </Link>
-            )}
-          </li>
-        ))}
-      </ol>
-      {/* The same trail, for search engines — built from the visible items. */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumbJsonLd(items.map((item) => [item.label, item.href] as const))),
-        }}
-      />
-    </nav>
-  )
-}
-
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-t border-ink/10 py-5">
@@ -100,7 +66,13 @@ export default async function JournalEntryPage({ params }: { params: Promise<{ s
     <PageShell>
       <article className="wrap page-top pb-24 md:pb-32">
         <div className="mx-auto max-w-[42rem]">
-          <Breadcrumbs label={formatEntryDate(entry.date)} slug={entry.slug} />
+          <Breadcrumbs
+            items={[
+              { label: "Ana sayfa", href: routes.home },
+              { label: "Günlük", href: routes.journal },
+              { label: formatEntryDate(entry.date), href: routes.journalEntry(entry.slug) },
+            ]}
+          />
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{

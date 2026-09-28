@@ -50,3 +50,37 @@ describe("published copy", () => {
     }
   })
 })
+
+describe("guides", () => {
+  const guideFiles = files("app/rehber").concat("content/guides.ts", "components/guides/guide-parts.tsx")
+
+  it("state the certificate only through content/farm.ts, with no expiry-independent phrasing", () => {
+    for (const path of guideFiles) {
+      const src = readFileSync(path, "utf8")
+      assert.doesNotMatch(src, /TR-OT-|3 Ekim 2026|24 Ekim 2025/, `${path} hardcodes certificate facts`)
+      assert.doesNotMatch(src, /sertifikalı olarak üret|sertifikalı üretiyoruz|[’']den beri organik/, path)
+    }
+    for (const path of ["app/rehber/geyve-badem-bahcesi/page.tsx", "app/rehber/uretici-secimi/page.tsx"]) {
+      assert.match(readFileSync(path, "utf8"), /farmCertificate\.facts/, path)
+    }
+  })
+
+  it("the selection guide shows the seven Kabia Standardı criteria and keeps its certification note", async () => {
+    const { kabiaStandard } = await import("../content/kabia-standard.ts")
+    assert.equal(kabiaStandard.criteria.length, 7)
+    assert.match(kabiaStandard.certificationNote, /resmî organik sertifikanın yerine\s+geçmez/)
+    const page = readFileSync("app/rehber/uretici-secimi/page.tsx", "utf8")
+    assert.match(page, /kabiaStandard\.criteria\.map/)
+    assert.match(page, /\{kabiaStandard\.certificationNote\}/)
+  })
+
+  it("every guide is in the sitemap and has Article structured data", async () => {
+    const { guides } = await import("../content/guides.ts")
+    assert.ok(readFileSync("app/sitemap.ts", "utf8").includes("guides.map((guide)"))
+    for (const guide of guides) {
+      const page = readFileSync(`app/rehber/${guide.slug}/page.tsx`, "utf8")
+      assert.match(page, /articleJsonLd\(\{/, guide.slug)
+      assert.match(page, /GuideHeader[\s\S]*crumbs=/, `${guide.slug} has no breadcrumb`)
+    }
+  })
+})

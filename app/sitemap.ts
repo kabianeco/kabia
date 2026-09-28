@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next"
 import { getCachedPublicProducts } from "@/lib/catalog"
 import { getCachedPublicProducers } from "@/lib/producers"
 import { journalEntries } from "@/content/journal"
+import { guides } from "@/content/guides"
 import { site, routes, sitemapStaticPaths } from "@/lib/site"
 import { absoluteUrl } from "@/lib/seo"
 import { isAllowedImageUrl } from "@/lib/shop-banner"
@@ -72,5 +73,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }))
 
-  return [...staticEntries, ...productEntries, ...producerEntries, ...journalSitemapEntries]
+  const guideEntries: MetadataRoute.Sitemap = guides.map((guide) => ({
+    url: `${site.url}${routes.guide(guide.slug)}`,
+    lastModified: new Date(guide.datePublished),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }))
+
+  return [...staticEntries, ...guideEntries, ...productEntries, ...producerEntries, ...journalSitemapEntries]
 }

@@ -96,6 +96,10 @@ export const routes = {
     `/shop/${routes.producerProduct[slug] ?? slug}`,
   journal: "/gunluk",
   journalEntry: (slug: string) => `/gunluk/${slug}`,
+  // Long-form guides (content/guides.ts): the orchard, how producers are
+  // chosen, how to store the products.
+  guides: "/rehber",
+  guide: (slug: string) => `/rehber/${slug}`,
   farm: "/ciftlik",
   contact: "/iletisim",
   // The approach the nav points at. The homepage still opens with a short
@@ -153,6 +157,9 @@ export const sitemapStaticPaths: readonly SitemapStaticPath[] = [
   { path: routes.farm, changeFrequency: "monthly", priority: 0.8 },
   { path: routes.producers, changeFrequency: "monthly", priority: 0.7 },
   { path: routes.journal, changeFrequency: "weekly", priority: 0.6 },
+  // The guide pages themselves are appended by app/sitemap.ts from
+  // content/guides.ts, with their publication dates.
+  { path: routes.guides, changeFrequency: "monthly", priority: 0.6 },
   { path: routes.contact, changeFrequency: "monthly", priority: 0.5 },
 
   { path: routes.distanceSalesAgreement, changeFrequency: "monthly", priority: 0.5 },
