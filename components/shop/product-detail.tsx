@@ -58,6 +58,27 @@ function certificationRow(product: Product): ReactNode {
   );
 }
 
+/**
+ * Where the product's longer story lives: the almond links to its own page
+ * and the orchard guide; every product links to its storage answer and the
+ * guide hub; producers' goods link to how their producers were chosen.
+ */
+function guideLinks(product: Product): { href: string; label: string }[] {
+  return [
+    ...(product.slug === "kabuklu-badem"
+      ? [
+          { href: "/badem", label: "Bademimizi tanıyın" },
+          { href: routes.guide("geyve-badem-bahcesi"), label: "Geyve'de bir badem bahçesi" },
+        ]
+      : []),
+    ...(product.source !== "ciftlik"
+      ? [{ href: routes.guide("uretici-secimi"), label: "Üreticilerimizi nasıl seçiyoruz?" }]
+      : []),
+    { href: `${routes.guide("saklama")}#${product.slug}`, label: `${product.name} nasıl saklanır?` },
+    { href: routes.guides, label: "Tüm rehberler" },
+  ];
+}
+
 function producerRow(product: Product): ReactNode {
   if (!product.producerName) return "";
   if (!product.producerSlug) return product.producerName;
@@ -197,9 +218,20 @@ export function ProductDetail({
             aria-labelledby="tab-detaylar"
             className="mt-10 grid gap-12 lg:grid-cols-2"
           >
-            <p className="max-w-prose text-base leading-relaxed text-ink/70">
-              {product.description}
-            </p>
+            {/* Blank-line-separated paragraphs render as paragraphs, the
+                producer-story convention; a one-paragraph description renders
+                exactly as before. */}
+            <div className="max-w-prose space-y-5">
+              {product.description
+                .split(/\n\s*\n/)
+                .map((paragraph) => paragraph.trim())
+                .filter(Boolean)
+                .map((paragraph, i) => (
+                  <p key={i} className="text-base leading-relaxed text-ink/70">
+                    {paragraph}
+                  </p>
+                ))}
+            </div>
             <div>
               <dl className="border-t border-ink/10">
                 {productDetailRows(product)
@@ -214,6 +246,23 @@ export function ProductDetail({
                     </div>
                   ))}
               </dl>
+
+              <div className="mt-8 border-t border-ink/10 pt-8">
+                <p className="label text-olive">Rehber</p>
+                <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-3 text-sm">
+                  {guideLinks(product).map((link) => (
+                    <li key={link.href}>
+                      <Link
+                        href={link.href}
+                        prefetch={false}
+                        className="text-ink underline decoration-brand decoration-2 underline-offset-4"
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
               {product.source === "secki" && product.producerWhySelected && (
                 <div className="mt-8 border-t border-ink/10 pt-8">

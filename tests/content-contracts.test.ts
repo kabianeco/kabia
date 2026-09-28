@@ -84,3 +84,23 @@ describe("guides", () => {
     }
   })
 })
+
+describe("internal links (owner decision 4)", () => {
+  it("product pages link to the guide hub, the storage answer and, for the almond, /badem", () => {
+    const src = readFileSync("components/shop/product-detail.tsx", "utf8")
+    assert.match(src, /href: routes\.guides, label: "Tüm rehberler"/)
+    assert.match(src, /routes\.guide\("saklama"\)/)
+    assert.match(src, /product\.slug === "kabuklu-badem"[\s\S]*href: "\/badem"/)
+  })
+
+  it("producer pages link to a guide; /badem links to the orchard guide", () => {
+    assert.match(readFileSync("app/ureticiler/[slug]/page.tsx", "utf8"), /routes\.guide\(producer\.source === "ciftlik"/)
+    assert.match(readFileSync("app/badem/page.tsx", "utf8"), /href="\/rehber\/geyve-badem-bahcesi"/)
+  })
+
+  it("journal entries link to the previous and next entry by date", () => {
+    const src = readFileSync("app/gunluk/[slug]/page.tsx", "utf8")
+    assert.match(src, /Önceki not:/)
+    assert.match(src, /Sonraki not:/)
+  })
+})

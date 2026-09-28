@@ -157,6 +157,17 @@ export default async function ProducerDetailPage({ params }: { params: Promise<{
             <Field label="Belgeler" value={producer.certificates} />
             <Field label="Neden Kabia'nın üreticisi" value={producer.whySelected} />
           </dl>
+
+          {/* The guide that tells this producer's part at length: the orchard
+              for the farm itself, how producers are chosen for the rest. */}
+          <Link
+            href={routes.guide(producer.source === "ciftlik" ? "geyve-badem-bahcesi" : "uretici-secimi")}
+            prefetch={false}
+            className="mt-10 inline-flex min-h-11 items-center gap-2 text-sm text-brand transition-colors duration-300 hover:text-ink"
+          >
+            {producer.source === "ciftlik" ? "Geyve'de bir badem bahçesi" : "Üreticilerimizi nasıl seçiyoruz?"}
+            <span aria-hidden="true">→</span>
+          </Link>
         </div>
 
         {products.length > 0 && (

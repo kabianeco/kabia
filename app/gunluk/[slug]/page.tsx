@@ -12,6 +12,13 @@ function getEntry(slug: string): JournalEntry | undefined {
   return journalEntries.find((e) => e.slug === slug)
 }
 
+/** The entries either side of this one in date order (the file is not sorted). */
+function neighbours(entry: JournalEntry): { previous?: JournalEntry; next?: JournalEntry } {
+  const byDate = [...journalEntries].sort((a, b) => a.date.localeCompare(b.date))
+  const index = byDate.findIndex((e) => e.slug === entry.slug)
+  return { previous: byDate[index - 1], next: byDate[index + 1] }
+}
+
 function formatEntryDate(iso: string): string {
   return new Date(iso).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })
 }
@@ -61,6 +68,7 @@ export default async function JournalEntryPage({ params }: { params: Promise<{ s
   const { slug } = await params
   const entry = getEntry(slug)
   if (!entry) notFound()
+  const { previous, next } = neighbours(entry)
 
   return (
     <PageShell>
@@ -149,6 +157,32 @@ export default async function JournalEntryPage({ params }: { params: Promise<{ s
               <span aria-hidden="true">→</span>
             </Link>
           </nav>
+
+          {/* Walk the log in date order, in the same link style. */}
+          {(previous || next) && (
+            <nav aria-label="Günlük notları" className="mt-6 flex flex-wrap justify-between gap-x-8 gap-y-3 border-t border-ink/10 pt-8">
+              {previous ? (
+                <Link
+                  href={routes.journalEntry(previous.slug)}
+                  prefetch={false}
+                  className="inline-flex min-h-11 items-center gap-2 text-sm text-brand transition-colors duration-300 hover:text-ink"
+                >
+                  <span aria-hidden="true">←</span>
+                  Önceki not: {formatEntryDate(previous.date)}
+                </Link>
+              ) : <span />}
+              {next ? (
+                <Link
+                  href={routes.journalEntry(next.slug)}
+                  prefetch={false}
+                  className="inline-flex min-h-11 items-center gap-2 text-sm text-brand transition-colors duration-300 hover:text-ink"
+                >
+                  Sonraki not: {formatEntryDate(next.date)}
+                  <span aria-hidden="true">→</span>
+                </Link>
+              ) : null}
+            </nav>
+          )}
         </div>
       </article>
     </PageShell>
