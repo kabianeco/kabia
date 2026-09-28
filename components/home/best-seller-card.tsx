@@ -1,12 +1,6 @@
-"use client";
-
-import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ShoppingBag } from "lucide-react";
-import { toast } from "sonner";
-import { useCart } from "@/lib/cart-context";
+import { BestSellerAdd } from "@/components/home/best-seller-add";
 import { formatTL, type Product } from "@/lib/products";
 import { routes } from "@/lib/site";
 
@@ -14,43 +8,14 @@ import { routes } from "@/lib/site";
  * Öne çıkanlar kartı: kapak, isim, ağırlık, fiyat ve stok durumuna göre
  * sepete ekle. Stok yoksa buton ölüdür ama kart ürün sayfasına gider —
  * satış kapalıyken bile fiyat ve hikaye görünür kalır.
+ *
+ * Sunucuda render edilir; yalnızca sepete ekle düğmesi istemci adasıdır
+ * (BestSellerAdd) ve ürünün tamamı yerine eklenecek satırı alır.
  */
 export function BestSellerCard({ product }: { product: Product }) {
-  const { addItem } = useCart();
-  const router = useRouter();
-  const [added, setAdded] = useState(false);
-
   const variant =
     product.variants.find((v) => v.stock > 0) ?? product.variants[0];
   const available = !!variant && variant.stock > 0;
-
-  const handleAdd = async () => {
-    if (!variant || !available) return;
-    // The write must complete (or fail loudly) before the toast offers navigation.
-    const accepted = await addItem({
-      id: `${product.slug}__${variant.weight}`,
-      slug: product.slug,
-      name: product.name,
-      variant: variant.weight,
-      price: variant.price,
-      image: product.mainImageUrl,
-      quantity: 1,
-      variantId: variant.id,
-      productId: product.id,
-    });
-    if (!accepted) {
-      toast.error("Sepete eklenemedi. Lütfen tekrar deneyin.");
-      return;
-    }
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1500);
-    toast.success(`Sepete eklendi — ${product.name}`, {
-      action: {
-        label: "Sepete git",
-        onClick: () => router.push(routes.cart),
-      },
-    });
-  };
 
   return (
     <li className="group flex flex-col">
@@ -83,15 +48,22 @@ export function BestSellerCard({ product }: { product: Product }) {
         </div>
       </Link>
       <div className="mt-4">
-        <button
-          type="button"
-          onClick={handleAdd}
-          disabled={!available}
-          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-theme-button border border-ink/20 px-5 text-sm transition-colors duration-300 hover:border-brand hover:text-brand disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-ink/20 disabled:hover:text-ink"
-        >
-          <ShoppingBag className="h-4 w-4" aria-hidden="true" />
-          {added ? "Sepette" : available ? "Sepete ekle" : "Stokta yok"}
-        </button>
+        <BestSellerAdd
+          line={
+            variant && available
+              ? {
+                  id: `${product.slug}__${variant.weight}`,
+                  slug: product.slug,
+                  name: product.name,
+                  variant: variant.weight,
+                  price: variant.price,
+                  image: product.mainImageUrl,
+                  variantId: variant.id,
+                  productId: product.id,
+                }
+              : null
+          }
+        />
       </div>
     </li>
   );

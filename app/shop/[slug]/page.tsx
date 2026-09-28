@@ -3,7 +3,6 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { ProductDetail } from "@/components/shop/product-detail";
-import { MotionRootLazy } from "@/components/motion/motion-root-lazy";
 import { isBrandPreview } from "@/lib/brand-preview";
 import { isPreviewItem } from "@/lib/preview-identity";
 import { previewProducts } from "@/content/preview-products";
@@ -128,7 +127,7 @@ export default async function ProductDetailPage({
     const product = previewProducts.find((product) => product.slug === slug);
     if (!product) notFound();
     const related = previewProducts.filter((other) => other.id !== product.id && other.source === product.source).slice(0, 4);
-    return <PageShell><MotionRootLazy><ProductDetail product={product} related={related} /></MotionRootLazy></PageShell>;
+    return <PageShell><ProductDetail product={product} related={related} /></PageShell>;
   }
   if (isPreviewItem({ slug })) notFound();
   const base = await getProductBase(slug);
@@ -151,10 +150,7 @@ export default async function ProductDetailPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(product)) }}
       />
-      {/* Gallery swaps and the review form animate on interaction only. */}
-      <MotionRootLazy>
-        <ProductDetail product={product} related={related} />
-      </MotionRootLazy>
+      <ProductDetail product={product} related={related} />
     </PageShell>
   );
 }

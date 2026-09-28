@@ -38,7 +38,7 @@ describe("reviewInputSchema", () => {
 
 describe("review write path", () => {
   it("panel no longer inserts into reviews from the browser", () => {
-    const src = readFileSync("components/shop/product-detail.tsx", "utf8");
+    const src = readFileSync("components/shop/product-reviews-panel.tsx", "utf8");
     assert.ok(!src.includes('from("reviews").insert'), "direct browser insert removed");
     assert.match(src, /submitReviewAction\(/);
   });

@@ -133,8 +133,8 @@ describe("signed-in cart survives navigation and refresh (Bug 2)", () => {
   it('no "Sepete git" action uses a full page reload', () => {
     for (const file of [
       "components/shop/product-purchase.tsx",
-      "components/shop/product-detail.tsx",
-      "components/home/best-seller-card.tsx",
+      "components/shop/product-detail-islands.tsx",
+      "components/home/best-seller-add.tsx",
       "app/hesabim/siparislerim/[orderId]/detail-client.tsx",
     ]) {
       const src = readFileSync(file, "utf8");
@@ -146,8 +146,8 @@ describe("signed-in cart survives navigation and refresh (Bug 2)", () => {
   it("every add site awaits the write and shows a rejection", () => {
     for (const file of [
       "components/shop/product-purchase.tsx",
-      "components/shop/product-detail.tsx",
-      "components/home/best-seller-card.tsx",
+      "components/shop/product-detail-islands.tsx",
+      "components/home/best-seller-add.tsx",
     ]) {
       const src = readFileSync(file, "utf8");
       assert.ok(src.includes("await addItem("), `${file} must await the confirmed write`);

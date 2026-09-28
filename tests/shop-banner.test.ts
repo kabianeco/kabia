@@ -115,7 +115,7 @@ describe("S24 — unlisted hosts and malformed URLs stay out", () => {
     assert.match(card, /isAllowedImageUrl\(producer\.photoUrl\)/)
     const entry = readFileSync("components/shop/product-entry.tsx", "utf8")
     assert.match(entry, /isAllowedImageUrl\(product\.mainImageUrl\)/)
-    const detail = readFileSync("components/shop/product-detail.tsx", "utf8")
+    const detail = readFileSync("components/shop/product-detail-islands.tsx", "utf8")
     assert.match(detail, /isAllowedImageUrl\(image\)/)
     assert.match(detail, /\.filter\(isAllowedImageUrl\)/)
   })
