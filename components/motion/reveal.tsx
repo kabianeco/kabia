@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { DURATION, EASE } from "@/lib/motion";
 
 interface RevealProps {
@@ -17,7 +17,7 @@ interface RevealProps {
  */
 export function Reveal({ children, className, delay = 0, as = "div" }: RevealProps) {
   const reduced = useReducedMotion();
-  const Tag = motion[as];
+  const Tag = m[as];
 
   return (
     <Tag

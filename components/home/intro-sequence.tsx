@@ -8,7 +8,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import {
-  motion,
+  m,
   useMotionTemplate,
   useMotionValueEvent,
   useScroll,
@@ -96,9 +96,9 @@ function RisingLetter({
     (v) => `${115 * (1 - smoothstep(start, start + span, v))}%`,
   );
   return (
-    <motion.span className="inline-block whitespace-pre" style={{ y }}>
+    <m.span className="inline-block whitespace-pre" style={{ y }}>
       {char === " " ? " " : char}
-    </motion.span>
+    </m.span>
   );
 }
 
@@ -532,7 +532,7 @@ function ScrollIntro() {
 
           {/* The ground the film closes onto — a plain panel, so once the
               green has completed there is nothing left but flat colour. */}
-          <motion.div
+          <m.div
             aria-hidden="true"
             className="absolute inset-0 z-[5] bg-forest"
             style={{
@@ -543,12 +543,12 @@ function ScrollIntro() {
           />
 
           {/* Act 1 — the headline, centred on the footage */}
-          <motion.div
+          <m.div
             className="pointer-events-none absolute inset-0 z-30"
             style={{ opacity: aOpacity, visibility: aVisibility, willChange: "opacity" } as never}
           >
             <div className="mx-auto flex h-full max-w-[1200px] items-center justify-center px-6 md:px-10">
-              <motion.div
+              <m.div
                 style={{
                   y: aSweepY,
                   scaleX: aSweepScaleX,
@@ -561,12 +561,12 @@ function ScrollIntro() {
                 }`}
               >
                 <Act1Copy hot={act1Hot} />
-              </motion.div>
+              </m.div>
             </div>
-          </motion.div>
+          </m.div>
 
           {/* Act 2 */}
-          <motion.div
+          <m.div
             className="pointer-events-none absolute inset-0 z-30"
             style={{
               opacity: bOpacity,
@@ -575,7 +575,7 @@ function ScrollIntro() {
             } as never}
           >
             <div className="mx-auto flex h-full max-w-[1200px] items-center justify-center px-6 md:px-10">
-              <motion.div
+              <m.div
                 style={{
                   y: bY,
                   scaleX: bSweepScaleX,
@@ -589,12 +589,12 @@ function ScrollIntro() {
                   kicker={intro.act2.kicker}
                   text={intro.act2.text}
                 />
-              </motion.div>
+              </m.div>
             </div>
-          </motion.div>
+          </m.div>
 
           {/* Act 3 */}
-          <motion.div
+          <m.div
             className="pointer-events-none absolute inset-0 z-30"
             style={{
               opacity: cOpacity,
@@ -603,7 +603,7 @@ function ScrollIntro() {
             } as never}
           >
             <div className="mx-auto flex h-full max-w-[1200px] items-center justify-center px-6 md:px-10">
-              <motion.div
+              <m.div
                 style={{
                   y: cY,
                   scaleX: cSweepScaleX,
@@ -617,12 +617,12 @@ function ScrollIntro() {
                   kicker={intro.act3.kicker}
                   text={intro.act3.text}
                 />
-              </motion.div>
+              </m.div>
             </div>
-          </motion.div>
+          </m.div>
 
           {/* Act 4 — the closing line, in the voice the brand word uses */}
-          <motion.div
+          <m.div
             className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center px-6"
             style={{ visibility: dVisibility }}
           >
@@ -644,7 +644,7 @@ function ScrollIntro() {
                 />
               </span>
             </p>
-          </motion.div>
+          </m.div>
 
           {/* Four acts, four quiet markers. Every act now sits on dark —
               the footage under its veil, then the forest panel — so they

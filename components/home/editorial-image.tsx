@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { m, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { editorialImage } from "@/content/homepage";
 
 /**
@@ -21,7 +21,7 @@ export function EditorialImage() {
   return (
     <figure ref={ref} className="relative" style={{ contentVisibility: "auto" } as React.CSSProperties}>
       <div className="relative h-[64vh] overflow-hidden rounded-media md:h-[82vh]">
-        <motion.div
+        <m.div
           className="absolute inset-x-0 -inset-y-[8%]"
           style={reducedMotion ? undefined : { y, willChange: "transform" } as never}
         >
@@ -34,7 +34,7 @@ export function EditorialImage() {
             decoding="async"
             className="object-cover"
           />
-        </motion.div>
+        </m.div>
       </div>
       <figcaption className="mx-auto flex max-w-[1200px] gap-3 px-6 py-5 text-xs text-olive md:px-10">
         <span aria-hidden="true">—</span>

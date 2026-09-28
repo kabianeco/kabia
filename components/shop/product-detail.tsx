@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { Check, ShoppingBag, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -239,7 +239,7 @@ export function ProductDetail({
             {/* §5.4: the first paint renders immediately (no hydration fade);
                 later image transitions keep their animation. */}
             <AnimatePresence mode="wait" initial={false}>
-              <motion.div
+              <m.div
                 key={activeImage}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -260,7 +260,7 @@ export function ProductDetail({
                   className="object-cover"
                 />
                 ) : null}
-              </motion.div>
+              </m.div>
             </AnimatePresence>
             {!available && (
               <span className="absolute px-4 py-2" style={STOCK_BADGE_STYLE}>
@@ -647,7 +647,7 @@ function ReviewsPanel({ product }: { product: Product }) {
               <li key={star} className="flex items-center gap-3 text-xs">
                 <span className="w-6 text-ink/55">{star}★</span>
                 <span className="h-1 flex-1 overflow-hidden bg-ink/10">
-                  <motion.span
+                  <m.span
                     className="block h-full bg-brand"
                     initial={{ width: 0 }}
                     whileInView={{ width: `${pct}%` }}
@@ -678,7 +678,7 @@ function ReviewsPanel({ product }: { product: Product }) {
 
         <AnimatePresence>
           {showForm && (
-            <motion.form
+            <m.form
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
@@ -725,7 +725,7 @@ function ReviewsPanel({ product }: { product: Product }) {
               <Button type="submit" disabled={submitting} className="w-full">
                 {submitting ? "Gönderiliyor…" : "Gönder"}
               </Button>
-            </motion.form>
+            </m.form>
           )}
         </AnimatePresence>
       </div>

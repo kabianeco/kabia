@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PageShell } from "@/components/layout/page-shell";
 import { CheckoutFlow } from "@/components/checkout/checkout-flow";
+import { MotionRoot } from "@/components/motion/motion-root";
 
 export const metadata: Metadata = {
   title: "Ödeme",
@@ -12,7 +13,10 @@ export const metadata: Metadata = {
 export default function CheckoutPage() {
   return (
     <PageShell>
-      <CheckoutFlow />
+      {/* Checkout steps animate in on first paint: features ship with the route. */}
+      <MotionRoot>
+        <CheckoutFlow />
+      </MotionRoot>
     </PageShell>
   );
 }

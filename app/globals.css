@@ -288,6 +288,43 @@ body::before {
   }
 }
 
+/* Mobile menu motion, in CSS so the header needs no animation library: the
+   curtain sweeps the menu in top to bottom (500 ms) and lifts it (350 ms);
+   the toggle icon turns out, then the other turns in (220 ms each). The
+   component only applies these classes when motion is allowed. */
+@keyframes kabia-curtain-in {
+  from { clip-path: inset(0 0 100% 0); }
+  to { clip-path: inset(0 0 0% 0); }
+}
+@keyframes kabia-curtain-out {
+  from { clip-path: inset(0 0 0% 0); }
+  to { clip-path: inset(0 0 100% 0); }
+}
+@keyframes kabia-icon-out {
+  from { opacity: 1; transform: rotate(0deg); }
+  to { opacity: 0; transform: rotate(60deg); }
+}
+@keyframes kabia-icon-in {
+  from { opacity: 0; transform: rotate(-60deg); }
+  to { opacity: 1; transform: rotate(0deg); }
+}
+.menu-curtain-in { animation: kabia-curtain-in 500ms var(--ease-editorial) both; }
+.menu-curtain-out { animation: kabia-curtain-out 350ms var(--ease-editorial) both; }
+.menu-icon-out { animation: kabia-icon-out 220ms var(--ease-editorial) both; }
+.menu-icon-in { animation: kabia-icon-in 220ms var(--ease-editorial) both; }
+
+/* Product gallery: the old image fades out, then the new one fades in. */
+@keyframes kabia-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes kabia-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.gallery-fade-out { animation: kabia-fade-out 250ms var(--ease-editorial) both; }
+.gallery-fade-in { animation: kabia-fade-in 250ms var(--ease-editorial) both; }
+
 /* Small tracked uppercase metadata label — used sparingly */
 .label {
   font-size: 0.6875rem;

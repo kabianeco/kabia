@@ -1,6 +1,5 @@
 "use client";
 
-import { MotionConfig } from "framer-motion";
 import { Toaster } from "sonner";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -23,8 +22,11 @@ import { isAccountSurface } from "@/lib/site";
  * the Three.js scene on the homepage is never remounted by a cart or auth
  * update.
  *
- * reducedMotion="user" is the single Framer Motion boundary for the whole app.
+ * Framer Motion is not mounted here: only the routes that animate load it,
+ * through their own MotionRoot (components/motion/motion-root*.tsx), which
+ * also carries the reducedMotion="user" boundary this provider used to set.
  */
+
 export function Providers({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
@@ -38,19 +40,19 @@ export function Providers({ children }: { children: ReactNode }) {
   // storefront components (SiteHeader, ProductEntry, SiteFooter) that depend on
   // the auth/cart contexts, so it mounts a *scoped* storefront provider shell
   // inside its own page rather than swapping the whole root provider tree.
-  // This keeps MotionConfig and ThemeProvider mounted consistently across the
+  // This keeps ThemeProvider mounted consistently across the
   // /admin/appearance ↔ /admin/appearance/preview transition — no remount.
   if (pathname.startsWith("/admin")) {
     return (
-      <MotionConfig reducedMotion="user">
+      <>
         <ThemeProvider>{children}</ThemeProvider>
         <SiteToaster />
-      </MotionConfig>
+      </>
     );
   }
 
   return (
-    <MotionConfig reducedMotion="user">
+    <>
       <ThemeProvider>
         <AuthProvider>
           <CartProvider>
@@ -65,7 +67,7 @@ export function Providers({ children }: { children: ReactNode }) {
         </AuthProvider>
       </ThemeProvider>
       <SiteToaster />
-    </MotionConfig>
+    </>
   );
 }
 

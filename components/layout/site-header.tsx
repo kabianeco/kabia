@@ -4,10 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Menu, ShoppingBag, User, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { EASE } from "@/lib/motion";
+import { usePrefersReducedMotion } from "@/lib/use-reduced-motion";
 import { routes } from "@/lib/site";
 import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart-context";
@@ -49,13 +48,10 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
   // curtain reveals it top to bottom, and the rows are uncovered by that
   // same sweep — no second, staggered animation on top of it. Reduced-motion
   // visitors get the same destinations with no movement at all.
-  const reducedMotion = useReducedMotion() ?? false;
-  const panelTransition = reducedMotion
-    ? { duration: 0 }
-    : { duration: 0.5, ease: EASE };
-  const panelExitTransition = reducedMotion
-    ? { duration: 0 }
-    : { duration: 0.35, ease: EASE };
+  //
+  // The motion is plain CSS (app/globals.css, .menu-curtain-* and
+  // .menu-icon-*), so the header ships no animation library.
+  const reducedMotion = usePrefersReducedMotion();
   // Focus returns to the header toggle only after the curtain has lifted,
   // so it never lands on an element hidden behind the overlay mid-exit.
   const focusOnCloseRef = useRef(false);
@@ -78,6 +74,35 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
       toggleRef.current?.focus();
     }
   }, []);
+
+  // The panel stays mounted through its exit sweep, so the curtain lifts
+  // before it goes; focus returns once it has gone. Reduced motion: no sweep.
+  const [panelShown, setPanelShown] = useState(false);
+  if (open && !panelShown) setPanelShown(true);
+  if (!open && panelShown && reducedMotion) setPanelShown(false);
+  const panelExiting = panelShown && !open;
+  const panelWasShown = useRef(false);
+  useEffect(() => {
+    if (panelWasShown.current && !panelShown) handleExitComplete();
+    panelWasShown.current = panelShown;
+  }, [panelShown, handleExitComplete]);
+
+  // The toggle icon turns out, then the other turns in — one at a time.
+  const iconTarget = open ? "kapat" : "ac";
+  const [icon, setIcon] = useState<"ac" | "kapat">(iconTarget);
+  const [iconPhase, setIconPhase] = useState<"idle" | "out" | "in">("idle");
+  if (iconTarget !== icon && iconPhase === "idle") {
+    if (reducedMotion) setIcon(iconTarget);
+    else setIconPhase("out");
+  }
+  const onIconAnimationEnd = () => {
+    if (iconPhase === "out") {
+      setIcon(iconTarget);
+      setIconPhase("in");
+    } else if (iconPhase === "in") {
+      setIconPhase("idle");
+    }
+  };
 
   // Escape closes the menu; focus is trapped inside the overlay while open.
   useEffect(() => {
@@ -275,174 +300,166 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
             aria-label={open ? "Menüyü kapat" : "Menüyü aç"}
             onClick={() => (open ? close() : setOpenedOn(pathname))}
           >
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={open ? "kapat" : "ac"}
-                initial={reducedMotion ? false : { opacity: 0, rotate: -60 }}
-                animate={{ opacity: 1, rotate: 0 }}
-                exit={reducedMotion ? undefined : { opacity: 0, rotate: 60 }}
-                transition={reducedMotion ? { duration: 0 } : { duration: 0.22, ease: EASE }}
-                className="flex"
-                aria-hidden="true"
-              >
-                {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </motion.span>
-            </AnimatePresence>
+            <span
+              key={icon}
+              className={cn(
+                "flex",
+                iconPhase === "out" && "menu-icon-out",
+                iconPhase === "in" && "menu-icon-in",
+              )}
+              onAnimationEnd={onIconAnimationEnd}
+              aria-hidden="true"
+            >
+              {icon === "kapat" ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </span>
           </button>
         </div>
       </div>
 
-      <AnimatePresence onExitComplete={handleExitComplete}>
-        {open && (
-          <motion.div
-            id="mobile-menu"
-            ref={panelRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Menü"
-            initial={reducedMotion ? false : { clipPath: "inset(0 0 100% 0)" }}
-            animate={{ clipPath: "inset(0 0 0% 0)" }}
-            exit={
-              reducedMotion
-                ? undefined
-                : {
-                    clipPath: "inset(0 0 100% 0)",
-                    transition: panelExitTransition,
-                  }
-            }
-            transition={panelTransition}
-            className="fixed inset-0 z-50 flex flex-col bg-ivory lg:hidden"
-          >
-            {/* The bar travels with the curtain: one piece from the very top,
-                not a fixed bar with a second panel unfolding beneath it.
-                w-full matters — as a flex item .wrap would shrink-wrap and
-                pull the logo and icons toward the center. */}
-            <div className="wrap flex h-16 w-full shrink-0 items-center justify-between border-b border-ink/10">
+      {panelShown && (
+        <div
+          id="mobile-menu"
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menü"
+          onAnimationEnd={(e) => {
+            if (e.target === e.currentTarget && panelExiting) setPanelShown(false);
+          }}
+          className={cn(
+            "fixed inset-0 z-50 flex flex-col bg-ivory lg:hidden",
+            !reducedMotion && (panelExiting ? "menu-curtain-out" : "menu-curtain-in"),
+          )}
+        >
+          {/* The bar travels with the curtain: one piece from the very top,
+              not a fixed bar with a second panel unfolding beneath it.
+              w-full matters — as a flex item .wrap would shrink-wrap and
+              pull the logo and icons toward the center. */}
+          <div className="wrap flex h-16 w-full shrink-0 items-center justify-between border-b border-ink/10">
+            <Link
+              href={routes.home}
+              prefetch={false}
+              aria-label="Kabia Ekolojik — anasayfa"
+              onClick={() => close(false)}
+            >
+              <Image
+                src="/images/logo.svg"
+                alt="Kabia Ekolojik"
+                width={177}
+                height={60}
+                className="h-7 w-auto"
+              />
+            </Link>
+
+            <div className="flex items-center">
+              <ThemeToggle />
+
               <Link
-                href={routes.home}
+                href={routes.cart}
                 prefetch={false}
-                aria-label="Kabia Ekolojik — anasayfa"
+                aria-label={cartLabel}
                 onClick={() => close(false)}
+                className="relative flex h-11 w-11 items-center justify-center text-ink"
               >
-                <Image
-                  src="/images/logo.svg"
-                  alt="Kabia Ekolojik"
-                  width={177}
-                  height={60}
-                  className="h-7 w-auto"
-                />
+                <ShoppingBag className="h-5 w-5" aria-hidden="true" />
+                {cartBadge}
               </Link>
 
-              <div className="flex items-center">
-                <ThemeToggle />
+              <button
+                type="button"
+                className="flex h-11 w-11 items-center justify-center text-ink"
+                aria-label="Menüyü kapat"
+                onClick={() => close()}
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
 
-                <Link
-                  href={routes.cart}
-                  prefetch={false}
-                  aria-label={cartLabel}
-                  onClick={() => close(false)}
-                  className="relative flex h-11 w-11 items-center justify-center text-ink"
-                >
-                  <ShoppingBag className="h-5 w-5" aria-hidden="true" />
-                  {cartBadge}
-                </Link>
+          {/* The index scrolls within the remaining viewport on short screens. */}
+          <div className="flex-1 overflow-y-auto overscroll-contain pb-[max(2rem,env(safe-area-inset-bottom))]">
+            <nav
+              aria-label="Mobil menü"
+              className="wrap flex max-h-none flex-col pb-2 pt-8"
+            >
+              <p className="label text-olive">Kabia</p>
+              <ul>
+                {mobilePrimary.map((item) => (
+                  <li key={item.href} className="border-b border-ink/10">
+                    <Link
+                      href={item.href}
+                      prefetch={false}
+                      onClick={() => close(false)}
+                      aria-current={
+                        pathname.startsWith(item.href) ? "page" : undefined
+                      }
+                      className="flex min-h-11 items-baseline justify-between py-3.5 font-serif text-[1.7rem] leading-snug tracking-tight"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
 
+              <p className="label mt-8 text-olive">Hesap</p>
+              <ul>
+                <li className="border-b border-ink/10">
+                  <Link
+                    href={routes.cart}
+                    prefetch={false}
+                    onClick={() => close(false)}
+                    className="flex min-h-11 items-baseline justify-between py-3 text-[1.05rem] leading-snug text-ink/80 transition-colors duration-300 hover:text-ink"
+                  >
+                    Sepet
+                    <span className="label text-olive">
+                      {showCount ? `${itemCount} ürün` : "Boşsa da buyurun"}
+                    </span>
+                  </Link>
+                </li>
+                <li className="border-b border-ink/10">
+                  <Link
+                    href={accountHref}
+                    prefetch={false}
+                    onClick={() => close(false)}
+                    className="flex min-h-11 items-baseline justify-between py-3 text-[1.05rem] leading-snug text-ink/80 transition-colors duration-300 hover:text-ink"
+                  >
+                    {accountLabel}
+                    <span aria-hidden="true" className="text-ink/30">
+                      →
+                    </span>
+                  </Link>
+                </li>
+                <li className="border-b border-ink/10">
+                  <Link
+                    href={routes.contact}
+                    prefetch={false}
+                    onClick={() => close(false)}
+                    className="flex min-h-11 items-baseline justify-between py-3 text-[1.05rem] leading-snug text-ink/80 transition-colors duration-300 hover:text-ink"
+                  >
+                    İletişim
+                    <span aria-hidden="true" className="text-ink/30">
+                      →
+                    </span>
+                  </Link>
+                </li>
+              </ul>
+
+              {authHydrated && isLoggedIn && (
                 <button
                   type="button"
-                  className="flex h-11 w-11 items-center justify-center text-ink"
-                  aria-label="Menüyü kapat"
-                  onClick={() => close()}
+                  onClick={() => {
+                    close(false);
+                    logout();
+                  }}
+                  className="mt-6 min-h-11 self-start text-sm text-ink/60 transition-colors duration-300 hover:text-ink"
                 >
-                  <X className="h-5 w-5" aria-hidden="true" />
+                  Çıkış yap
                 </button>
-              </div>
-            </div>
-
-            {/* The index scrolls within the remaining viewport on short screens. */}
-            <div className="flex-1 overflow-y-auto overscroll-contain pb-[max(2rem,env(safe-area-inset-bottom))]">
-              <nav
-                aria-label="Mobil menü"
-                className="wrap flex max-h-none flex-col pb-2 pt-8"
-              >
-                <p className="label text-olive">Kabia</p>
-                <ul>
-                  {mobilePrimary.map((item) => (
-                    <li key={item.href} className="border-b border-ink/10">
-                      <Link
-                        href={item.href}
-                        prefetch={false}
-                        onClick={() => close(false)}
-                        aria-current={
-                          pathname.startsWith(item.href) ? "page" : undefined
-                        }
-                        className="flex min-h-11 items-baseline justify-between py-3.5 font-serif text-[1.7rem] leading-snug tracking-tight"
-                      >
-                        {item.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-
-                <p className="label mt-8 text-olive">Hesap</p>
-                <ul>
-                  <li className="border-b border-ink/10">
-                    <Link
-                      href={routes.cart}
-                      prefetch={false}
-                      onClick={() => close(false)}
-                      className="flex min-h-11 items-baseline justify-between py-3 text-[1.05rem] leading-snug text-ink/80 transition-colors duration-300 hover:text-ink"
-                    >
-                      Sepet
-                      <span className="label text-olive">
-                        {showCount ? `${itemCount} ürün` : "Boşsa da buyurun"}
-                      </span>
-                    </Link>
-                  </li>
-                  <li className="border-b border-ink/10">
-                    <Link
-                      href={accountHref}
-                      prefetch={false}
-                      onClick={() => close(false)}
-                      className="flex min-h-11 items-baseline justify-between py-3 text-[1.05rem] leading-snug text-ink/80 transition-colors duration-300 hover:text-ink"
-                    >
-                      {accountLabel}
-                      <span aria-hidden="true" className="text-ink/30">
-                        →
-                      </span>
-                    </Link>
-                  </li>
-                  <li className="border-b border-ink/10">
-                    <Link
-                      href={routes.contact}
-                      prefetch={false}
-                      onClick={() => close(false)}
-                      className="flex min-h-11 items-baseline justify-between py-3 text-[1.05rem] leading-snug text-ink/80 transition-colors duration-300 hover:text-ink"
-                    >
-                      İletişim
-                      <span aria-hidden="true" className="text-ink/30">
-                        →
-                      </span>
-                    </Link>
-                  </li>
-                </ul>
-
-                {authHydrated && isLoggedIn && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      close(false);
-                      logout();
-                    }}
-                    className="mt-6 min-h-11 self-start text-sm text-ink/60 transition-colors duration-300 hover:text-ink"
-                  >
-                    Çıkış yap
-                  </button>
-                )}
-              </nav>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              )}
+            </nav>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

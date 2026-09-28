@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { MotionRoot } from "@/components/motion/motion-root";
 import { IntroSequence } from "@/components/home/intro-sequence";
 import { BrandManifesto } from "@/components/home/brand-manifesto";
 import { ProductCollection, ProductCollectionFallback } from "@/components/home/product-collection";
@@ -56,6 +57,9 @@ export default function HomePage() {
   return (
     <>
       <SiteHeader />
+      {/* The intro's first frame (and the LCP heading) is animated: its motion
+          features ship with this route rather than after hydration. */}
+      <MotionRoot>
       <main id="icerik" tabIndex={-1}>
         <IntroSequence />
         <OriginStory />
@@ -86,6 +90,7 @@ export default function HomePage() {
         <FinalCta />
         <HarvestNotify />
       </main>
+      </MotionRoot>
       <SiteFooter />
     </>
   );

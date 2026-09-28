@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { toast } from "sonner";
 import {
   useCart,
@@ -196,7 +196,7 @@ export function CheckoutFlow() {
         )}
 
         <AnimatePresence mode="wait">
-          <motion.div
+          <m.div
             key={step}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -244,7 +244,7 @@ export function CheckoutFlow() {
                 address={orderSnapshot.address}
               />
             )}
-          </motion.div>
+          </m.div>
         </AnimatePresence>
       </div>
 

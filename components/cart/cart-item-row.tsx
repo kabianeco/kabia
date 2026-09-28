@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Minus, Plus, X } from "lucide-react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useCart, type CartItem } from "@/lib/cart-context";
 import { formatTL } from "@/lib/products";
 import { routes } from "@/lib/site";
@@ -13,7 +13,7 @@ export function CartItemRow({ item }: { item: CartItem }) {
   const { updateQuantity, removeItem } = useCart();
 
   return (
-    <motion.li
+    <m.li
       layout
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -86,6 +86,6 @@ export function CartItemRow({ item }: { item: CartItem }) {
       <p className="figure col-start-2 text-base text-ink sm:col-start-auto sm:text-right">
         {formatTL(item.price * item.quantity)}
       </p>
-    </motion.li>
+    </m.li>
   );
 }

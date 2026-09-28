@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PageShell } from "@/components/layout/page-shell";
 import { CartPage } from "@/components/cart/cart-page";
+import { MotionRootMax } from "@/components/motion/motion-root-max";
 
 export const metadata: Metadata = {
   title: "Sepetim",
@@ -12,7 +13,10 @@ export const metadata: Metadata = {
 export default function SepetPage() {
   return (
     <PageShell>
-      <CartPage />
+      {/* Cart rows animate in (and reflow with layout animations) on first paint. */}
+      <MotionRootMax>
+        <CartPage />
+      </MotionRootMax>
     </PageShell>
   );
 }

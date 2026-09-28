@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useReducedMotion, useScroll } from "framer-motion";
+import { m, useReducedMotion, useScroll } from "framer-motion";
 import { process } from "@/content/homepage";
 import { Reveal } from "@/components/motion/reveal";
 
@@ -46,7 +46,7 @@ export function ProcessStory() {
             aria-hidden="true"
             className="absolute bottom-0 left-[7px] top-0 w-px bg-cream/15 md:left-[9px]"
           />
-          <motion.div
+          <m.div
             aria-hidden="true"
             className="absolute bottom-0 left-[7px] top-0 w-px origin-top bg-shell md:left-[9px]"
             style={reducedMotion ? undefined : { scaleY: scrollYProgress }}

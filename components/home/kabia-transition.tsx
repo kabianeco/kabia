@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { EASE } from "@/lib/motion";
 import { useTheme } from "@/lib/theme";
 
@@ -32,7 +32,7 @@ export function KabiaTransition({
   const settling = phase === "settle";
 
   return (
-    <motion.div
+    <m.div
       role="status"
       aria-label={announcement}
       className="fixed inset-0 z-[80] flex items-center justify-center"
@@ -51,7 +51,7 @@ export function KabiaTransition({
         className="flex overflow-hidden pb-[0.12em] font-theme-display text-[17vw] italic leading-none tracking-tight md:text-[9rem]"
       >
         {word.split("").map((ch, i) => (
-          <motion.span
+          <m.span
             key={`${ch}-${i}`}
             className="inline-block text-on-brand"
             initial={{ y: "115%", opacity: 1 }}
@@ -65,10 +65,10 @@ export function KabiaTransition({
             }
           >
             {ch}
-          </motion.span>
+          </m.span>
         ))}
       </p>
       <span className="sr-only">{announcement}</span>
-    </motion.div>
+    </m.div>
   );
 }

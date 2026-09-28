@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { FREE_SHIPPING_THRESHOLD, SHIPPING_COST } from "@/lib/cart-context";
 import { formatTL } from "@/lib/products";
 import { EASE } from "@/lib/motion";
@@ -47,7 +47,7 @@ export function OrderSummary({
               <span className="text-ink">{formatTL(remaining)}</span> daha ekleyin.
             </p>
             <span className="mt-2 block h-1 overflow-hidden bg-ink/10">
-              <motion.span
+              <m.span
                 className="block h-full bg-brand"
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.4, ease: EASE }}
