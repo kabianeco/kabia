@@ -319,7 +319,8 @@ export default function FarmPage() {
           <div>
             <h2 className="text-2xl tracking-tight md:text-3xl">Bugün ve gelecek</h2>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-ink/65">
-              2021’de başlayan yolculuğumuz devam ediyor. Badem bahçemiz
+              2019’da toprağı dinleyerek başlayan, 2021’de 946 fidanla bahçeye
+              dönüşen yolculuğumuz devam ediyor. Badem bahçemiz
               büyüyor, toprağı daha iyi anlamaya çalışıyoruz. Yeni yöntemler
               deniyoruz. Ve çevremizde aynı değerlere inanan üreticilerle bağ
               kuruyoruz. Hayalimiz yalnızca kendi ürünlerimizi satmak değil —{" "}

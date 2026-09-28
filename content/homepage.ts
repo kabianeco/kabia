@@ -52,7 +52,7 @@ export const intro = {
 export const manifesto = {
   statementA: "Her ürünü biz üretmiyoruz.",
   statementB: "Neden seçtiğimizi biliyoruz.",
-  body: "Kendi çiftliğimizde badem yetiştiririz. Güvendiğimiz üreticilerden seçtiğimiz ürünleri bir araya getiririz. Çok tonajlı üretim yerine temiz ve sağlıklı gıda üretmeyi tercih ediyoruz.",
+  body: "Kendi çiftliğimizde badem yetiştiririz. Güvendiğimiz üreticilerden seçtiğimiz ürünleri bir araya getiririz. Çok tonajlı üretim yerine toprağı yormadan üretmeyi tercih ediyoruz.",
 } as const;
 
 /**

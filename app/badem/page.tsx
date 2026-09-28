@@ -25,7 +25,7 @@ const notes = [
   },
   {
     title: "Badem aceleye gelmez",
-    body: "Geyve'nin dağ köyü Sabırlar'da badem yetiştiririz. Bahçeye kimyasal gübre ve ilaç girmez; ürüne katkı maddesi eklenmez. Çok tonajlı üretim yerine temiz ve sağlıklı gıda üretmeyi tercih ediyoruz.",
+    body: "Geyve'nin dağ köyü Sabırlar'da badem yetiştiririz. Bahçeye kimyasal gübre ve ilaç girmez; ürüne katkı maddesi eklenmez. Çok tonajlı üretim yerine toprağı yormadan üretmeyi tercih ediyoruz.",
   },
 ]
 
