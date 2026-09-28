@@ -4,6 +4,7 @@ import { getCachedPublicProducers } from "@/lib/producers"
 import { journalEntries } from "@/content/journal"
 import { site, routes, sitemapStaticPaths } from "@/lib/site"
 import { absoluteUrl } from "@/lib/seo"
+import { isAllowedImageUrl } from "@/lib/shop-banner"
 
 /**
  * Only the routes safe to advertise to crawlers: static pages and active
@@ -21,6 +22,12 @@ import { absoluteUrl } from "@/lib/seo"
  * and Search Console shows the fetch error.
  */
 export const dynamic = "force-dynamic"
+
+/** Absolute, de-duplicated image locations; undefined when there are none. */
+function imageList(urls: readonly string[]): string[] | undefined {
+  const unique = [...new Set(urls.filter(Boolean).map(absoluteUrl))]
+  return unique.length > 0 ? unique : undefined
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [productsResult, producersResult] = await Promise.all([getCachedPublicProducts(), getCachedPublicProducers()])
@@ -40,8 +47,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           ...(p.updatedAt ? { lastModified: new Date(p.updatedAt) } : {}),
           changeFrequency: "weekly" as const,
           priority: 0.8,
-          // Sitemap image locations must be absolute.
-          images: p.mainImageUrl ? [absoluteUrl(p.mainImageUrl)] : undefined,
+          // Every photo the product page shows — the main image and the
+          // gallery — once each. Sitemap image locations must be absolute.
+          images: imageList([p.mainImageUrl, ...p.images]),
         }))
 
   // A producer's store page is advertised only while it has something on its
@@ -55,6 +63,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${site.url}${routes.producer(p.slug)}`,
     changeFrequency: "monthly" as const,
     priority: 0.6,
+    // The story page shows the photo only when it passes the same allowlist.
+    images: imageList(p.photoUrl && isAllowedImageUrl(p.photoUrl) ? [p.photoUrl] : []),
   }))
   const producerStoreEntries: MetadataRoute.Sitemap = producers
     .filter((p) => stockedProducers.has(p.slug))

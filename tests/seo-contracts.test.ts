@@ -55,3 +55,15 @@ describe("Store listing facets", () => {
     assert.ok(!redirects.some((entry) => entry.source.startsWith("/shop/")), "product URLs must not redirect")
   })
 })
+
+describe("Image sitemap", () => {
+  const sitemap = readFileSync("app/sitemap.ts", "utf8")
+
+  it("lists every product photo, main image and gallery", () => {
+    assert.match(sitemap, /images: imageList\(\[p\.mainImageUrl, \.\.\.p\.images\]\)/)
+  })
+
+  it("lists the producer photo the story page shows", () => {
+    assert.match(sitemap, /imageList\(p\.photoUrl && isAllowedImageUrl\(p\.photoUrl\) \? \[p\.photoUrl\] : \[\]\)/)
+  })
+})
