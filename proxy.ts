@@ -53,7 +53,10 @@ function supabaseAuthOrigin(): string | null {
  *     inline CSS variables from a closed, enumerated vocabulary (no
  *     attacker-controlled CSS string can enter the inline style block)
  *   - img-src allows Next.js image optimization + Supabase Storage + picsum
- *   - connect-src allows Supabase Auth/REST/Realtime only
+ *   - connect-src allows Supabase Auth/REST/Realtime plus the Vercel
+ *     Speed Insights beacon host (vitals.vercel-insights.com) — the
+ *     Insights runtime POSTs there, so without this entry field data
+ *     never arrives
  *
  * Development adds ws: and localhost origins for HMR without leaking into
  * production.
@@ -83,6 +86,11 @@ function buildCsp(nonce: string, isDev: boolean): string {
   const connectSrc = [
     "'self'",
     sbOrigin ?? "https://*.supabase.co",
+    // Vercel Speed Insights posts RUM beacons to this host (verified in the
+    // served script bytes: https://vitals.vercel-insights.com/v2/vitals).
+    // Single-host allowlist — nothing broader. Without it the browser
+    // blocks every beacon and Speed Insights stays at hasData:false.
+    "https://vitals.vercel-insights.com",
     isDev ? "ws://localhost:3000 ws://127.0.0.1:3000" : "",
   ].filter(Boolean).join(" ")
 

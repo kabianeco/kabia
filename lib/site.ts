@@ -82,7 +82,7 @@ export const routes = {
   // catalogue, keyed by product slug.
   producerProduct: {
     "kabia-ciftligi": "kabuklu-badem",
-    "geyce-setce-findik": "findik-ici",
+    "geyve-setce-findik": "findik-ici",
     "ege-ceviz": "ceviz-ici",
     "anadolu-bal": "cicek-bali",
     "akinci-ihlamur": "ihlamur",

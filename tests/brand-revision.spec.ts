@@ -280,7 +280,7 @@ test("store gate selects before catalog reads and preserves off-state successful
 });
 
 test("preview producer stores validate source slugs and avoid catalog reads including story metadata", async ({ page, request }) => {
-  const slugs = ["kabia-ciftligi", "geyce-setce-findik", "ege-ceviz", "anadolu-bal", "akinci-ihlamur", "domates-salcasi", "elma-sirkesi", "alic-sirkesi", "eriste", "tarhana"];
+  const slugs = ["kabia-ciftligi", "geyve-setce-findik", "ege-ceviz", "anadolu-bal", "akinci-ihlamur", "domates-salcasi", "elma-sirkesi", "alic-sirkesi", "eriste", "tarhana"];
   for (const slug of slugs) {
     const response = await page.goto(`/magaza/${slug}`);
     expect(response?.status()).toBe(previewEnabled ? 200 : 404);
@@ -291,7 +291,7 @@ test("preview producer stores validate source slugs and avoid catalog reads incl
     }
   }
   if (previewEnabled) {
-    await page.goto('/ureticiler/geyce-setce-findik');
+    await page.goto('/ureticiler/geyve-setce-findik');
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
     const calls = await (await request.get('http://localhost:3441/__test/requests')).json();
     expect(calls.filter((call: {path:string}) => ['/rest/v1/products', '/rest/v1/producers'].includes(call.path))).toEqual([]);
@@ -400,7 +400,7 @@ test("homepage introduces three sources with three product links and no commerce
   await expect(links).toHaveCount(3);
   const hrefs = await links.evaluateAll(nodes => nodes.map(n => n.getAttribute("href")));
   expect(hrefs).toEqual(previewEnabled
-    ? ["/shop/onizleme-kabia-ciftligi", "/shop/onizleme-geyce-setce-findik", "/shop/onizleme-domates-salcasi"]
+    ? ["/shop/onizleme-kabia-ciftligi", "/shop/onizleme-geyve-setce-findik", "/shop/onizleme-domates-salcasi"]
     : ["/shop/kabuklu-badem", "/shop/findik-ici", "/shop/tarhana"]);
 
   for (const name of ["Kabia Çiftliği", "Kabia Seçki", "Kabia Mutfak"]) {
@@ -414,7 +414,7 @@ test("homepage introduces three sources with three product links and no commerce
 });
 
 test("secki grid shows the four producers at every breakpoint with distinct destinations", async ({ page }) => {
-  const slugs = ["geyce-setce-findik", "ege-ceviz", "anadolu-bal", "akinci-ihlamur"];
+  const slugs = ["geyve-setce-findik", "ege-ceviz", "anadolu-bal", "akinci-ihlamur"];
   const response = await page.goto("/secki");
   expect(response?.status()).toBe(200);
 

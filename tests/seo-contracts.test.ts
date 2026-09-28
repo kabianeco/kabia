@@ -54,6 +54,21 @@ describe("Store listing facets", () => {
     )
     assert.ok(!redirects.some((entry) => entry.source.startsWith("/shop/")), "product URLs must not redirect")
   })
+
+  it("retires the geyce-setce-findik typo slug with permanent redirects", async () => {
+    const { default: nextConfig } = await import("../next.config.ts")
+    const redirects = (await nextConfig.redirects?.()) ?? []
+    for (const base of ["/ureticiler/geyce-setce-findik", "/magaza/geyce-setce-findik"]) {
+      const fixed = base.replace("geyce-setce-findik", "geyve-setce-findik")
+      for (const source of [base, `${base}/:path*`]) {
+        const entry = redirects.find((entry) => entry.source === source)
+        assert.ok(entry, `missing redirect for ${source}`)
+        assert.equal(entry.destination, source.replace(base, fixed))
+        assert.equal(entry.permanent, true)
+      }
+    }
+    assert.ok(!redirects.some((entry) => entry.source.includes("geyve-setce-findik")), "nothing points back to the old slug")
+  })
 })
 
 describe("Image sitemap", () => {

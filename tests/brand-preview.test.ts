@@ -4,7 +4,7 @@ import * as data from '../content/preview-products.ts';
 test('local examples cover explicit producer collections without invented review or certificate data', async()=>{
   assert.ok(data);
   const {producerCollections}=await import('../content/producers.ts');
-  assert.deepEqual(producerCollections.secki.map(p=>p.slug),['geyce-setce-findik','ege-ceviz','anadolu-bal','akinci-ihlamur']);
+  assert.deepEqual(producerCollections.secki.map(p=>p.slug),['geyve-setce-findik','ege-ceviz','anadolu-bal','akinci-ihlamur']);
   const producers=Object.values(producerCollections).flat();
   for(const producer of producers) {
     const products=data.previewProducts.filter(p=>p.producerSlug===producer.slug);

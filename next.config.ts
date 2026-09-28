@@ -41,6 +41,30 @@ const nextConfig: NextConfig = {
       { source: "/admin/apperance", destination: "/admin/appearance", permanent: true },
       // The farm and contact pages are now sections of the homepage.
       { source: "/farm", destination: "/#ciftlik", permanent: true },
+      // Producer slug typo fix (2026-09-28): geyce-setce-findik was renamed
+      // to geyve-setce-findik in the database. Permanent wildcard redirects
+      // so every old URL — story, shelf, OG images — lands on the new one.
+      // Nothing ever points back to the old slug, so no cycle is possible.
+      {
+        source: "/ureticiler/geyce-setce-findik",
+        destination: "/ureticiler/geyve-setce-findik",
+        permanent: true,
+      },
+      {
+        source: "/ureticiler/geyce-setce-findik/:path*",
+        destination: "/ureticiler/geyve-setce-findik/:path*",
+        permanent: true,
+      },
+      {
+        source: "/magaza/geyce-setce-findik",
+        destination: "/magaza/geyve-setce-findik",
+        permanent: true,
+      },
+      {
+        source: "/magaza/geyce-setce-findik/:path*",
+        destination: "/magaza/geyve-setce-findik/:path*",
+        permanent: true,
+      },
       { source: "/contact", destination: "/#iletisim", permanent: true },
       // /magaza is the storefront's one listing URL; /shop rendered the same
       // page under a second URL. Product pages stay at /shop/<slug> — this

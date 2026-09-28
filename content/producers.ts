@@ -23,8 +23,8 @@ export const producerCollections: Record<ProductSource, SourceProducer[]> = {
 ],
 "secki": [
   {
-    "id": "editorial:geyce-setce-findik",
-    "slug": "geyce-setce-findik",
+    "id": "editorial:geyve-setce-findik",
+    "slug": "geyve-setce-findik",
     "name": "Geyve — Setçe Köyü Aile Bahçesi",
     "source": "secki",
     "productType": "Fındık",

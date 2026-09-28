@@ -203,9 +203,12 @@ export default async function RootLayout({
           <WhatsAppFloat />
         </Providers>
         {/* Real-user Core Web Vitals (Vercel Speed Insights): no cookies, no
-            personal data; the script and its beacon are same-origin
+            personal data; the loader script is same-origin
             (/_vercel/speed-insights), injected by the trusted bundle so the
-            nonce CSP's 'strict-dynamic' admits it. Rendered only on Vercel,
+            nonce CSP's 'strict-dynamic' admits it. The RUM beacon itself
+            POSTs to https://vitals.vercel-insights.com, which connect-src
+            in proxy.ts explicitly allowlists — without that entry the
+            browser blocks every beacon. Rendered only on Vercel,
             where that path exists. */}
         {process.env.VERCEL ? <SpeedInsights /> : null}
       </body>
