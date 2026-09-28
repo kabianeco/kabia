@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { ListingIntro } from "@/components/guides/guide-parts"
+import { listingIntros } from "@/content/guides"
 import { pageMetadata } from "@/lib/seo";
 import { Suspense } from "react";
 import { PageShell } from "@/components/layout/page-shell";
@@ -152,6 +154,7 @@ export default async function ShopPage({
             Önce hikâyesini okumanızı isteriz — nereden geldiğini, neden
             Kabia&apos;da olduğunu. Sonra hasattan dilediğinizi seçebilirsiniz.
           </p>
+          <ListingIntro {...listingIntros.magaza} />
         </div>
 
         <div className="wrap mt-14 md:mt-20">

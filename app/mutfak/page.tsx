@@ -1,4 +1,6 @@
 import type { Metadata } from "next"
+import { ListingIntro } from "@/components/guides/guide-parts"
+import { listingIntros } from "@/content/guides"
 import { Suspense } from "react"
 import { pageMetadata } from "@/lib/seo"
 import { PageShell } from "@/components/layout/page-shell"
@@ -81,6 +83,7 @@ export default function MutfakPage() {
             Erişte, tarhana, salça, sirke — güvendiğimiz üreticilerin
             geleneksel mutfağından. Her ürünün üreticisi ve hikâyesi görünür.
           </p>
+          <ListingIntro {...listingIntros.mutfak} />
         </div>
 
         <Suspense fallback={<MutfakGridRows producers={[...producerCollections.mutfak]} />}>

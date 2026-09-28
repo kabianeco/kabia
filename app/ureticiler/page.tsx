@@ -1,4 +1,6 @@
 import type { Metadata } from "next"
+import { ListingIntro } from "@/components/guides/guide-parts"
+import { listingIntros } from "@/content/guides"
 import { pageMetadata } from "@/lib/seo"
 import { PageShell } from "@/components/layout/page-shell"
 import { ProducerCard } from "@/components/producers/producer-card"
@@ -32,6 +34,7 @@ function Heading() {
         Kabia Çiftliği dahil, tanıdığımız herkes tek listede: Seçki
         üreticileri ve mutfak hikâyeleriyle birlikte.
       </p>
+      <ListingIntro {...listingIntros.ureticiler} />
     </div>
   )
 }

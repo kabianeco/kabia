@@ -1,4 +1,6 @@
 import type { Metadata } from "next"
+import { ListingIntro } from "@/components/guides/guide-parts"
+import { listingIntros } from "@/content/guides"
 import { Suspense } from "react"
 import { pageMetadata } from "@/lib/seo"
 import { PageShell } from "@/components/layout/page-shell"
@@ -82,6 +84,7 @@ export default function SeckiPage() {
             Her ürünü biz üretmiyoruz. Üreticisini tanır, üretim yerini görür,
             nasıl yapıldığını sorarız — sonra seçeriz.
           </p>
+          <ListingIntro {...listingIntros.secki} />
         </div>
 
         <Suspense fallback={<SeckiGridRows producers={[...producerCollections.secki]} />}>

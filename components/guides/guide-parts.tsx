@@ -146,3 +146,22 @@ export function GuideFacts({ facts }: { facts: readonly { label: string; value: 
     </dl>
   )
 }
+
+/**
+ * A listing page's second intro paragraph: the first paragraph's own style,
+ * with the guide link set like /ciftlik's inline certificate link.
+ */
+export function ListingIntro({ text, link }: { text: string; link: { href: string; label: string } }) {
+  return (
+    <p className="mt-4 max-w-md text-base leading-relaxed text-ink/65">
+      {text}{" "}
+      <Link
+        href={link.href}
+        prefetch={false}
+        className="underline decoration-ink/25 underline-offset-4 transition-colors duration-300 hover:text-ink hover:decoration-ink/60"
+      >
+        {link.label}
+      </Link>
+    </p>
+  )
+}

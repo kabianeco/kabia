@@ -126,3 +126,34 @@ export const storageGuideCopy = {
   // content/homepage.ts intro.act1.headlineA + headlineB
   closing: "Toprağa saygıyla üretilenler.",
 } as const
+
+/**
+ * One more paragraph under each listing page's intro (brief §6.3), ending in
+ * a link to the guide that says it at length. Sources in CONTENT-SOURCES.md.
+ */
+export const listingIntros = {
+  // products table (source + names); content/homepage.ts products.statement;
+  // product page certification row
+  magaza: {
+    text: "Üç kaynaktan geliyor: kendi bahçemizden badem, tanıdığımız üreticilerden fındık, ceviz, bal ve ıhlamur, üreticilerin mutfağından salça, sirke, erişte ve tarhana. Her ürünün üreticisi, saklama koşulu ve sertifika durumu kendi sayfasında yazar.",
+    link: { href: "/rehber/uretici-secimi", label: "Üreticilerimizi nasıl seçiyoruz?" },
+  },
+  // products table (source = secki); content/homepage.ts principles[1];
+  // content/kabia-standard.ts certificationNote
+  secki: {
+    text: "Seçki'de kabuklu fındık, kabuklu ceviz, bal ve ıhlamur var; her ürünün arkasında tanıdığımız bir insan var. “Kabia Seçki” etiketi Kabia'nın kendi seçme ve değerlendirme yaklaşımını ifade eder; resmî organik sertifikanın yerine geçmez.",
+    link: { href: "/rehber/uretici-secimi", label: "Kabia Standardı" },
+  },
+  // products table (source = mutfak, production_method "Geleneksel — …");
+  // content/kabia-standard.ts certificationNote
+  mutfak: {
+    text: "Domates salçası, elma sirkesi, alıç sirkesi, erişte ve tarhana geleneksel yöntemle yapılır. “Kabia Mutfak” etiketi Kabia'nın kendi seçme ve değerlendirme yaklaşımını ifade eder; resmî organik sertifikanın yerine geçmez.",
+    link: { href: "/rehber/saklama", label: "Nasıl saklanır?" },
+  },
+  // content/homepage.ts intro.act2 ("Kendi bahçemizde badem yetiştiririz."),
+  // principles[1]; content/kabia-standard.ts criteria 01–04
+  ureticiler: {
+    text: "Bademi kendi bahçemizde yetiştiririz; diğer ürünlerin her birinin arkasında tanıdığımız bir insan var. Bir üreticiyi seçmeden önce onu tanıyor, üretim yerini ve nasıl üretildiğini öğreniyor, kullanılan girdileri soruyoruz.",
+    link: { href: "/rehber/uretici-secimi", label: "Kabia Standardı" },
+  },
+} as const
