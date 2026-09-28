@@ -115,7 +115,7 @@ export async function generateMetadata({
   const product = preview
     ? previewProducts.find((product) => product.slug === slug)
     : isPreviewItem({ slug }) ? null : await getProductBase(slug);
-  if (!product) return { title: "Ürün bulunamadı", robots: { index: false, follow: false } };
+  if (!product) return { title: "Sayfa bulunamadı", robots: { index: false, follow: false } };
   // Administered SEO copy wins when present; otherwise name + short, as before.
   const metadata = await pageMetadata({
     title: product.seoTitle || product.name,

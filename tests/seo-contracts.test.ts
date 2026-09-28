@@ -67,3 +67,28 @@ describe("Image sitemap", () => {
     assert.match(sitemap, /imageList\(p\.photoUrl && isAllowedImageUrl\(p\.photoUrl\) \? \[p\.photoUrl\] : \[\]\)/)
   })
 })
+
+describe("Journal entries", () => {
+  const page = readFileSync("app/gunluk/[slug]/page.tsx", "utf8")
+
+  it("carry BlogPosting with the entry's own date and headline", () => {
+    assert.match(page, /articleJsonLd\(\{\s+headline: entry\.observation,/)
+    assert.match(page, /datePublished: entry\.date,/)
+    const seo = readFileSync("lib/seo.ts", "utf8")
+    assert.match(seo, /"@type": "BlogPosting"/)
+  })
+
+  it("take their title from the entry text, not the date alone", () => {
+    assert.match(page, /title: entryTitle\(entry\),/)
+  })
+})
+
+describe("404 responses", () => {
+  it("override the root layout's index,follow and share the 404 page's title", () => {
+    const notFound = readFileSync("app/not-found.tsx", "utf8")
+    assert.match(notFound, /robots: \{ index: false, follow: false \}/)
+    for (const route of ["app/shop/[slug]/page.tsx", "app/ureticiler/[slug]/page.tsx", "app/gunluk/[slug]/page.tsx", "app/magaza/[producer-slug]/page.tsx"]) {
+      assert.match(readFileSync(route, "utf8"), /title: "Sayfa bulunamadı", robots: \{ index: false, follow: false \}/, route)
+    }
+  })
+})

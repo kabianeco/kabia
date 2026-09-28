@@ -5,7 +5,7 @@ import Link from "next/link"
 import { PageShell } from "@/components/layout/page-shell"
 import { journalEntries, type JournalEntry } from "@/content/journal"
 import { routes } from "@/lib/site"
-import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo"
+import { articleJsonLd, breadcrumbJsonLd, pageMetadata } from "@/lib/seo"
 
 function getEntry(slug: string): JournalEntry | undefined {
   return journalEntries.find((e) => e.slug === slug)
@@ -15,6 +15,21 @@ function formatEntryDate(iso: string): string {
   return new Date(iso).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })
 }
 
+/**
+ * The entry's own subject for its title: the first clause of the observation
+ * (the H1), with the date — "Dallar tomurcuktan çiçeğe dönüyor — 11 Nisan
+ * 2026". A date and the farm name alone said nothing a search could match.
+ */
+function entryTitle(entry: JournalEntry): string {
+  const clause = entry.observation.split(/[;:]/)[0].trim().replace(/[.,]+$/, "")
+  return `${clause} — ${formatEntryDate(entry.date)}`
+}
+
+/** What was seen and what came of it; pageMetadata trims it to a snippet. */
+function entryDescription(entry: JournalEntry): string {
+  return `${entry.observation} ${entry.outcome}`
+}
+
 export function generateStaticParams() {
   return journalEntries.map((entry) => ({ slug: entry.slug }))
 }
@@ -22,10 +37,10 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   const entry = getEntry(slug)
-  if (!entry) return { title: "Günlük", robots: { index: false, follow: false } }
+  if (!entry) return { title: "Sayfa bulunamadı", robots: { index: false, follow: false } }
   return pageMetadata({
-    title: `${formatEntryDate(entry.date)} — ${entry.location}`,
-    description: entry.observation,
+    title: entryTitle(entry),
+    description: entryDescription(entry),
     path: routes.journalEntry(entry.slug),
     image: entry.photo ? { url: entry.photo, alt: entry.observation } : undefined,
     type: "article",
@@ -86,6 +101,20 @@ export default async function JournalEntryPage({ params }: { params: Promise<{ s
       <article className="wrap page-top pb-24 md:pb-32">
         <div className="mx-auto max-w-[42rem]">
           <Breadcrumbs label={formatEntryDate(entry.date)} slug={entry.slug} />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(
+                articleJsonLd({
+                  headline: entry.observation,
+                  description: entryDescription(entry),
+                  path: routes.journalEntry(entry.slug),
+                  datePublished: entry.date,
+                  image: entry.photo,
+                }),
+              ),
+            }}
+          />
 
           <p className="label text-olive">
             <time dateTime={entry.date}>{formatEntryDate(entry.date)}</time>

@@ -31,7 +31,7 @@ export async function generateMetadata({
     };
   }
   const result = await getProducer(slug);
-  if (result.status !== "ok") return { title: "Mağaza bulunamadı", robots: { index: false, follow: false } };
+  if (result.status !== "ok") return { title: "Sayfa bulunamadı", robots: { index: false, follow: false } };
   const producer = result.producer;
   const detail = [producer.productType, producer.region].filter(Boolean).join(" — ");
   // Distinct from /ureticiler/<slug>, which carries the story: this page is

@@ -27,7 +27,7 @@ const getProducer = cache(async (slug: string) => {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   const result = await getProducer(slug)
-  if (result.status !== "ok") return { title: "Üretici", robots: { index: false, follow: false } }
+  if (result.status !== "ok") return { title: "Sayfa bulunamadı", robots: { index: false, follow: false } }
 
   const producer = result.producer
   // §8.2: the administered tagline surfaces invisibly in the meta

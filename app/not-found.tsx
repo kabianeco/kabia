@@ -3,6 +3,8 @@ import { PageShell } from "@/components/layout/page-shell";
 import { ButtonLink } from "@/components/ui/button";
 import { routes } from "@/lib/site";
 
+// Next adds its own `noindex` meta to every 404; this one stays anyway, or the
+// root layout's "index, follow" would stand beside it. Both say noindex.
 export const metadata: Metadata = {
   title: "Sayfa bulunamadı",
   robots: { index: false, follow: false },

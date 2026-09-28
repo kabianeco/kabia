@@ -84,6 +84,40 @@ export function absoluteUrl(pathOrUrl: string): string {
   return `${site.url}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`
 }
 
+/**
+ * BlogPosting for a dated page (journal entries; guide pages later). The
+ * author and publisher are the organisation: the journal is the farm's own
+ * log and names no person. `dateModified` is stated only when the page has one.
+ */
+export function articleJsonLd(article: {
+  headline: string
+  description: string
+  path: string
+  datePublished: string
+  dateModified?: string
+  image?: string
+}) {
+  const organization = {
+    "@type": "Organization",
+    name: site.name,
+    url: site.url,
+    logo: { "@type": "ImageObject", url: `${site.url}/images/logo.svg` },
+  }
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: article.headline,
+    description: article.description,
+    inLanguage: "tr-TR",
+    mainEntityOfPage: absoluteUrl(article.path),
+    datePublished: article.datePublished,
+    ...(article.dateModified ? { dateModified: article.dateModified } : {}),
+    ...(article.image ? { image: [absoluteUrl(article.image)] } : {}),
+    author: organization,
+    publisher: organization,
+  }
+}
+
 /** BreadcrumbList from ordered [name, path] pairs, home first. */
 export function breadcrumbJsonLd(trail: readonly (readonly [name: string, path: string])[]) {
   return {
