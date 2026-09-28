@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import type { User } from "@supabase/supabase-js"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
@@ -45,6 +45,31 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+/**
+ * The key @supabase/ssr stores the session under: the cookie name (chunked as
+ * `.0`, `.1` when large) and the name of supabase-js's cross-tab channel.
+ */
+function authStorageKey(): string {
+  try {
+    return `sb-${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname.split(".")[0]}-auth-token`
+  } catch {
+    return "sb-auth-token"
+  }
+}
+
+/** True when a Supabase session cookie is present (readable: httpOnly is false). */
+function hasSessionCookie(): boolean {
+  try {
+    const key = authStorageKey()
+    return document.cookie.split(";").some((c) => {
+      const name = c.trim().split("=")[0]
+      return name === key || name.startsWith(`${key}.`)
+    })
+  } catch {
+    return false
+  }
+}
+
 /** Shape of a row in the `profiles` table (only the columns this app reads). */
 export interface ProfileRow {
   id: string
@@ -84,25 +109,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       : null
   const [hydrated, setHydrated] = useState(false)
 
-  // Bootstrap session + subscribe to auth state changes
+  // Bootstrap session + subscribe to auth state changes.
+  //
+  // An anonymous visitor carries no session cookie, and getSession() would
+  // answer null without a network call — so the ~65 KB browser client is not
+  // loaded for them at all. The moment a session can exist, the client is
+  // attached exactly as before: a sign-in from this tab (login/register/
+  // refreshSession attach it), from another tab (supabase-js's own
+  // BroadcastChannel), or through a server action whose cookie shows up when
+  // the tab is refocused (supabase-js's own visibility re-check).
+  const attachRef = useRef<() => Promise<void>>(async () => {})
   useEffect(() => {
     let mounted = true
     let sub: { subscription: { unsubscribe: () => void } } | null = null
-    ;(async () => {
-      const supabase = await getSupabaseBrowserClient()
-      if (!mounted) return
-      supabase.auth.getSession().then(({ data }) => {
+    let attaching: Promise<void> | null = null
+    const attach = () => {
+      attaching ??= (async () => {
+        const supabase = await getSupabaseBrowserClient()
         if (!mounted) return
-        setSupabaseUser(data.session?.user ?? null)
+        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (mounted) setSupabaseUser(session?.user ?? null)
+        })
+        sub = data
+        const { data: current } = await supabase.auth.getSession()
+        if (!mounted) return
+        setSupabaseUser(current.session?.user ?? null)
         setHydrated(true)
-      })
-      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (mounted) setSupabaseUser(session?.user ?? null)
-      })
-      sub = data
-    })()
+      })()
+      return attaching
+    }
+    attachRef.current = attach
+
+    if (hasSessionCookie()) {
+      void attach()
+      return () => {
+        mounted = false
+        sub?.subscription.unsubscribe()
+      }
+    }
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- anonymous visitor: the session answer is known without the client.
+    setHydrated(true)
+    const recheck = () => {
+      if (hasSessionCookie()) void attach()
+    }
+    const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(authStorageKey()) : null
+    channel?.addEventListener("message", recheck)
+    document.addEventListener("visibilitychange", recheck)
+    window.addEventListener("focus", recheck)
     return () => {
       mounted = false
+      channel?.close()
+      document.removeEventListener("visibilitychange", recheck)
+      window.removeEventListener("focus", recheck)
       sub?.subscription.unsubscribe()
     }
   }, [])
@@ -137,6 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) return { error: error.message }
       setSupabaseUser(data.user)
+      void attachRef.current()
       return {}
     },
     [],
@@ -152,6 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       if (error) return { error: error.message }
       setSupabaseUser(res.user)
+      void attachRef.current()
       // If email confirmation is enabled, no session is returned yet.
       if (!res.session) return { needsEmailConfirm: true }
       return {}
@@ -198,6 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data } = await supabase.auth.getSession()
       setSupabaseUser(data.session?.user ?? null)
+      if (data.session) void attachRef.current()
     } catch {
       // A failed re-read leaves the previous state: the server layout is the
       // authority on the next navigation, never a thrown client error.

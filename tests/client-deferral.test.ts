@@ -58,4 +58,19 @@ describe("supabase client deferral", () => {
       assert.ok(!src.match(/,\s*supabase\s*\]/), `${file}: stale dep`);
     }
   });
+
+  it("anonymous visitors never load the client (session-cookie gate)", () => {
+    const auth = readFileSync("lib/auth-context.tsx", "utf8");
+    assert.match(auth, /function hasSessionCookie\(\)/);
+    assert.match(auth, /if \(hasSessionCookie\(\)\) \{\n      void attach\(\)/);
+    // A sign-in elsewhere still attaches: supabase-js's own channel, refocus, same-tab sign-in.
+    assert.match(auth, /new BroadcastChannel\(authStorageKey\(\)\)/);
+    assert.match(auth, /"visibilitychange", recheck/);
+    assert.match(auth, /void attachRef\.current\(\)/);
+    for (const file of ["lib/cart-context.tsx", "lib/favorites-context.tsx", "lib/checkout-context.tsx"]) {
+      const src = readFileSync(file, "utf8");
+      assert.match(src, /if \(userId\) \{\n        const supabase = await getSupabaseBrowserClient\(\)/, `${file}: guests must not load the client`);
+    }
+  });
 });
+

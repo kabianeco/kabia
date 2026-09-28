@@ -143,8 +143,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     cartIdRef.current = null
     let cancelled = false
     ;(async () => {
-      const supabase = await getSupabaseBrowserClient()
+      // Guests never need the browser client: their state is localStorage.
       if (userId) {
+        const supabase = await getSupabaseBrowserClient()
+        if (cancelled) return
         // Merge guest localStorage cart into the user's DB cart, then load from DB.
         let guest: CartItem[] = []
         try {

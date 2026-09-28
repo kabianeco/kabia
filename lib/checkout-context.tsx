@@ -139,8 +139,10 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     if (!authHydrated) return
     let cancelled = false
     ;(async () => {
-      const supabase = await getSupabaseBrowserClient()
+      // Guests never need the browser client: their state is localStorage.
       if (userId) {
+        const supabase = await getSupabaseBrowserClient()
+        if (cancelled) return
         // Read the guest stash synchronously and drop the key immediately,
         // before any await: a second effect run (StrictMode, profile load)
         // must see an empty stash, never the same list twice.

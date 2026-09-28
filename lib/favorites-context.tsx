@@ -31,8 +31,10 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     if (!authHydrated) return
     let cancelled = false
     ;(async () => {
-      const supabase = await getSupabaseBrowserClient()
+      // Guests never need the browser client: their state is localStorage.
       if (userId) {
+        const supabase = await getSupabaseBrowserClient()
+        if (cancelled) return
         // merge guest favorites into DB
         let guest: string[] = []
         try {
