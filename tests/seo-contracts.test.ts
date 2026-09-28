@@ -22,3 +22,18 @@ describe("Organization structured data", () => {
     assert.ok(!layout.includes('"@type": "LocalBusiness"'))
   })
 })
+
+describe("Product structured data", () => {
+  const page = readFileSync("app/shop/[slug]/page.tsx", "utf8")
+
+  it("states price and availability per size, never one size's price with another's stock", () => {
+    assert.match(page, /"@type": "ProductGroup"/)
+    assert.match(page, /hasVariant: product\.variants\.map/)
+    assert.match(page, /offers: offer\(variant\.price, variant\.stock > 0\)/)
+    assert.ok(!/product\.variants\.some\(\(v\) => v\.stock > 0\)/.test(page), "a product-wide stock flag is back on a single Offer")
+  })
+
+  it("puts the Kabia brand only on the farm's own produce", () => {
+    assert.match(page, /product\.source === "ciftlik" \? \{ brand:/)
+  })
+})

@@ -12,34 +12,39 @@ import { absoluteUrl, pageMetadata } from "@/lib/seo";
 import type { Product } from "@/lib/products";
 
 /**
- * Product + Offer (+ AggregateRating when reviewed) + BreadcrumbList.
+ * Product structured data. One size → Product + Offer. Several sizes →
+ * ProductGroup whose hasVariant lists one Product per size, each with its own
+ * price and its own availability — a single Offer used to pair the default
+ * size's price with "in stock" even when that size had sold out and only
+ * another one was left. AggregateRating only from account-backed reviews.
  * Only real catalogue rows get schema — preview items never do.
  */
 function productJsonLd(product: Product) {
-  const defaultVariant =
-    product.variants.find((v) => v.weight === product.defaultWeight) ?? product.variants[0];
-  const inStock = product.variants.some((v) => v.stock > 0);
+  const url = `${site.url}/shop/${product.slug}`;
+  // Structured data does not resolve relative paths.
+  const image = product.images.length > 0 ? product.images.map(absoluteUrl) : undefined;
+  const offer = (price: number, available: boolean) => ({
+    "@type": "Offer",
+    url,
+    priceCurrency: "TRY",
+    price,
+    availability: available ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+    seller: { "@type": "Organization", name: site.name },
+    // No shippingDetails / hasMerchantReturnPolicy: the site states three
+    // shipping fees (legal 29,90 ₺; product/FAQ/cart 107,91 ₺; live setting
+    // 0) and two return windows (14 / 15 days). Structured data may only
+    // state what is true; restored once the owner confirms the terms.
+  });
   const accountReviews = product.reviews.filter((review) => review.accountBacked);
-  return {
+  const common = {
     "@context": "https://schema.org",
-    "@type": "Product",
     name: product.name,
     description: product.shortDescription || product.description,
-    // Structured data does not resolve relative paths.
-    image: product.images.length > 0 ? product.images.map(absoluteUrl) : undefined,
-    brand: { "@type": "Brand", name: "Kabia Ekolojik" },
-    offers: {
-      "@type": "Offer",
-      url: `${site.url}/shop/${product.slug}`,
-      priceCurrency: "TRY",
-      price: defaultVariant?.price ?? product.price,
-      availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      seller: { "@type": "Organization", name: "Kabia Ekolojik" },
-      // No shippingDetails / hasMerchantReturnPolicy: the site states three
-      // shipping fees (legal 29,90 ₺; product/FAQ/cart 107,91 ₺; live setting
-      // 0) and two return windows (14 / 15 days). Structured data may only
-      // state what is true; restored once the owner confirms the terms.
-    },
+    image,
+    // Kabia's own label only on the farm's own produce: a producer's walnuts
+    // or honey are not a Kabia Ekolojik brand product, and the site names the
+    // producer, not a brand, for them.
+    ...(product.source === "ciftlik" ? { brand: { "@type": "Brand", name: site.name } } : {}),
     // Only reviews written through a real account count.
     ...(accountReviews.length > 0
       ? {
@@ -54,6 +59,32 @@ function productJsonLd(product: Product) {
           },
         }
       : {}),
+  };
+
+  if (product.variants.length <= 1) {
+    const only = product.variants[0];
+    return {
+      ...common,
+      "@type": "Product",
+      ...(only ? { sku: only.id } : {}),
+      offers: offer(only?.price ?? product.price, (only?.stock ?? 0) > 0),
+    };
+  }
+
+  return {
+    ...common,
+    "@type": "ProductGroup",
+    url,
+    productGroupID: product.id,
+    variesBy: ["https://schema.org/size"],
+    hasVariant: product.variants.map((variant) => ({
+      "@type": "Product",
+      name: `${product.name} ${variant.weight}`,
+      sku: variant.id,
+      size: variant.weight,
+      image,
+      offers: offer(variant.price, variant.stock > 0),
+    })),
   };
 }
 
