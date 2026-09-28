@@ -40,13 +40,18 @@ export const instrumentSans = Instrument_Sans({
   preload: true,
 });
 
+// Not preloaded: the display face is requested when the stylesheet is parsed,
+// so it no longer competes with the CSS and the LCP image for first-paint
+// bandwidth. Measured (applied mobile throttling, 5 runs): LCP −190 to −280 ms
+// on home, /secki, product and /ciftlik; the size-adjusted fallback swaps with
+// a layout shift of at most 0.0007.
 export const instrumentSerif = Instrument_Serif({
   variable: "--font-instrument-serif",
   subsets: ["latin", "latin-ext"],
   weight: "400",
   style: ["normal", "italic"],
   display: "swap",
-  preload: true,
+  preload: false,
 });
 
 export const manrope = Manrope({

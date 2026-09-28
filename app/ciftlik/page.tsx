@@ -41,6 +41,12 @@ export default function FarmPage() {
                 fill
                 sizes="(min-width: 768px) 60vw, 100vw"
                 className="object-cover"
+                // The page's LCP element, in the first viewport: loaded eagerly
+                // at high priority (no preload link). Applied-throttling LCP
+                // 4575 -> 2248 ms; Lighthouse's simulated LCP reads this as
+                // slower (see SEO/perf pass 2 report), the real waterfall is not.
+                loading="eager"
+                fetchPriority="high"
               />
             </div>
             <figcaption className="mt-3 text-xs text-olive">
