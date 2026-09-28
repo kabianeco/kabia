@@ -35,29 +35,10 @@ function productJsonLd(product: Product) {
       price: defaultVariant?.price ?? product.price,
       availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       seller: { "@type": "Organization", name: "Kabia Ekolojik" },
-      // Pinned to /teslimat-ve-iade §1 (handling same-day–3 business days,
-      // transit 2–5 days domestic) and §3–5 (14-day withdrawal, food
-      // exception, defective-goods rights). Rate mirrors the live
-      // shipping_flat_rate (0); the threshold/rate copy on the legal pages
-      // disagrees and is flagged for the owner in the maturity report.
-      shippingDetails: {
-        "@type": "OfferShippingDetails",
-        shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "TRY" },
-        shippingDestination: { "@type": "DefinedRegion", addressCountry: "TR" },
-        deliveryTime: {
-          "@type": "ShippingDeliveryTime",
-          handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 3, unitCode: "DAY" },
-          transitTime: { "@type": "QuantitativeValue", minValue: 2, maxValue: 5, unitCode: "DAY" },
-        },
-      },
-      hasMerchantReturnPolicy: {
-        "@type": "MerchantReturnPolicy",
-        applicableCountry: "TR",
-        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
-        merchantReturnDays: 14,
-        returnMethod: "https://schema.org/ReturnByMail",
-        returnFees: "https://schema.org/ReturnFeesCustomerResponsibility",
-      },
+      // No shippingDetails / hasMerchantReturnPolicy: the site states three
+      // shipping fees (legal 29,90 ₺; product/FAQ/cart 107,91 ₺; live setting
+      // 0) and two return windows (14 / 15 days). Structured data may only
+      // state what is true; restored once the owner confirms the terms.
     },
     // Only reviews written through a real account count.
     ...(accountReviews.length > 0

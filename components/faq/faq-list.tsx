@@ -22,7 +22,13 @@ export function FaqList({
   const jsonLd = structuredData && {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: structuredData.flatMap((g): readonly { q: string; a: string }[] => faqs[g]).map((f) => ({
+    mainEntity: structuredData
+      .flatMap((g): readonly { q: string; a: string }[] => faqs[g])
+      // Shipping and returns answers stay visible but out of structured data
+      // until the owner confirms the terms (the site states conflicting fees
+      // and return windows).
+      .filter((f) => !/kargo|iade/i.test(f.q))
+      .map((f) => ({
       "@type": "Question",
       name: f.q,
       acceptedAnswer: { "@type": "Answer", text: f.a },

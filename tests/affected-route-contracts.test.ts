@@ -290,16 +290,15 @@ describe("affected route contracts", () => {
 })
 
 describe("§8.7 Offer shipping and return policy", () => {
-  it("product Offer carries shippingDetails and a finite return policy", async () => {
+  // SEO/perf pass 2: the site states three shipping fees and two return
+  // windows, so structured data states neither until the owner confirms them.
+  it("product Offer states no unconfirmed shipping or return terms", async () => {
     const { readFileSync } = await import("node:fs")
     const src = readFileSync("app/shop/[slug]/page.tsx", "utf8")
-    assert.match(src, /shippingDetails: \{/)
-    assert.match(src, /"@type": "OfferShippingDetails"/)
-    assert.match(src, /handlingTime: \{ "@type": "QuantitativeValue", minValue: 0, maxValue: 3/)
-    assert.match(src, /transitTime: \{ "@type": "QuantitativeValue", minValue: 2, maxValue: 5/)
-    assert.match(src, /hasMerchantReturnPolicy: \{/)
-    assert.match(src, /merchantReturnDays: 14/)
-    assert.match(src, /MerchantReturnFiniteReturnWindow/)
+    assert.ok(!/shippingDetails: \{/.test(src), "shippingDetails is back before the terms are confirmed")
+    assert.ok(!/hasMerchantReturnPolicy: \{/.test(src), "return policy is back before the terms are confirmed")
     assert.ok(!src.includes('"@type": "LocalBusiness"'), "no LocalBusiness without farm facts")
+    const faq = readFileSync("components/faq/faq-list.tsx", "utf8")
+    assert.match(faq, /\.filter\(\(f\) => !\/kargo\|iade\/i\.test\(f\.q\)\)/)
   })
 })
