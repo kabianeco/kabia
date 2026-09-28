@@ -7,7 +7,7 @@ import { ALL_FONT_VARIABLES } from "@/lib/fonts";
 import { ThemeVars } from "@/components/theme/theme-vars";
 import { Providers } from "@/components/providers";
 import { WhatsAppFloat } from "@/components/layout/whatsapp-float";
-import { themeInitScript } from "@/lib/theme";
+import { themeInitScript } from "@/lib/theme-init";
 import "./globals.css";
 
 /**

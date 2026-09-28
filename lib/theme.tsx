@@ -9,11 +9,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { THEME_STORAGE_KEY } from "@/lib/theme-init";
 
 export type ThemeChoice = "system" | "light" | "dark";
 export type ResolvedTheme = "light" | "dark";
 
-const STORAGE_KEY = "kabia_theme";
+const STORAGE_KEY = THEME_STORAGE_KEY;
 
 interface ThemeContextValue {
   /** What the visitor asked for, including "follow the system". */
@@ -25,15 +26,6 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
-
-/**
- * Runs before first paint, ahead of React, so the correct surface is already
- * painted when the page appears — no flash of the wrong theme. Kept in sync
- * with the reader below; both use the same storage key and attribute.
- */
-export const themeInitScript = `(function(){try{var c=localStorage.getItem(${JSON.stringify(
-  STORAGE_KEY,
-)});if(c==="light"||c==="dark"){document.documentElement.setAttribute("data-theme",c)}}catch(e){}})();`;
 
 function readChoice(): ThemeChoice {
   if (typeof window === "undefined") return "system";

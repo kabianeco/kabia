@@ -68,3 +68,35 @@ describe("client/server boundary", () => {
     assert.deepEqual(violations, []);
   });
 });
+
+/**
+ * A value exported from a `"use client"` module reaches a server module as a
+ * client reference, not as the value. Rendered into <head> (the theme boot
+ * script), that reference made hydration wait on a layout chunk; when the chunk
+ * arrived late, React left its hydration cursor inside <head> and threw #418 on
+ * the first <body> child. Server modules may import components (PascalCase)
+ * and types from client modules — plain values belong in a shared module.
+ */
+describe("client references in server modules", () => {
+  it("server modules import only components and types from client modules", () => {
+    const violations = [];
+
+    for (const [path, text] of source) {
+      if (isClient(text)) continue;
+      for (const match of text.matchAll(/import\s+(?!type\s)\{([^}]*)\}\s*from\s+["'](@\/[^"']+)["']/g)) {
+        const target = resolveAlias(match[2]);
+        if (!target || !isClient(source.get(target))) continue;
+        for (const raw of match[1].split(",")) {
+          const spec = raw.trim();
+          if (!spec || spec.startsWith("type ")) continue;
+          const imported = spec.split(/\s+as\s+/)[0].trim();
+          if (!/^[A-Z][A-Za-z0-9]*$/.test(imported) || /^[A-Z0-9_]+$/.test(imported)) {
+            violations.push(`${path} imports value "${imported}" from client module ${target}`);
+          }
+        }
+      }
+    }
+
+    assert.deepEqual(violations, []);
+  });
+});
