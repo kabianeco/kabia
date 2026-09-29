@@ -3,21 +3,10 @@ import { notFound } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { PageShell } from "@/components/layout/page-shell"
-import { journalEntries, type JournalEntry } from "@/content/journal"
+import { getCachedPublishedJournal, journalNeighbours, type JournalEntry } from "@/lib/journal"
 import { routes } from "@/lib/site"
-import { articleJsonLd, pageMetadata } from "@/lib/seo"
+import { articleJsonLd, pageMetadata, serializeJsonLd } from "@/lib/seo"
 import { Breadcrumbs } from "@/components/layout/breadcrumbs"
-
-function getEntry(slug: string): JournalEntry | undefined {
-  return journalEntries.find((e) => e.slug === slug)
-}
-
-/** The entries either side of this one in date order (the file is not sorted). */
-function neighbours(entry: JournalEntry): { previous?: JournalEntry; next?: JournalEntry } {
-  const byDate = [...journalEntries].sort((a, b) => a.date.localeCompare(b.date))
-  const index = byDate.findIndex((e) => e.slug === entry.slug)
-  return { previous: byDate[index - 1], next: byDate[index + 1] }
-}
 
 function formatEntryDate(iso: string): string {
   return new Date(iso).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })
@@ -38,13 +27,24 @@ function entryDescription(entry: JournalEntry): string {
   return `${entry.observation} ${entry.outcome}`
 }
 
-export function generateStaticParams() {
-  return journalEntries.map((entry) => ({ slug: entry.slug }))
+/** The alt text an image carries when an editor has not written one. */
+function fallbackAlt(entry: JournalEntry): string {
+  return `${formatEntryDate(entry.date)} — ${entry.location}`
+}
+
+function altFor(entry: JournalEntry, url: string): string {
+  return entry.gallery.find((image) => image.url === url)?.altText?.trim() || fallbackAlt(entry)
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  const entry = getEntry(slug)
+  const result = await getCachedPublishedJournal()
+  // An unreadable journal must not be indexed as if the page did not exist or
+  // as if it were the page: it is neither.
+  if (result.status === "error") {
+    return { title: "Saha notları şu anda yüklenemiyor", robots: { index: false, follow: false } }
+  }
+  const entry = result.entries.find((e) => e.slug === slug)
   if (!entry) return { title: "Sayfa bulunamadı", robots: { index: false, follow: false } }
   return pageMetadata({
     title: entryTitle(entry),
@@ -66,9 +66,25 @@ function Field({ label, value }: { label: string; value: string }) {
 
 export default async function JournalEntryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const entry = getEntry(slug)
+  const result = await getCachedPublishedJournal()
+
+  if (result.status === "error") {
+    return (
+      <PageShell>
+        <div role="alert" className="wrap page-top flex min-h-[50vh] flex-col items-start pb-24">
+          <p className="font-theme-display text-3xl italic text-clay">Saha notu şu anda yüklenemiyor.</p>
+          <p className="mt-4 max-w-sm text-sm leading-relaxed text-ink/55">Lütfen daha sonra yeniden deneyin.</p>
+        </div>
+      </PageShell>
+    )
+  }
+
+  const entry = result.entries.find((e) => e.slug === slug)
   if (!entry) notFound()
-  const { previous, next } = neighbours(entry)
+  const { previous, next } = journalNeighbours(result.entries, entry.slug)
+  // Gallery images after the cover, in the order the editor set. Entries
+  // migrated from the old file have only a cover, so this is empty for them.
+  const extraImages = entry.gallery.filter((image) => image.url !== entry.photo)
 
   return (
     <PageShell>
@@ -84,7 +100,7 @@ export default async function JournalEntryPage({ params }: { params: Promise<{ s
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
-              __html: JSON.stringify(
+              __html: serializeJsonLd(
                 articleJsonLd({
                   headline: entry.observation,
                   description: entryDescription(entry),
@@ -110,7 +126,7 @@ export default async function JournalEntryPage({ params }: { params: Promise<{ s
               <div className="relative aspect-[4/3] overflow-hidden rounded-media bg-paper">
                 <Image
                   src={entry.photo}
-                  alt={`${formatEntryDate(entry.date)} — ${entry.location}`}
+                  alt={altFor(entry, entry.photo)}
                   fill
                   sizes="(min-width: 768px) 42rem, 100vw"
                   className="object-cover"
@@ -118,6 +134,20 @@ export default async function JournalEntryPage({ params }: { params: Promise<{ s
               </div>
             </figure>
           )}
+
+          {extraImages.map((image) => (
+            <figure key={image.url} className="mt-6">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-media bg-paper">
+                <Image
+                  src={image.url}
+                  alt={image.altText?.trim() || fallbackAlt(entry)}
+                  fill
+                  sizes="(min-width: 768px) 42rem, 100vw"
+                  className="object-cover"
+                />
+              </div>
+            </figure>
+          ))}
 
           {entry.video && (
             <figure className="mt-6">

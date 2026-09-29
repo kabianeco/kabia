@@ -17,10 +17,11 @@ describe("honest storefront cache", () => {
     assert.match(helper, /return fallback/);
   });
 
-  it("every storefront catalogue and producer reader goes through it", () => {
+  it("every storefront catalogue, producer and journal reader goes through it", () => {
     for (const [file, names] of [
       ["lib/catalog.ts", ["getCachedPublicProducts", "getCachedProductBase", "getCachedProducerProducts", "getCachedProductReviews", "getCachedRelatedProducts", "getCachedFeaturedFullProducts", "getCachedIntroEntries"]],
       ["lib/producers.ts", ["getCachedPublicProducers", "getCachedSeckiProducers", "getCachedProducersBySource", "getCachedProducerBySlug"]],
+      ["lib/journal.ts", ["getCachedPublishedJournal"]],
     ] as const) {
       const src = readFileSync(file, "utf8");
       for (const name of names) {
@@ -41,5 +42,6 @@ describe("honest storefront cache", () => {
     assert.ok(!/export const revalidate/.test(src), "build-time prerender is back");
     assert.match(src, /productsResult\.status !== "ok"\) throw/);
     assert.match(src, /producersResult\.status !== "ok"\) throw/);
+    assert.match(src, /journalResult\.status !== "ok"\) throw/);
   });
 });

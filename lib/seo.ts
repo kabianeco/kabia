@@ -85,6 +85,25 @@ export function absoluteUrl(pathOrUrl: string): string {
 }
 
 /**
+ * JSON for an inline `<script type="application/ld+json">` whose content an
+ * administrator can write (journal entries).
+ *
+ * `JSON.stringify` leaves `<`, `>` and `&` alone, so a value containing
+ * `</script>` would close the tag and let the rest run as markup. Escaping them
+ * (and the two line separators JavaScript treats as newlines) as \uXXXX keeps
+ * the output valid JSON that parses back to the identical value, while making it
+ * impossible to leave the script element.
+ */
+export function serializeJsonLd(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")
+}
+
+/**
  * BlogPosting for a dated page (journal entries; guide pages later). The
  * author and publisher are the organisation: the journal is the farm's own
  * log and names no person. `dateModified` is stated only when the page has one.

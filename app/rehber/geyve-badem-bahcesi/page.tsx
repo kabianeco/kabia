@@ -12,7 +12,7 @@ import {
 import { guideBySlug, orchardGuideCopy as copy } from "@/content/guides"
 import { farmCertificate, farmPrinciples, farmTimeline } from "@/content/farm"
 import { farm, soil } from "@/content/pages"
-import { journalEntries } from "@/content/journal"
+import { getCachedPublishedJournal } from "@/lib/journal"
 import { routes } from "@/lib/site"
 import { articleJsonLd, pageMetadata } from "@/lib/seo"
 
@@ -37,11 +37,18 @@ function formatEntryDate(iso: string): string {
  * planted (2021), the year-by-year timeline, the soil principles, the harvest
  * sign with the latest field notes, and the certificate. Every fact is read
  * from content/pages.ts, content/farm.ts, content/homepage.ts (via
- * content/guides.ts) and content/journal.ts; the certificate only from
+ * content/guides.ts) and the journal (the database); the certificate only from
  * content/farm.ts, so a renewal changes it here too.
+ *
+ * If the journal cannot be read, the latest-notes list is left out rather than
+ * failing the whole guide: everything else on the page is static.
  */
-export default function OrchardGuidePage() {
-  const latestNotes = [...journalEntries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3)
+export default async function OrchardGuidePage() {
+  const journalResult = await getCachedPublishedJournal()
+  const latestNotes =
+    journalResult.status === "ok"
+      ? [...journalResult.entries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3)
+      : []
   return (
     <PageShell>
       <article aria-labelledby="guide-heading">
@@ -115,16 +122,20 @@ export default function OrchardGuidePage() {
 
           <GuideSection heading={copy.harvestHeading}>
             <p>{copy.harvestSign}</p>
-            <p className="mt-6">{copy.journalLead}</p>
-            <ul className="mt-3 space-y-3">
-              {latestNotes.map((entry) => (
-                <li key={entry.slug}>
-                  <GuideLink href={routes.journalEntry(entry.slug)}>
-                    {formatEntryDate(entry.date)} — {entry.observation}
-                  </GuideLink>
-                </li>
-              ))}
-            </ul>
+            {latestNotes.length > 0 && (
+              <>
+                <p className="mt-6">{copy.journalLead}</p>
+                <ul className="mt-3 space-y-3">
+                  {latestNotes.map((entry) => (
+                    <li key={entry.slug}>
+                      <GuideLink href={routes.journalEntry(entry.slug)}>
+                        {formatEntryDate(entry.date)} — {entry.observation}
+                      </GuideLink>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </GuideSection>
 
           <GuideSection heading={farmCertificate.title} id="belge">

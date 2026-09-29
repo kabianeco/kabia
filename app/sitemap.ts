@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next"
 import { getCachedPublicProducts } from "@/lib/catalog"
 import { getCachedPublicProducers } from "@/lib/producers"
-import { journalEntries } from "@/content/journal"
+import { getCachedPublishedJournal } from "@/lib/journal"
 import { guides } from "@/content/guides"
 import { site, routes, sitemapStaticPaths } from "@/lib/site"
 import { absoluteUrl } from "@/lib/seo"
@@ -19,7 +19,8 @@ import { isAllowedImageUrl } from "@/lib/shop-banner"
  * Rendered per request from the tag-cached catalogue (no build-time prerender,
  * so a build container without Supabase env cannot bake in a shrunken list).
  * A failed catalogue or producer read fails the response with a 5xx instead of
- * advertising a silently shorter sitemap: crawlers keep their last good copy
+ * advertising a silently shorter sitemap (products, producers and the journal
+ * alike): crawlers keep their last good copy
  * and Search Console shows the fetch error.
  */
 export const dynamic = "force-dynamic"
@@ -31,9 +32,14 @@ function imageList(urls: readonly string[]): string[] | undefined {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [productsResult, producersResult] = await Promise.all([getCachedPublicProducts(), getCachedPublicProducers()])
+  const [productsResult, producersResult, journalResult] = await Promise.all([
+    getCachedPublicProducts(),
+    getCachedPublicProducers(),
+    getCachedPublishedJournal(),
+  ])
   if (productsResult.status !== "ok") throw new Error("[sitemap] product read failed; refusing to publish a partial sitemap")
   if (producersResult.status !== "ok") throw new Error("[sitemap] producer read failed; refusing to publish a partial sitemap")
+  if (journalResult.status !== "ok") throw new Error("[sitemap] journal read failed; refusing to publish a partial sitemap")
 
   const staticEntries: MetadataRoute.Sitemap = sitemapStaticPaths.map((entry) => ({
     // The homepage is "/" in the route table; the sitemap wants the bare origin.
@@ -66,7 +72,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // /magaza/<producer> shelves are noindex (thin copies of the story and
   // product pages), so they are not advertised here.
 
-  const journalSitemapEntries: MetadataRoute.Sitemap = journalEntries.map((e) => ({
+  const journalSitemapEntries: MetadataRoute.Sitemap = journalResult.entries.map((e) => ({
     url: `${site.url}${routes.journalEntry(e.slug)}`,
     lastModified: new Date(e.date),
     changeFrequency: "monthly" as const,
