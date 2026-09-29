@@ -8,7 +8,8 @@ import { toActionState, type ActionState } from "@/lib/admin/errors"
 import { mediaMetadataSchema, MEDIA_MIME_TYPES } from "@/lib/admin/schemas"
 import { MEDIA_BUCKET, MEDIA_MAX_BYTES, safeObjectName } from "@/lib/admin/media"
 import { probeImage, PROBE_BYTES } from "@/lib/admin/image-probe"
-import { loadMediaUsage } from "@/lib/admin/queries/media"
+import { loadMediaUsage, MediaUsageUnavailableError } from "@/lib/admin/queries/media"
+import { deleteBlockedMessage } from "@/lib/admin/media-usage"
 
 /**
  * Supabase Storage + catalogue operations for product media.
@@ -191,8 +192,9 @@ export async function updateMediaMetadataAction(
 const deleteSchema = z.object({ id: z.string().uuid() })
 
 /**
- * Deletion refuses while any product still points at the object, so a live
- * storefront image cannot be removed out from under a product.
+ * Deletion refuses while any product, producer or journal entry still points at
+ * the object, so a live storefront image cannot be removed out from under it. If
+ * usage cannot be determined the delete is refused too.
  *
  * The order is deliberate: the catalogue row is soft-deleted first, then the
  * Storage object is removed, then the row is hard-deleted where permitted. If
@@ -224,32 +226,35 @@ export async function deleteMediaAction(
       data: { publicUrl },
     } = supabase.storage.from(row.bucket_id).getPublicUrl(row.object_path)
 
-    const usage = await loadMediaUsage(supabase, [
-      {
-        id: row.id,
-        bucketId: row.bucket_id,
-        objectPath: row.object_path,
-        url: publicUrl,
-        originalFilename: row.original_filename,
-        displayName: row.display_name,
-        label: row.display_name || row.original_filename,
-        mimeType: row.mime_type,
-        fileSize: Number(row.file_size),
-        width: row.width,
-        height: row.height,
-        altText: row.alt_text,
-        createdAt: row.created_at,
-        uploadedBy: null,
-      },
-    ])
+    let usage
+    try {
+      usage = await loadMediaUsage(supabase, [
+        {
+          id: row.id,
+          bucketId: row.bucket_id,
+          objectPath: row.object_path,
+          url: publicUrl,
+          originalFilename: row.original_filename,
+          displayName: row.display_name,
+          label: row.display_name || row.original_filename,
+          mimeType: row.mime_type,
+          fileSize: Number(row.file_size),
+          width: row.width,
+          height: row.height,
+          altText: row.alt_text,
+          createdAt: row.created_at,
+          uploadedBy: null,
+        },
+      ])
+    } catch (error) {
+      // Cannot tell whether it is in use, so it is not deleted.
+      if (error instanceof MediaUsageUnavailableError) return { ok: false, message: error.message }
+      throw error
+    }
 
     const referencing = usage.get(row.id) ?? []
     if (referencing.length > 0) {
-      const names = referencing.map((entry) => entry.productName).join(", ")
-      return {
-        ok: false,
-        message: `Bu görsel şu ürünlerde kullanılıyor: ${names}. Önce ürünlerden kaldırın, sonra silin.`,
-      }
+      return { ok: false, message: deleteBlockedMessage(referencing) }
     }
 
     const { error: softError } = await supabase

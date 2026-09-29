@@ -4,7 +4,7 @@ import { InlineAlert, PageHeader, Panel } from "@/components/admin/ui/surfaces"
 import { ClearFilters, FilterBar, FilterSelect, SearchField } from "@/components/admin/ui/filters"
 import { Pagination } from "@/components/admin/ui/table"
 import { hrefBuilder, pickEnum, pickPage, pickString } from "@/lib/admin/url"
-import { loadMediaPage, loadMediaUsage, type MediaSort } from "@/lib/admin/queries/media"
+import { loadMediaPage, loadMediaUsage, MediaUsageUnavailableError, type MediaSort } from "@/lib/admin/queries/media"
 import {
   MEDIA_MIME_LABELS,
   MEDIA_PAGE_SIZE,
@@ -56,9 +56,16 @@ export default async function MediaPage({
 
   const result = await loadMediaPage(supabase, { search, mimeType, sort, page })
 
-  const usageMap = await loadMediaUsage(supabase, result.assets)
+  // Usage fails closed: if it cannot be read the library says so and the server
+  // refuses deletes, instead of showing every asset as unused.
   const usage: Record<string, MediaUsage[]> = {}
-  for (const [id, entries] of usageMap) usage[id] = entries
+  let usageUnavailable = false
+  try {
+    for (const [id, entries] of await loadMediaUsage(supabase, result.assets)) usage[id] = entries
+  } catch (error) {
+    if (!(error instanceof MediaUsageUnavailableError)) throw error
+    usageUnavailable = true
+  }
 
   const href = hrefBuilder("/admin/media", params)
 
@@ -66,14 +73,14 @@ export default async function MediaPage({
     <>
       <PageHeader
         title="Medya"
-        description="Ürün görselleri Supabase Storage'daki product-media kovasında saklanır."
+        description="Ürün, üretici ve günlük görselleri Supabase Storage'daki product-media kovasında saklanır."
         breadcrumbs={[{ label: "Yönetim", href: "/admin" }, { label: "Medya" }]}
       />
 
       <div className="mb-6">
         <InlineAlert tone="info">
-          Bir görsel herhangi bir üründe kullanılıyorsa silinemez. Önce ürünün görsel
-          listesinden kaldırın; böylece mağazadaki hiçbir ürün görseli kırılmaz.
+          Bir görsel bir üründe, üreticide veya günlük notunda kullanılıyorsa silinemez.
+          Önce o kaydın görsellerinden kaldırın; böylece mağazadaki hiçbir görsel kırılmaz.
         </InlineAlert>
       </div>
 
@@ -117,7 +124,7 @@ export default async function MediaPage({
             <ClearFilters params={["q", "tur", "sirala", "sayfa"]} />
           </FilterBar>
 
-          <MediaGrid assets={result.assets} usage={usage} />
+          <MediaGrid assets={result.assets} usage={usage} usageUnavailable={usageUnavailable} />
 
           {result.total > MEDIA_PAGE_SIZE && (
             <div className="mt-6">

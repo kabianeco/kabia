@@ -27,19 +27,34 @@ import {
  * and inert background content come from the platform rather than from
  * hand-written key handlers.
  *
- * Deletion is refused here whenever a product references the asset, and the
- * referencing products are named and linked so the operator can go and detach
+ * Deletion is refused here whenever a product, producer or journal entry
+ * references the asset, and the referencing records are named and linked so the operator can go and detach
  * it rather than being told "no" with no way forward. The server enforces the
  * same rule independently — this is the explanation, not the boundary.
  */
+const USAGE_KIND_LABELS: Record<MediaUsage["kind"], string> = {
+  product: "Ürün",
+  producer: "Üretici",
+  journal: "Günlük",
+}
+
+const USAGE_PRIMARY_LABELS: Record<MediaUsage["kind"], string> = {
+  product: "ana görsel",
+  producer: "fotoğraf",
+  journal: "kapak",
+}
+
 export function MediaPreviewDialog({
   asset,
   usage,
+  usageUnavailable = false,
   open,
   onClose,
 }: {
   asset: MediaAsset | null
   usage: MediaUsage[]
+  /** True when the usage lookup failed; the list is then unknown, not empty. */
+  usageUnavailable?: boolean
   open: boolean
   onClose: () => void
 }) {
@@ -149,20 +164,25 @@ export function MediaPreviewDialog({
               {referenced ? (
                 <ul className="space-y-1">
                   {usage.map((entry) => (
-                    <li key={entry.productId} className="text-xs">
+                    <li key={`${entry.kind}:${entry.id}`} className="text-xs">
+                      <span className="text-ink/45">{USAGE_KIND_LABELS[entry.kind]} · </span>
                       <Link
-                        href={`/admin/products/${entry.productId}`}
+                        href={entry.href}
                         prefetch={false}
                         className="text-brand underline underline-offset-2 hover:text-forest"
                       >
-                        {entry.productName}
+                        {entry.name}
                       </Link>
-                      {entry.isPrimary && <span className="text-ink/45"> · ana görsel</span>}
+                      {entry.isPrimary && <span className="text-ink/45"> · {USAGE_PRIMARY_LABELS[entry.kind]}</span>}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-ink/45">Hiçbir üründe kullanılmıyor.</p>
+                <p className="text-xs text-ink/45">
+                  {usageUnavailable
+                    ? "Kullanım bilgisi okunamadı; silme geçici olarak reddedilir."
+                    : "Hiçbir üründe, üreticide veya günlük notunda kullanılmıyor."}
+                </p>
               )}
             </div>
 

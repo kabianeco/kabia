@@ -11,6 +11,7 @@ import {
   type MediaAsset,
   type MediaUsage,
 } from "@/lib/admin/media"
+import { summariseUsage } from "@/lib/admin/media-usage"
 import { cn } from "@/lib/utils"
 
 export { MediaUploader } from "@/components/admin/media/media-uploader"
@@ -20,16 +21,19 @@ export { MediaUploader } from "@/components/admin/media/media-uploader"
  *
  * Every tile is a button rather than a div with a click handler, so the grid is
  * traversable with Tab and activates with Enter or Space without any key
- * handling of its own. Usage is shown on the tile itself — an image a product
- * depends on should look different before anyone opens it, not only once they
- * try to delete it.
+ * handling of its own. Usage is shown on the tile itself — an image a product,
+ * producer or journal entry depends on should look different before anyone
+ * opens it, not only once they try to delete it.
  */
 export function MediaGrid({
   assets,
   usage,
+  usageUnavailable = false,
 }: {
   assets: MediaAsset[]
   usage: Record<string, MediaUsage[]>
+  /** True when the usage lookup failed: show that it is unknown, never "unused". */
+  usageUnavailable?: boolean
 }) {
   const [selected, setSelected] = useState<MediaAsset | null>(null)
 
@@ -75,9 +79,7 @@ export function MediaGrid({
                       used.length > 0 ? "text-olive" : "text-ink/35",
                     )}
                   >
-                    {used.length > 0
-                      ? `${used.length} üründe kullanılıyor`
-                      : "Kullanılmıyor"}
+                    {usageUnavailable ? "Kullanım bilgisi okunamadı" : summariseUsage(used)}
                   </span>
                   {!asset.altText && (
                     <span className="mt-1 block text-xs text-clay/80">Alt metni eksik</span>
@@ -92,6 +94,7 @@ export function MediaGrid({
       <MediaPreviewDialog
         asset={selected}
         usage={selected ? (usage[selected.id] ?? []) : []}
+        usageUnavailable={usageUnavailable}
         open={selected !== null}
         onClose={() => setSelected(null)}
       />

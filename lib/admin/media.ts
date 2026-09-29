@@ -57,10 +57,18 @@ export interface MediaAsset {
   uploadedBy: string | null
 }
 
+/** Where an image can be referenced from. Every kind blocks deletion of the asset. */
+export type MediaUsageKind = "product" | "producer" | "journal"
+
 export interface MediaUsage {
-  productId: string
-  productName: string
-  /** Whether the product uses it as its primary image rather than a gallery one. */
+  kind: MediaUsageKind
+  /** Id of the referencing record. Only unique within a kind. */
+  id: string
+  /** What to call it in a list: the product/producer name or the journal slug. */
+  name: string
+  /** The admin screen that edits it, so an operator can go and detach the image. */
+  href: string
+  /** Main image (product), photo (producer) or cover (journal), rather than a gallery image. */
   isPrimary: boolean
 }
 

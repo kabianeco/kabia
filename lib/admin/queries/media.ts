@@ -8,6 +8,7 @@ import {
   type MediaUsage,
 } from "@/lib/admin/media"
 import { logQueryError } from "@/lib/admin/errors"
+import { collateUsage, type UsageRows } from "@/lib/admin/media-usage"
 
 /**
  * Reads for the media library and the product picker.
@@ -164,87 +165,69 @@ export async function loadMediaPage(
   }
 }
 
+/** Thrown when usage cannot be determined; callers must treat it as "possibly in use". */
+export class MediaUsageUnavailableError extends Error {
+  constructor() {
+    super("Görsel kullanım bilgisi okunamadı. Lütfen tekrar deneyin.")
+    this.name = "MediaUsageUnavailableError"
+  }
+}
+
 /**
- * Which products point at each of the given assets.
+ * Which records point at each of the given assets: products (main image and
+ * gallery), producers (photo) and journal entries (cover and gallery).
  *
- * Matching is by both `storage_path` and `image_url` because the two coexist:
+ * Matching is by both `storage_path` and the public URL because the two coexist:
  * rows created through the media library carry a path, while the seeded
  * catalogue and anything created before it carry only a URL. Missing either
  * would let a referenced image be deleted.
+ *
+ * Fails closed. If any of the five reads errors, this throws
+ * MediaUsageUnavailableError rather than reporting "unused" — a transient
+ * failure must never be what allows a live storefront image to be deleted.
  */
 export async function loadMediaUsage(
   supabase: SupabaseClient,
   assets: MediaAsset[],
 ): Promise<Map<string, MediaUsage[]>> {
-  const usage = new Map<string, MediaUsage[]>()
-  if (assets.length === 0) return usage
+  if (assets.length === 0) return new Map()
 
   const urls = assets.map((asset) => asset.url)
   const paths = assets.map((asset) => asset.objectPath)
+  const quote = (values: string[]) => values.map((v) => `"${v}"`).join(",")
+  const byUrlOrPath = `image_url.in.(${quote(urls)}),storage_path.in.(${quote(paths)})`
 
-  const [galleryRes, mainRes] = await Promise.all([
-    supabase
-      .from("product_images")
-      .select("image_url, storage_path, products(id, name)")
-      .or(`image_url.in.(${urls.map((u) => `"${u}"`).join(",")}),storage_path.in.(${paths
-        .map((p) => `"${p}"`)
-        .join(",")})`),
+  const [productGallery, productMain, producers, journalCover, journalGallery] = await Promise.all([
+    supabase.from("product_images").select("image_url, storage_path, products(id, name)").or(byUrlOrPath),
     supabase.from("products").select("id, name, main_image_url").in("main_image_url", urls),
+    supabase.from("producers").select("id, name, photo_url").in("photo_url", urls),
+    supabase.from("journal_entries").select("id, slug, cover_image_url").in("cover_image_url", urls),
+    supabase.from("journal_entry_images").select("image_url, storage_path, journal_entries(id, slug)").or(byUrlOrPath),
   ])
 
-  if (galleryRes.error) logQueryError("media:usage:gallery", galleryRes.error)
-  if (mainRes.error) logQueryError("media:usage:main", mainRes.error)
-
-  const byUrl = new Map<string, MediaUsage[]>()
-  const byPath = new Map<string, MediaUsage[]>()
-
-  const push = (map: Map<string, MediaUsage[]>, key: string, entry: MediaUsage) => {
-    map.set(key, [...(map.get(key) ?? []), entry])
-  }
-
-  for (const row of (galleryRes.data ?? []) as unknown as {
-    image_url: string
-    storage_path: string | null
-    products: { id: string; name: string } | null
-  }[]) {
-    if (!row.products) continue
-    const entry: MediaUsage = {
-      productId: row.products.id,
-      productName: row.products.name,
-      isPrimary: false,
+  const failed = [
+    ["media:usage:gallery", productGallery],
+    ["media:usage:main", productMain],
+    ["media:usage:producers", producers],
+    ["media:usage:journalCover", journalCover],
+    ["media:usage:journalGallery", journalGallery],
+  ] as const
+  let unavailable = false
+  for (const [context, result] of failed) {
+    if (result.error) {
+      logQueryError(context, result.error)
+      unavailable = true
     }
-    if (row.image_url) push(byUrl, row.image_url, entry)
-    if (row.storage_path) push(byPath, row.storage_path, entry)
   }
+  if (unavailable) throw new MediaUsageUnavailableError()
 
-  for (const row of (mainRes.data ?? []) as {
-    id: string
-    name: string
-    main_image_url: string
-  }[]) {
-    push(byUrl, row.main_image_url, {
-      productId: row.id,
-      productName: row.name,
-      isPrimary: true,
-    })
-  }
-
-  for (const asset of assets) {
-    const merged = [...(byUrl.get(asset.url) ?? []), ...(byPath.get(asset.objectPath) ?? [])]
-    // One product may reference the same asset both as its primary image and in
-    // its gallery; it should be listed once, and as primary if either says so.
-    const collapsed = new Map<string, MediaUsage>()
-    for (const entry of merged) {
-      const existing = collapsed.get(entry.productId)
-      collapsed.set(entry.productId, {
-        ...entry,
-        isPrimary: (existing?.isPrimary ?? false) || entry.isPrimary,
-      })
-    }
-    usage.set(asset.id, [...collapsed.values()])
-  }
-
-  return usage
+  return collateUsage(assets, {
+    productGallery: (productGallery.data ?? []) as unknown as UsageRows["productGallery"],
+    productMain: (productMain.data ?? []) as UsageRows["productMain"],
+    producers: (producers.data ?? []) as UsageRows["producers"],
+    journalCover: (journalCover.data ?? []) as UsageRows["journalCover"],
+    journalGallery: (journalGallery.data ?? []) as unknown as UsageRows["journalGallery"],
+  })
 }
 
 /** The distinct MIME types present, for the library's type filter. */
