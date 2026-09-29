@@ -112,8 +112,8 @@ export const origin = {
   images: [
     {
       src: "/images/orchard-hillside.jpg",
-      width: 2047,
-      height: 2048,
+      width: 1352,
+      height: 1353,
       alt: "Kılıçkaya yamaçlarında genç badem bahçesi, arkada vadi ve dağlar",
       caption: "Badem ağaçları 3. yıl, Kılıçkaya yamaçları.",
     },
@@ -126,8 +126,8 @@ export const origin = {
     },
     {
       src: "/images/orchard-winter.jpg",
-      width: 2048,
-      height: 2048,
+      width: 1112,
+      height: 1112,
       alt: "Kar altındaki genç badem ağaçları ve bulutlu vadi",
       caption: "Kış. Bahçe uykuda, ağaçlar dinlenir.",
     },
