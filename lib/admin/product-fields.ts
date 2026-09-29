@@ -131,6 +131,18 @@ export function buildProductRow(input: ProductInput): ProductRowWrite {
 }
 
 /**
+ * The row an UPDATE writes: everything `buildProductRow` writes except the main
+ * image. On update the main image travels with the gallery through
+ * admin_save_product_images, so the two can never disagree; an insert still
+ * needs `main_image_url` because the column is NOT NULL.
+ */
+export function buildProductUpdateRow(input: ProductInput): Omit<ProductRowWrite, "main_image_url"> {
+  return Object.fromEntries(
+    Object.entries(buildProductRow(input)).filter(([column]) => column !== "main_image_url"),
+  ) as Omit<ProductRowWrite, "main_image_url">
+}
+
+/**
  * Whether saving this product needs an explicit organic confirmation.
  *
  * `organik_sertifikali` asserts that a real organic certificate exists — the

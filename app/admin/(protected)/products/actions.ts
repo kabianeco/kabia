@@ -8,17 +8,19 @@ import { logAdminAction, AUDIT_WARNING } from "@/lib/admin/audit"
 import { toActionState, type ActionState } from "@/lib/admin/errors"
 import {
   fieldErrorsFrom,
-  imageSchema,
   nutritionSchema,
+  productGallerySchema,
   productSchema,
   uuid,
   variantSchema,
 } from "@/lib/admin/schemas"
+import { saveProductGallery } from "@/lib/admin/gallery-save"
 import { countOrderReferences, loadProductDetail } from "@/lib/admin/queries/products"
 import { CATALOG_PRODUCTS_TAG } from "@/lib/catalog"
 import {
   ORGANIC_CONFIRMATION_MESSAGE,
   buildProductRow,
+  buildProductUpdateRow,
   requiresOrganicConfirmation,
 } from "@/lib/admin/product-fields"
 
@@ -71,6 +73,27 @@ function parseJsonField<T>(raw: FormDataEntryValue | null, schema: z.ZodType<T>)
   }
 }
 
+/**
+ * The gallery and its main image arrive as two fields: `images` (a JSON array in
+ * display order) and `main_image_url`. Returned unvalidated — the schema and the
+ * database do that — or null when the JSON itself is unreadable.
+ */
+function parseGalleryPayload(formData: FormData): { main_image_url: string; images: unknown[] } | null {
+  const raw = formData.get("images")
+  let images: unknown[] = []
+  if (typeof raw === "string" && raw.trim() !== "") {
+    try {
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return null
+      images = parsed
+    } catch {
+      return null
+    }
+  }
+  const main = formData.get("main_image_url")
+  return { main_image_url: typeof main === "string" ? main.trim() : "", images }
+}
+
 function boolField(formData: FormData, name: string): boolean {
   return formData.get(name) === "on" || formData.get(name) === "true"
 }
@@ -98,9 +121,20 @@ export async function saveProductAction(
     }
 
     const variants = parseJsonField(formData.get("variants"), variantSchema)
-    const images = parseJsonField(formData.get("images"), imageSchema)
-    if (variants === null || images === null) {
+    const gallery = parseGalleryPayload(formData)
+    if (variants === null || gallery === null) {
       return { ok: false, message: "Ürün seçenekleri veya görselleri okunamadı." }
+    }
+
+    // Checked before anything is written, so a bad gallery never leaves a
+    // half-saved product behind. The save itself re-validates.
+    const galleryCheck = productGallerySchema.safeParse(gallery)
+    if (!galleryCheck.success) {
+      return {
+        ok: false,
+        fieldErrors: fieldErrorsFrom(galleryCheck.error),
+        message: galleryCheck.error.issues[0]?.message ?? "Lütfen görselleri kontrol edin.",
+      }
     }
 
     const parsed = productSchema.safeParse({
@@ -196,7 +230,11 @@ export async function saveProductAction(
     let savedId = productId
 
     if (productId) {
-      const { error } = await supabase.from("products").update(productRow).eq("id", productId)
+      // The main image is written with the gallery below, in one transaction.
+      const { error } = await supabase
+        .from("products")
+        .update(buildProductUpdateRow(input))
+        .eq("id", productId)
       if (error) return toActionState(error, "saveProduct:update")
     } else {
       const { data, error } = await supabase
@@ -251,39 +289,10 @@ export async function saveProductAction(
     }
 
     // ---- images -------------------------------------------------------------
-    const existingImageIds = new Set((before?.images ?? []).map((i) => i.id))
-    const submittedImageIds = new Set(
-      images.map((i) => i.id).filter((id): id is string => Boolean(id)),
-    )
-    const removedImageIds = [...existingImageIds].filter((id) => !submittedImageIds.has(id))
-    if (removedImageIds.length > 0) {
-      const { error } = await supabase
-        .from("product_images")
-        .delete()
-        .in("id", removedImageIds)
-      if (error) return toActionState(error, "saveProduct:imageDelete")
-    }
-
-    for (const [index, image] of images.entries()) {
-      const payload = {
-        image_url: image.image_url,
-        alt_text: image.alt_text ?? null,
-        sort_order: index,
-        storage_path: image.storage_path ?? null,
-      }
-      if (image.id && existingImageIds.has(image.id)) {
-        const { error } = await supabase
-          .from("product_images")
-          .update(payload)
-          .eq("id", image.id)
-        if (error) return toActionState(error, "saveProduct:imageUpdate")
-      } else {
-        const { error } = await supabase
-          .from("product_images")
-          .insert({ ...payload, product_id: savedId })
-        if (error) return toActionState(error, "saveProduct:imageInsert")
-      }
-    }
+    // Main image and the whole ordered gallery in one database call: it either
+    // all happens or none of it does (see lib/admin/gallery-save.ts).
+    const saved = await saveProductGallery(supabase, savedId, gallery)
+    if (!saved.ok) return saved
 
     // ---- nutrition ----------------------------------------------------------
     const nutrition = nutritionParsed.data
@@ -316,7 +325,7 @@ export async function saveProductAction(
       after: after
         ? { name: after.name, slug: after.slug, base_price: after.basePrice, is_active: after.isActive, is_featured: after.isFeatured }
         : null,
-      metadata: { variant_count: input.variants.length, image_count: images.length },
+      metadata: { variant_count: input.variants.length, image_count: gallery.images.length },
     })
 
     revalidateStorefront(input.slug)

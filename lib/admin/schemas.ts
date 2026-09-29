@@ -136,15 +136,73 @@ export const parsedVariantSchema = z.object({
   sku: z.string().max(64).nullable().optional(),
 })
 
-export const imageSchema = z.object({
+/**
+ * One image in an editable gallery. Position is display order and is carried by
+ * the array, not by a field, so there is no sort_order to keep consistent.
+ */
+export const galleryImageSchema = z.object({
   id: uuid.optional().nullable(),
   image_url: z.string().trim().min(1, "Görsel adresi zorunlu.").max(1000).refine(isAllowedImageUrl, {
     message: IMAGE_HOST_MESSAGE,
   }),
   alt_text: z.string().trim().max(200, "Alternatif metin en fazla 200 karakter.").optional().nullable(),
-  sort_order: intField("Sıra", 0, 999),
   storage_path: z.string().trim().max(500).optional().nullable(),
 })
+
+/** Mirrors the ceiling in the admin_save_*_images functions. */
+export const MAX_GALLERY_IMAGES = 30
+
+function checkGalleryConsistency(
+  value: { main_image_url: string; images: { image_url: string }[] },
+  ctx: z.RefinementCtx,
+  labels: { missing: string; empty: string },
+) {
+  const urls = value.images.map((image) => image.image_url)
+  if (new Set(urls).size !== urls.length) {
+    ctx.addIssue({ code: "custom", path: ["images"], message: "Aynı görsel galeride birden fazla kez yer alamaz." })
+  }
+  if (urls.length === 0) {
+    if (value.main_image_url !== "") ctx.addIssue({ code: "custom", path: ["main_image_url"], message: labels.empty })
+  } else if (!urls.includes(value.main_image_url)) {
+    ctx.addIssue({ code: "custom", path: ["main_image_url"], message: labels.missing })
+  }
+}
+
+/**
+ * A product's gallery plus its main image, saved together. A product always has
+ * a main image (products.main_image_url is NOT NULL), and it is one of the
+ * gallery's images.
+ */
+export const productGallerySchema = z
+  .object({
+    main_image_url: z.string().trim().min(1, "Ana görsel zorunlu.").max(1000),
+    images: z
+      .array(galleryImageSchema)
+      .min(1, "En az bir görsel ekleyin.")
+      .max(MAX_GALLERY_IMAGES, `En fazla ${MAX_GALLERY_IMAGES} görsel eklenebilir.`),
+  })
+  .superRefine((value, ctx) =>
+    checkGalleryConsistency(value, ctx, {
+      missing: "Ana görsel galerideki görsellerden biri olmalı.",
+      empty: "Galeride görsel yokken ana görsel seçilemez.",
+    }),
+  )
+
+/**
+ * A journal entry's gallery plus its cover. An entry may have no images at all;
+ * once it has any, the cover is one of them.
+ */
+export const journalGallerySchema = z
+  .object({
+    main_image_url: z.string().trim().max(1000),
+    images: z.array(galleryImageSchema).max(MAX_GALLERY_IMAGES, `En fazla ${MAX_GALLERY_IMAGES} görsel eklenebilir.`),
+  })
+  .superRefine((value, ctx) =>
+    checkGalleryConsistency(value, ctx, {
+      missing: "Kapak görseli galerideki görsellerden biri olmalı.",
+      empty: "Galeride görsel yokken kapak görseli seçilemez.",
+    }),
+  )
 
 /**
  * Optional free-text provenance fields. They arrive from text inputs, so an
@@ -473,7 +531,7 @@ export const producerSchema = z.object({
 export type ProductInput = z.infer<typeof productSchema>
 export type ProducerInput = z.infer<typeof producerSchema>
 export type VariantInput = z.infer<typeof variantSchema>
-export type ImageInput = z.infer<typeof imageSchema>
+export type GalleryImageInput = z.infer<typeof galleryImageSchema>
 
 /** Zod issues → the flat `{ field: message }` shape the forms render. */
 export function fieldErrorsFrom(error: z.ZodError): Record<string, string> {
