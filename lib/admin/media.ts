@@ -72,6 +72,19 @@ export interface MediaUsage {
   isPrimary: boolean
 }
 
+/**
+ * A quick, specific pre-check of a file before it is sent, so the operator hears
+ * "big.jpg 10 MB sınırını aşıyor" immediately instead of after an upload. The
+ * server re-validates everything, including the actual bytes, and is the
+ * boundary that counts; this only buys a better message.
+ */
+export function clientFileProblem(file: { name: string; size: number; type: string }): string | null {
+  if (file.size === 0) return `${file.name} boş bir dosya.`
+  if (file.size > MEDIA_MAX_BYTES) return `${file.name} 10 MB sınırını aşıyor.`
+  if (!(file.type in MEDIA_EXTENSIONS)) return `${file.name} desteklenmiyor. Yalnızca JPEG, PNG, WebP ve AVIF yüklenebilir.`
+  return null
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`

@@ -233,3 +233,19 @@ describe("the upload action", () => {
     assert.match(src, /adminContext\("manageMedia"\)/)
   })
 })
+
+describe("clientFileProblem", () => {
+  it("accepts an image within the limit", async () => {
+    const { clientFileProblem } = await import("../lib/admin/media.ts")
+    assert.equal(clientFileProblem({ name: "a.jpg", size: 1000, type: "image/jpeg" }), null)
+    assert.equal(clientFileProblem({ name: "a.avif", size: MAX, type: "image/avif" }), null)
+  })
+
+  it("names the file and the reason when it is too big, empty or the wrong type", async () => {
+    const { clientFileProblem } = await import("../lib/admin/media.ts")
+    assert.match(clientFileProblem({ name: "big.jpg", size: MAX + 1, type: "image/jpeg" }) ?? "", /big\.jpg.*10 MB/)
+    assert.match(clientFileProblem({ name: "empty.jpg", size: 0, type: "image/jpeg" }) ?? "", /empty\.jpg.*boş/)
+    assert.match(clientFileProblem({ name: "x.svg", size: 10, type: "image/svg+xml" }) ?? "", /x\.svg.*JPEG, PNG, WebP ve AVIF/)
+    assert.match(clientFileProblem({ name: "doc.pdf", size: 10, type: "application/pdf" }) ?? "", /doc\.pdf/)
+  })
+})

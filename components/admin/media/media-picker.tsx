@@ -1,15 +1,20 @@
 "use client"
 
 import { useCallback, useEffect, useId, useRef, useState } from "react"
-import { Check, Search, X } from "lucide-react"
+import { Check, Search, Upload, X } from "lucide-react"
+import { uploadMediaAction } from "@/app/admin/(protected)/media/actions"
 import { MediaThumb } from "@/components/admin/media/media-thumb"
 import { AdminButton } from "@/components/admin/ui/form"
+import { ACTION_IDLE } from "@/lib/admin/errors"
 import {
+  clientFileProblem,
   formatBytes,
   formatDimensions,
+  MEDIA_ACCEPT,
   MEDIA_MIME_LABELS,
   MEDIA_PAGE_SIZE,
   type MediaAsset,
+  type MediaFolder,
 } from "@/lib/admin/media"
 import { cn } from "@/lib/utils"
 
@@ -21,6 +26,11 @@ import { cn } from "@/lib/utils"
  * It fetches the same catalogue the library page reads, through the same
  * RLS-governed route handler, one page at a time — the whole bucket is never
  * pulled into the browser.
+ *
+ * A new file can be uploaded from inside the dialog. It lands in the library
+ * (the same catalogue, folder and validation as /admin/media) and is selected
+ * straight away, so "I need an image that isn't there yet" is one step, not a
+ * trip to another screen and back.
  *
  * Selection is not communicated by colour alone: a selected tile gets a check
  * mark, a ring, and `aria-pressed`, so it is legible to a screen reader and to
@@ -46,19 +56,25 @@ export function MediaPicker({
   onClose,
   onConfirm,
   multiple = true,
-  initialSelected = [],
+  isAttached,
+  folder,
   title = "Medyadan seç",
 }: {
   open: boolean
   onClose: () => void
   onConfirm: (assets: MediaAsset[]) => void
   multiple?: boolean
-  /** Object paths already attached to the product, shown as pre-selected. */
-  initialSelected?: string[]
+  /** True for an asset the record already uses; such tiles are labelled as attached. */
+  isAttached?: (asset: MediaAsset) => boolean
+  /** Where uploads made from this dialog are filed in the bucket. */
+  folder?: MediaFolder
   title?: string
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const searchId = useId()
+  const uploadId = useId()
+  const [uploading, setUploading] = useState(false)
+  const [uploadMessage, setUploadMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null)
   const [state, setState] = useState<PickerState>(EMPTY)
   const [query, setQuery] = useState("")
   const [mimeType, setMimeType] = useState("")
@@ -139,6 +155,60 @@ export function MediaPicker({
     dialogRef.current?.close()
   }
 
+  /**
+   * Uploads one or more files in order, then puts them at the top of the list
+   * and selects them. Files are sent one at a time so a bad file reports its own
+   * error without discarding the good ones, and the server stays the boundary:
+   * the client check is only there to say why, quickly.
+   */
+  const upload = async (files: File[]) => {
+    setUploading(true)
+    setUploadMessage(null)
+    const uploaded: MediaAsset[] = []
+    let failure: string | null = null
+
+    for (const file of files) {
+      const problem = clientFileProblem(file)
+      if (problem) {
+        failure = problem
+        continue
+      }
+      const data = new FormData()
+      data.set("file", file)
+      if (folder) data.set("folder", folder)
+      try {
+        const result = await uploadMediaAction(ACTION_IDLE, data)
+        if (result.ok && result.asset) uploaded.push(result.asset)
+        else failure = `${file.name}: ${result.message ?? "Yükleme başarısız."}`
+      } catch {
+        failure = `${file.name}: Yükleme sırasında bir hata oluştu. Tekrar deneyin.`
+      }
+    }
+
+    if (uploaded.length > 0) {
+      const ids = new Set(uploaded.map((asset) => asset.id))
+      setState((prev) => ({
+        ...prev,
+        // Newest first, matching the library's default order.
+        assets: [...[...uploaded].reverse(), ...prev.assets.filter((asset) => !ids.has(asset.id))],
+        total: prev.total + uploaded.length,
+      }))
+      setSelected((prev) => {
+        const next = new Map(multiple ? prev : [])
+        // In single-select mode only the last upload can be the selection.
+        for (const asset of multiple ? uploaded : uploaded.slice(-1)) next.set(asset.id, asset)
+        return next
+      })
+    }
+
+    setUploadMessage(
+      failure
+        ? { tone: "error", text: failure }
+        : { tone: "ok", text: uploaded.length === 1 ? "Görsel yüklendi ve seçildi." : `${uploaded.length} görsel yüklendi ve seçildi.` },
+    )
+    setUploading(false)
+  }
+
   const hasMore = state.assets.length < state.total
 
   return (
@@ -217,6 +287,47 @@ export function MediaPicker({
           </p>
         </div>
 
+        <div className="border-b border-ink/10 px-5 py-3">
+          <label htmlFor={uploadId} className="label mb-1.5 block text-olive">
+            Yeni görsel yükle
+          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              id={uploadId}
+              type="file"
+              accept={MEDIA_ACCEPT}
+              multiple={multiple}
+              disabled={uploading}
+              className="block w-full max-w-sm text-sm text-ink/70 file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-full file:border file:border-ink/20 file:bg-transparent file:px-4 file:text-sm file:text-ink hover:file:border-brand hover:file:text-brand disabled:opacity-60"
+              onChange={(event) => {
+                const files = [...(event.target.files ?? [])]
+                event.target.value = ""
+                if (files.length > 0) void upload(files)
+              }}
+            />
+            {uploading ? (
+              <span role="status" className="inline-flex items-center gap-2 text-xs text-ink/55">
+                <span
+                  aria-hidden="true"
+                  className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent motion-reduce:animate-none"
+                />
+                Yükleniyor…
+              </span>
+            ) : (
+              <Upload className="h-4 w-4 text-ink/30" aria-hidden="true" />
+            )}
+          </div>
+          <p className="mt-1.5 text-xs text-ink/45">JPEG, PNG, WebP veya AVIF · en fazla 10 MB</p>
+          {uploadMessage && (
+            <p
+              role={uploadMessage.tone === "error" ? "alert" : "status"}
+              className={cn("mt-1.5 text-xs", uploadMessage.tone === "error" ? "text-clay" : "text-olive")}
+            >
+              {uploadMessage.text}
+            </p>
+          )}
+        </div>
+
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {state.error && (
             <p role="alert" className="rounded-[3px] border border-clay/30 bg-clay/5 px-3 py-2 text-sm text-clay">
@@ -232,7 +343,7 @@ export function MediaPicker({
                   : "Kütüphanede henüz görsel yok."}
               </p>
               <p className="mt-1.5 text-xs text-ink/40">
-                Görselleri Medya sayfasından yükleyebilirsiniz.
+                Yukarıdaki alandan yeni görsel yükleyebilirsiniz.
               </p>
             </div>
           )}
@@ -241,7 +352,7 @@ export function MediaPicker({
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {state.assets.map((asset) => {
                 const isSelected = selected.has(asset.id)
-                const alreadyAttached = initialSelected.includes(asset.objectPath)
+                const alreadyAttached = isAttached?.(asset) ?? false
                 return (
                   <li key={asset.id}>
                     <button
@@ -279,7 +390,7 @@ export function MediaPicker({
                         </span>
                         {alreadyAttached && (
                           <span className="mt-0.5 block text-[0.6875rem] text-olive">
-                            Bu üründe ekli
+                            Zaten ekli
                           </span>
                         )}
                       </span>

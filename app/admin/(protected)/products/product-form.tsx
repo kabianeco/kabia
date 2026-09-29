@@ -1,22 +1,11 @@
 "use client"
 
-import {
-  useActionState,
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  useTransition,
-} from "react"
-import Image from "next/image"
+import { useActionState, useState } from "react"
 import Link from "next/link"
-import { GripVertical, Image as ImageIcon, Plus, Trash2, Upload } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { saveProductAction } from "./actions"
-import { uploadMediaAction } from "../media/actions"
-import { MediaPicker } from "@/components/admin/media/media-picker"
-import type { MediaAsset } from "@/lib/admin/media"
-import { cn } from "@/lib/utils"
+import { GalleryEditor } from "@/components/admin/media/gallery-editor"
+import { galleryFromRows, toPayload, type GalleryState } from "@/lib/admin/gallery"
 import { ACTION_IDLE } from "@/lib/admin/errors"
 import type { ProductDetail } from "@/lib/admin/queries/products"
 import type { CategoryOption, ProducerOption } from "@/lib/admin/queries/products"
@@ -42,7 +31,10 @@ import { Panel } from "@/components/admin/ui/surfaces"
  *
  * Variants and images are edited as arrays in React state and submitted as JSON
  * in hidden fields, because FormData has no natural array shape and indexed
- * field names (`variants[0][price]`) are fragile to reorder.
+ * field names (`variants[0][price]`) are fragile to reorder. The gallery is
+ * edited through the shared GalleryEditor (lib/admin/gallery.ts holds its
+ * rules); the main image and the gallery are submitted together and saved in
+ * one transaction.
  *
  * Stock is intentionally read-only for existing variants. Moving stock is an
  * audited operation with a mandatory reason, and it lives on the inventory
@@ -60,14 +52,6 @@ interface VariantDraft {
   sku: string
 }
 
-interface ImageDraft {
-  key: string
-  id: string | null
-  image_url: string
-  alt_text: string
-  storage_path: string | null
-}
-
 function toVariantDrafts(product: ProductDetail | null): VariantDraft[] {
   if (!product || product.variants.length === 0) {
     return [{ key: crypto.randomUUID(), id: null, label: "", price: "", stock_quantity: "0", sku: "" }]
@@ -82,15 +66,9 @@ function toVariantDrafts(product: ProductDetail | null): VariantDraft[] {
   }))
 }
 
-function toImageDrafts(product: ProductDetail | null): ImageDraft[] {
-  if (!product) return []
-  return product.images.map((image) => ({
-    key: image.id,
-    id: image.id,
-    image_url: image.imageUrl,
-    alt_text: image.altText ?? "",
-    storage_path: image.storagePath,
-  }))
+function toGallery(product: ProductDetail | null): GalleryState {
+  if (!product) return { items: [], mainUrl: "" }
+  return galleryFromRows(product.images, product.mainImageUrl ?? "")
 }
 
 export function ProductForm({
@@ -104,8 +82,10 @@ export function ProductForm({
 }) {
   const [state, formAction] = useActionState(saveProductAction, ACTION_IDLE)
   const [variants, setVariants] = useState<VariantDraft[]>(() => toVariantDrafts(product))
-  const [images, setImages] = useState<ImageDraft[]>(() => toImageDrafts(product))
-  const [mainImageUrl, setMainImageUrl] = useState(product?.mainImageUrl ?? "")
+  const [gallery, setGallery] = useState<GalleryState>(() => toGallery(product))
+  // Tracked so an image added from the library can be given the product's name
+  // as its alt text when the library has none for it.
+  const [productName, setProductName] = useState(product?.name ?? "")
   const [slugTouched, setSlugTouched] = useState(Boolean(product))
   const [slug, setSlug] = useState(product?.slug ?? "")
   // Certification drives a confirmation step, so the form has to know the
@@ -133,21 +113,14 @@ export function ProductForm({
     })),
   )
 
-  const imagesPayload = JSON.stringify(
-    images.map((image, index) => ({
-      id: image.id,
-      image_url: image.image_url.trim(),
-      alt_text: image.alt_text.trim(),
-      sort_order: index,
-      storage_path: image.storage_path,
-    })),
-  )
+  const galleryPayload = toPayload(gallery)
 
   return (
     <form action={formAction} className="space-y-6" noValidate>
       {product && <input type="hidden" name="productId" value={product.id} />}
       <input type="hidden" name="variants" value={variantsPayload} />
-      <input type="hidden" name="images" value={imagesPayload} />
+      <input type="hidden" name="images" value={JSON.stringify(galleryPayload.images)} />
+      <input type="hidden" name="main_image_url" value={galleryPayload.main_image_url} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -161,6 +134,7 @@ export function ProductForm({
                 error={errors.name}
                 wrapperClassName="sm:col-span-2"
                 onChange={(event) => {
+                  setProductName(event.target.value)
                   if (slugTouched) return
                   const next = event.target.value
                     .toLocaleLowerCase("tr")
@@ -369,13 +343,21 @@ export function ProductForm({
             </ul>
           </Panel>
 
-          <ImagesPanel
-            images={images}
-            setImages={setImages}
-            mainImageUrl={mainImageUrl}
-            setMainImageUrl={setMainImageUrl}
-            error={errors.main_image_url}
-          />
+          <Panel
+            title="Görseller"
+            description="Görselleri medya kütüphanesinden seçin ya da yükleyin. Ana görsel mağaza kartında görünür; galeri sırası ürün sayfasındaki sırayı izler."
+          >
+            <GalleryEditor
+              state={gallery}
+              onChange={setGallery}
+              fallbackAlt={productName.trim()}
+              folder="products"
+              mainLabel="Ana görsel"
+              requireMain
+              error={errors.main_image_url ?? errors.images}
+              emptyText="Henüz görsel eklenmedi. Ürünün en az bir görseli olmalı — Medyadan seçin ya da yeni bir dosya yükleyin."
+            />
+          </Panel>
 
           <Panel title="Besin değerleri" description="Boş bırakılan alanlar mağazada gösterilmez.">
             <div className="grid gap-5 sm:grid-cols-3">
@@ -596,296 +578,5 @@ export function ProductForm({
         </div>
       </div>
     </form>
-  )
-}
-
-function ImagesPanel({
-  images,
-  setImages,
-  mainImageUrl,
-  setMainImageUrl,
-  error,
-}: {
-  images: ImageDraft[]
-  setImages: React.Dispatch<React.SetStateAction<ImageDraft[]>>
-  mainImageUrl: string
-  setMainImageUrl: React.Dispatch<React.SetStateAction<string>>
-  error?: string
-}) {
-  const [uploadState, uploadAction] = useActionState(uploadMediaAction, ACTION_IDLE as never)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [pending, startTransition] = useTransition()
-  const uploadId = useId()
-  const [pickerOpen, setPickerOpen] = useState(false)
-
-  const result = uploadState as { ok: boolean; url?: string; path?: string; message?: string }
-
-  /**
-   * Adds assets chosen in the media library, skipping any already attached.
-   *
-   * Alt text comes across from the library when the asset has one, so a caption
-   * written once in /admin/media does not have to be retyped on every product
-   * that uses the image. It stays editable per-product below, because the same
-   * photograph can warrant a different description in a different context.
-   */
-  const addFromLibrary = useCallback(
-    (assets: MediaAsset[]) => {
-      setImages((prev) => {
-        const existing = new Set(prev.map((image) => image.image_url))
-        const additions = assets
-          .filter((asset) => !existing.has(asset.url))
-          .map((asset) => ({
-            key: crypto.randomUUID(),
-            id: null,
-            image_url: asset.url,
-            alt_text: asset.altText ?? "",
-            storage_path: asset.objectPath,
-          }))
-        return additions.length > 0 ? [...prev, ...additions] : prev
-      })
-      // The first image a product ever gets becomes its primary image, so the
-      // common case needs no second click.
-      const first = assets[0]
-      if (first) setMainImageUrl((current) => current || first.url)
-    },
-    [setImages, setMainImageUrl],
-  )
-
-  // Append the uploaded object to the gallery once the action resolves. This
-  // runs in an effect rather than during render: appending is a side effect of
-  // the upload completing, and the de-duplication guard below makes a repeat
-  // render harmless.
-  const uploadedUrl = result.ok ? result.url : undefined
-  const uploadedPath = result.ok ? (result.path ?? null) : null
-  useEffect(() => {
-    if (!uploadedUrl) return
-    setImages((prev) =>
-      prev.some((image) => image.image_url === uploadedUrl)
-        ? prev
-        : [
-            ...prev,
-            {
-              key: crypto.randomUUID(),
-              id: null,
-              image_url: uploadedUrl,
-              alt_text: "",
-              storage_path: uploadedPath,
-            },
-          ],
-    )
-    setMainImageUrl((current) => current || uploadedUrl)
-  }, [uploadedUrl, uploadedPath, setImages, setMainImageUrl])
-
-  return (
-    <Panel
-      title="Görseller"
-      description="İlk görsel ana görsel olarak kullanılır. Sıralama listedeki sırayı izler."
-    >
-      <input type="hidden" name="main_image_url" value={mainImageUrl} />
-
-      <div className="mb-5 flex flex-wrap items-center gap-2">
-        <AdminButton variant="primary" onClick={() => setPickerOpen(true)}>
-          <ImageIcon className="h-4 w-4" aria-hidden="true" />
-          Medyadan seç
-        </AdminButton>
-        <p className="text-xs text-ink/50">
-          Daha önce yüklediğiniz görselleri arayıp seçin — adres kopyalamanız gerekmez.
-        </p>
-      </div>
-
-      <MediaPicker
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        onConfirm={addFromLibrary}
-        multiple
-        initialSelected={images
-          .map((image) => image.storage_path)
-          .filter((path): path is string => Boolean(path))}
-      />
-
-      <div className="mb-5 rounded-[3px] border border-dashed border-ink/20 p-4">
-        <label htmlFor={uploadId} className="label mb-2 block text-olive">
-          Yeni görsel yükle
-        </label>
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            ref={fileRef}
-            id={uploadId}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
-            className="block w-full max-w-xs text-sm text-ink/70 file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-full file:border file:border-ink/20 file:bg-transparent file:px-4 file:text-sm file:text-ink hover:file:border-brand hover:file:text-brand"
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (!file) return
-              const data = new FormData()
-              data.set("file", file)
-              startTransition(() => uploadAction(data))
-              event.target.value = ""
-            }}
-          />
-          {pending && (
-            <span className="inline-flex items-center gap-2 text-xs text-ink/55">
-              <span
-                aria-hidden="true"
-                className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent motion-reduce:animate-none"
-              />
-              Yükleniyor…
-            </span>
-          )}
-          <Upload className="h-4 w-4 text-ink/30" aria-hidden="true" />
-        </div>
-        <p className="mt-2 text-xs text-ink/45">JPEG, PNG, WebP veya AVIF · en fazla 10 MB</p>
-        {result.message && !result.ok && (
-          <p role="alert" className="mt-2 text-xs text-clay">
-            {result.message}
-          </p>
-        )}
-      </div>
-
-      {error && (
-        <p role="alert" className="mb-4 text-xs text-clay">
-          {error}
-        </p>
-      )}
-
-      {images.length === 0 ? (
-        <p className="py-6 text-center text-sm text-ink/45">
-          Henüz görsel eklenmedi. Medyadan seçin, yeni bir dosya yükleyin veya aşağıdan
-          adres ekleyin.
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {images.map((image, index) => {
-            const isPrimary = Boolean(image.image_url) && mainImageUrl === image.image_url
-            return (
-            <li
-              key={image.key}
-              className={cn(
-                "flex flex-wrap items-start gap-4 rounded-[3px] border p-3",
-                isPrimary ? "border-brand/50 bg-brand/[0.03]" : "border-ink/10 bg-ivory/60",
-              )}
-            >
-              <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-media bg-ink/[0.06]">
-                {image.image_url && (
-                  <Image
-                    src={image.image_url}
-                    alt=""
-                    fill
-                    sizes="64px"
-                    className="object-cover"
-                    unoptimized
-                  />
-                )}
-              </span>
-
-              <div className="min-w-0 flex-1 space-y-3">
-                {/* Position and primary status are stated in text, not conveyed
-                    by the highlighted border alone. */}
-                <p className="text-xs text-ink/50">
-                  {index + 1}. sıra
-                  {isPrimary && <span className="text-brand"> · Ana görsel</span>}
-                </p>
-                <AdminInput
-                  label="Görsel adresi"
-                  value={image.image_url}
-                  onChange={(event) =>
-                    setImages((prev) =>
-                      prev.map((img, i) =>
-                        i === index ? { ...img, image_url: event.target.value } : img,
-                      ),
-                    )
-                  }
-                />
-                <AdminInput
-                  label="Alternatif metin"
-                  value={image.alt_text}
-                  hint="Görme engelli kullanıcılar ve arama motorları için kısa açıklama."
-                  onChange={(event) =>
-                    setImages((prev) =>
-                      prev.map((img, i) =>
-                        i === index ? { ...img, alt_text: event.target.value } : img,
-                      ),
-                    )
-                  }
-                />
-              </div>
-
-              <div className="flex shrink-0 flex-col gap-1">
-                <AdminButton
-                  variant="ghost"
-                  aria-label={`${index + 1}. görseli yukarı taşı`}
-                  disabled={index === 0}
-                  onClick={() =>
-                    setImages((prev) => {
-                      const next = [...prev]
-                      ;[next[index - 1], next[index]] = [next[index], next[index - 1]]
-                      return next
-                    })
-                  }
-                >
-                  <GripVertical className="h-4 w-4" aria-hidden="true" />
-                  Yukarı
-                </AdminButton>
-                <AdminButton
-                  variant="ghost"
-                  aria-label={`${index + 1}. görseli aşağı taşı`}
-                  disabled={index === images.length - 1}
-                  onClick={() =>
-                    setImages((prev) => {
-                      const next = [...prev]
-                      ;[next[index], next[index + 1]] = [next[index + 1], next[index]]
-                      return next
-                    })
-                  }
-                >
-                  <GripVertical className="h-4 w-4" aria-hidden="true" />
-                  Aşağı
-                </AdminButton>
-                <AdminButton
-                  variant="ghost"
-                  onClick={() => setMainImageUrl(image.image_url)}
-                  disabled={isPrimary || !image.image_url}
-                >
-                  {isPrimary ? "Ana görsel" : "Ana görsel yap"}
-                </AdminButton>
-                <AdminButton
-                  variant="ghost"
-                  className="text-clay hover:text-clay"
-                  onClick={() => {
-                    setImages((prev) => prev.filter((_, i) => i !== index))
-                    // Removing the primary image promotes the next remaining
-                    // one rather than leaving the product with none, which the
-                    // schema forbids (products.main_image_url is NOT NULL).
-                    if (isPrimary) {
-                      const remaining = images.filter((_, i) => i !== index)
-                      setMainImageUrl(remaining[0]?.image_url ?? "")
-                    }
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  Kaldır
-                </AdminButton>
-              </div>
-            </li>
-            )
-          })}
-        </ul>
-      )}
-
-      <div className="mt-4">
-        <AdminButton
-          variant="outline"
-          onClick={() =>
-            setImages((prev) => [
-              ...prev,
-              { key: crypto.randomUUID(), id: null, image_url: "", alt_text: "", storage_path: null },
-            ])
-          }
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          URL ile görsel ekle
-        </AdminButton>
-      </div>
-    </Panel>
   )
 }
