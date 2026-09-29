@@ -81,7 +81,7 @@ export const products = {
       sourceName: "Kabia Çiftliği",
       name: "Kabuklu Badem",
       slug: "kabuklu-badem",
-      image: "/images/kabuklu-badem-acik.jpeg",
+      image: "/images/acik-badem.jpg",
       alt: "Kabia Çiftliği'nin kendi bahçesinden kabuklu badem",
     },
     {
@@ -97,7 +97,7 @@ export const products = {
       sourceName: "Kabia Mutfak",
       name: "Tarhana",
       slug: "tarhana",
-      image: "/images/tarhana-acik.jpeg",
+      image: "/images/acik-tarhana1.jpg",
       alt: "Üreticinin mutfağında geleneksel yöntemle hazırlanan tarhana",
     },
   ],
@@ -196,10 +196,10 @@ export const emanet = {
 } as const;
 
 export const editorialImage = {
-  src: "/images/almonds-drying.jpg",
-  width: 2200,
-  height: 1466,
-  alt: "Hasat edilmiş kabuklu bademler, sepetin yanında yığın halinde kuruyor",
+  src: "/images/kilimbadem.jpg",
+  width: 1672,
+  height: 941,
+  alt: "Kilim üzerinde kurumaya serilmiş kabuklu bademler",
   caption: "Hasat sonrası. Bademler kabuğunda, kendi halinde kurur.",
 } as const;
 
@@ -218,7 +218,7 @@ export const finalCta = {
   titleB: "bir hikâye.",
   body: "Sorun, önerin — bahçeden biri okuyor, hafta içi dönüyoruz.",
   image: {
-    src: "/images/almonds-net.jpg",
+    src: "/images/file-badem.jpg",
     alt: "File içinde kabuklu Kabia bademleri",
   },
 } as const;

@@ -36,7 +36,7 @@ export default function FarmPage() {
           <figure>
             <div className="relative aspect-[4/3] overflow-hidden rounded-media bg-paper">
               <Image
-                src="/images/resim22.jpg"
+                src="/images/bostarla.jpg"
                 alt="2019 Kasım — Bahçe kurulmadan önce, Sabırlar"
                 fill
                 sizes="(min-width: 768px) 60vw, 100vw"
@@ -128,6 +128,38 @@ export default function FarmPage() {
         </div>
       </section>
 
+      {/* Kurucu imzası: kuruluş hikayesinin sonunda, anlatanın yüzü.
+          Alıntı yok — hikayenin kendisi imza, bu blok yalnızca kimin
+          anlattığını gösterir. */}
+      <section aria-label="Kurucu" className="border-t border-ink/10">
+        <div className="wrap grid items-center gap-10 py-24 md:grid-cols-12 md:py-32">
+          <div className="md:col-span-4">
+            <div className="relative aspect-[3/4] overflow-hidden rounded-media bg-paper">
+              <Image
+                src="/images/necmettin-sivaci.jpg"
+                alt="Kabia Ekolojik'in sahibi Necmettin Sıvacı badem bahçesinde"
+                fill
+                sizes="(min-width: 768px) 33vw, 100vw"
+                className="object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          </div>
+          <div className="md:col-span-7 md:col-start-6">
+            <p className="label text-olive">Kurucu</p>
+            <h2 className="mt-5 text-3xl leading-[1.1] tracking-tight md:text-4xl">
+              Necmettin Sıvacı
+            </h2>
+            <p className="mt-5 max-w-lg text-base leading-relaxed text-ink/65">
+              Kabia Ekolojik&apos;in sahibi. Yukarıdaki hikâyede geçen her
+              &ldquo;biz&rdquo;in arkasında o var — tarlayı dinlemeye gelen
+              de, fidanı diken de.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Çiftlik kartı: rakamlar + iki fotoğraf, altlarında kendi hikâyeleri. */}
       <section aria-label="Çiftlik özeti" className="border-t border-ink/10">
         <div className="wrap py-24 md:py-32">
@@ -143,7 +175,7 @@ export default function FarmPage() {
             <figure>
               <div className="relative aspect-[4/3] overflow-hidden rounded-media bg-paper">
                 <Image
-                  src="/images/orchard-hillside.jpg"
+                  src="/images/bademagaclari.jpg"
                   alt="Badem ağaçları 3. yıl, Kılıçkaya yamaçları"
                   fill
                   sizes="(min-width: 768px) 50vw, 100vw"
@@ -157,7 +189,7 @@ export default function FarmPage() {
             <figure>
               <div className="relative aspect-[4/3] overflow-hidden rounded-media bg-paper">
                 <Image
-                  src="/images/gunluk-2026-08-25-yesil-kabuk.jpeg"
+                  src="/images/yesilbadem.jpg"
                   alt="Dalında yeşil kabuklu Marinada bademleri"
                   fill
                   sizes="(min-width: 768px) 50vw, 100vw"

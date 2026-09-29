@@ -91,7 +91,7 @@ export const journalEntries: JournalEntry[] = [
     application: "Yok — sadece gözlem",
     observation: "Dış kabuk çatlamaya başladı; ama hasat için biraz daha zaman var gibi.",
     outcome: "Takip sürüyor — çatlama tamamlanınca hasat.",
-    photo: "/images/gunluk-2026-09-13-catlak-kabuk.jpeg",
+    photo: "/images/catlakkabuk.jpg",
   },
   {
     slug: "2026-08-25-yesil-kabuk",
@@ -102,6 +102,6 @@ export const journalEntries: JournalEntry[] = [
     application: "Yok — sadece gözlem",
     observation: "Bademler dalda yeşil kabuğunda duruyor; çatlama başlamadı.",
     outcome: "Hasat için erken — takip sürüyor.",
-    photo: "/images/gunluk-2026-08-25-yesil-kabuk.jpeg",
+    photo: "/images/yesilbadem.jpg",
   },
 ]

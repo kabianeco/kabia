@@ -42,7 +42,7 @@ export const farmTimeline: readonly FarmState[] = [
       "2019’da dinlediğimiz o boş yamaç, iki yaz sonra Temmuz sıcağında tek tek can buldu. Her çukur elle açıldı, her Marinada kökleri incitmeden yerleştirildi, can suyu aynı gün verildi. “Olmaz” denilen yamaç, o gün ilk kez bahçe oldu.",
       "O yaz suyu değil, sabrı konuştuk. Tutmayan fidanı gece suladık, tutanı sessizce izledik. 946 fidan aynı anda büyümedi — kimi erken uyandı, kimi bir mevsim bekledi. Ama hepsi aynı toprağı paylaştı, aynı rüzgarı duydu. Bu dikim bir hasat değil, bir emanetin toprağa bırakılışıydı."
     ],
-    "image": "/images/marina-ilk-dikim.jpeg",
+    "image": "/images/ilkdikim.jpg",
     "imageAlt": "2021 Temmuz — 946 Marinada fidan dikimi"
   },
   {
