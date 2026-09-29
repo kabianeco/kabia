@@ -5,9 +5,9 @@ import { z } from "zod"
 import { adminContext } from "@/lib/admin/auth"
 import { logAdminAction, AUDIT_WARNING } from "@/lib/admin/audit"
 import { toActionState, type ActionState } from "@/lib/admin/errors"
-import { mediaMetadataSchema, MEDIA_MIME_TYPES } from "@/lib/admin/schemas"
-import { MEDIA_BUCKET, MEDIA_MAX_BYTES, safeObjectName } from "@/lib/admin/media"
-import { probeImage, PROBE_BYTES } from "@/lib/admin/image-probe"
+import { mediaMetadataSchema } from "@/lib/admin/schemas"
+import { isMediaFolder, type MediaAsset, type MediaFolder } from "@/lib/admin/media"
+import { performMediaUpload } from "@/lib/admin/media-upload"
 import { loadMediaUsage, MediaUsageUnavailableError } from "@/lib/admin/queries/media"
 import { deleteBlockedMessage } from "@/lib/admin/media-usage"
 
@@ -29,6 +29,8 @@ export interface UploadResult extends ActionState {
   url?: string
   path?: string
   id?: string
+  /** The catalogued asset, so a picker can select what it just uploaded. */
+  asset?: MediaAsset
 }
 
 async function revalidateMedia() {
@@ -36,6 +38,8 @@ async function revalidateMedia() {
   // The picker is rendered inside these, and reads the same catalogue.
   revalidatePath("/admin/products/new")
   revalidatePath("/admin/products", "layout")
+  revalidatePath("/admin/producers", "layout")
+  revalidatePath("/admin/journal", "layout")
 }
 
 export async function uploadMediaAction(
@@ -45,83 +49,39 @@ export async function uploadMediaAction(
   try {
     const { session, supabase } = await adminContext("manageMedia")
 
-    const file = formData.get("file")
-    if (!(file instanceof File) || file.size === 0) {
-      return { ok: false, message: "Yüklenecek dosya seçilmedi." }
-    }
-    if (file.size > MEDIA_MAX_BYTES) {
-      return { ok: false, message: "Dosya 10 MB sınırını aşıyor." }
-    }
-    if (!(MEDIA_MIME_TYPES as readonly string[]).includes(file.type)) {
-      return { ok: false, message: "Yalnızca JPEG, PNG, WebP ve AVIF görselleri yüklenebilir." }
+    // Where the object is filed. Absent means the library's own YYYY-MM/ layout;
+    // anything present must be one of the known content folders.
+    const rawFolder = formData.get("folder")
+    let folder: MediaFolder | null = null
+    if (rawFolder !== null && rawFolder !== "") {
+      if (!isMediaFolder(rawFolder)) return { ok: false, message: "Geçersiz yükleme klasörü." }
+      folder = rawFolder
     }
 
-    // The declared type is a claim; the bytes are the evidence. A file that
-    // says image/png but does not begin with a PNG header is rejected before
-    // anything is written, and the *probed* type — not the declared one —
-    // decides the stored extension and content type from here on.
-    const header = await file.slice(0, PROBE_BYTES).arrayBuffer()
-    const probed = probeImage(header)
-    if (!probed) {
-      return {
-        ok: false,
-        message:
-          "Dosya içeriği geçerli bir görsel değil. Yalnızca JPEG, PNG, WebP ve AVIF kabul edilir.",
-      }
-    }
-    if (probed.format !== file.type) {
-      return {
-        ok: false,
-        message: `Dosya türü içeriğiyle uyuşmuyor (gerçek içerik: ${probed.format}). Dosyayı doğru biçimde yeniden kaydedin.`,
-      }
+    const result = await performMediaUpload(supabase, {
+      file: formData.get("file"),
+      folder,
+      userId: session.userId,
+    })
+    if (!result.ok) {
+      return result.kind === "invalid"
+        ? { ok: false, message: result.message }
+        : toActionState(result.error, result.context)
     }
 
-    const path = safeObjectName(file.name, probed.format)
-
-    const { error: uploadError } = await supabase.storage
-      .from(MEDIA_BUCKET)
-      .upload(path, file, { contentType: probed.format, upsert: false })
-
-    if (uploadError) return toActionState(uploadError, "uploadMedia")
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(path)
-
-    // Catalogue row second: if this fails the object is orphaned, so it is
-    // removed again rather than left invisible to every screen in the app.
-    const { data: asset, error: insertError } = await supabase
-      .from("media_assets")
-      .insert({
-        bucket_id: MEDIA_BUCKET,
-        object_path: path,
-        original_filename: file.name.slice(0, 200),
-        mime_type: probed.format,
-        file_size: file.size,
-        width: probed.width,
-        height: probed.height,
-        created_by: session.userId,
-      })
-      .select("id")
-      .single()
-
-    if (insertError || !asset) {
-      await supabase.storage.from(MEDIA_BUCKET).remove([path])
-      return toActionState(insertError ?? new Error("media row missing"), "uploadMedia:catalogue")
-    }
-
+    const { asset, path, url } = result
     const audited = await logAdminAction(supabase, {
       action: "media.upload",
       entityType: "media",
       entityId: asset.id,
       after: {
         path,
-        size: file.size,
-        mime_type: probed.format,
-        width: probed.width,
-        height: probed.height,
+        size: asset.fileSize,
+        mime_type: asset.mimeType,
+        width: asset.width,
+        height: asset.height,
       },
-      metadata: { original_filename: file.name },
+      metadata: { original_filename: asset.originalFilename, folder },
     })
 
     await revalidateMedia()
@@ -129,8 +89,9 @@ export async function uploadMediaAction(
     return {
       ok: true,
       id: asset.id,
-      url: publicUrl,
+      url,
       path,
+      asset,
       message: "Görsel yüklendi.",
       warning: audited ? undefined : AUDIT_WARNING,
     }

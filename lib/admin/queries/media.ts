@@ -42,7 +42,7 @@ export interface MediaPage {
   pageCount: number
 }
 
-interface MediaRow {
+export interface MediaRow {
   id: string
   bucket_id: string
   object_path: string
@@ -57,7 +57,7 @@ interface MediaRow {
   created_by: string
 }
 
-function toAsset(row: MediaRow, publicUrl: string, uploadedBy: string | null): MediaAsset {
+export function toAsset(row: MediaRow, publicUrl: string, uploadedBy: string | null): MediaAsset {
   return {
     id: row.id,
     bucketId: row.bucket_id,

@@ -83,6 +83,42 @@ export function formatDimensions(width: number | null, height: number | null): s
 }
 
 /**
+ * The folders content uploads are filed under, so the bucket is legible in the
+ * Supabase dashboard: what a product editor uploads goes under `products/`, and
+ * so on. Uploads from the library page itself keep the bare `YYYY-MM/` layout.
+ * An allow-list, because the folder arrives from a form field.
+ */
+export const MEDIA_FOLDERS = ["products", "producers", "journal"] as const
+export type MediaFolder = (typeof MEDIA_FOLDERS)[number]
+
+export function isMediaFolder(value: unknown): value is MediaFolder {
+  return typeof value === "string" && (MEDIA_FOLDERS as readonly string[]).includes(value)
+}
+
+/**
+ * Object names are unique and never overwritten (`upsert: false`), so a stored
+ * object never changes: it can be cached for a year without ever going stale.
+ * Passed as Storage's `cacheControl` (seconds).
+ */
+export const MEDIA_CACHE_CONTROL = "31536000"
+
+/**
+ * `[folder/]YYYY-MM/<stem>-<8 hex>.<ext>` — the one naming convention. Uploads
+ * from the admin use a random suffix; the one-time migration script derives it
+ * from the file's bytes so a re-run produces the same name.
+ */
+export function mediaObjectName(parts: {
+  stem: string
+  suffix: string
+  ext: string
+  folder?: MediaFolder | null
+  month: string
+}): string {
+  const prefix = parts.folder ? `${parts.folder}/` : ""
+  return `${prefix}${parts.month}/${parts.stem}-${parts.suffix}.${parts.ext}`
+}
+
+/**
  * Never trust a client-supplied filename as a storage path: it can contain
  * `../`, control characters, a NUL byte, or a wildly different extension from
  * the real content type. The name is rebuilt from a slugified stem, a random
@@ -92,19 +128,21 @@ export function formatDimensions(width: number | null, height: number | null): s
  * Foldering by year/month keeps any single Storage prefix small enough to list
  * quickly, and makes the object layout legible in the Supabase dashboard.
  */
-export function safeObjectName(originalName: string, mimeType: string): string {
+export function safeObjectName(originalName: string, mimeType: string, folder?: MediaFolder | null): string {
   const base = originalName
     .replace(/\.[^.]+$/, "")
     .toLocaleLowerCase("en")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 48)
-  const stem = base || "gorsel"
-  const extension = MEDIA_EXTENSIONS[mimeType] ?? "bin"
-  const unique = crypto.randomUUID().slice(0, 8)
   const now = new Date()
-  const folder = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`
-  return `${folder}/${stem}-${unique}.${extension}`
+  return mediaObjectName({
+    stem: base || "gorsel",
+    suffix: crypto.randomUUID().slice(0, 8),
+    ext: MEDIA_EXTENSIONS[mimeType] ?? "bin",
+    folder,
+    month: `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`,
+  })
 }
 
 /**
