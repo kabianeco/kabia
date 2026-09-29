@@ -90,3 +90,26 @@ export async function saveJournalGallery(
   if (error) return { ...toActionState(error, "saveJournal:images"), ok: false }
   return { ok: true, count: typeof data === "number" ? data : parsed.data.images.length }
 }
+
+/**
+ * The gallery and its main/cover image arrive as two form fields: `images` (a
+ * JSON array in display order) and `main_image_url`. Returned unvalidated — the
+ * schemas and the database do that — or null when the JSON itself is unreadable,
+ * so nothing half-parsed ever reaches validation. No `images` field means an
+ * empty gallery.
+ */
+export function parseGalleryFormFields(formData: FormData): { main_image_url: string; images: unknown[] } | null {
+  const raw = formData.get("images")
+  let images: unknown[] = []
+  if (typeof raw === "string" && raw.trim() !== "") {
+    try {
+      const parsed: unknown = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return null
+      images = parsed
+    } catch {
+      return null
+    }
+  }
+  const main = formData.get("main_image_url")
+  return { main_image_url: typeof main === "string" ? main.trim() : "", images }
+}

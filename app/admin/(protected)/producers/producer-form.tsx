@@ -148,7 +148,7 @@ export function ProducerForm({ producer }: { producer: ProducerDetail | null }) 
 
           <Panel
             title="Fotoğraf"
-            description="Medya kütüphanesinden seçilir — bu ekrana dosya yüklenmez."
+            description="Medya kütüphanesinden seçin ya da seçicinin içinden yeni dosya yükleyin."
           >
             <input type="hidden" name="photo_url" value={photoUrl} />
 
@@ -170,6 +170,8 @@ export function ProducerForm({ producer }: { producer: ProducerDetail | null }) 
               onClose={() => setPickerOpen(false)}
               onConfirm={addFromLibrary}
               multiple={false}
+              folder="producers"
+              isAttached={(asset) => asset.url === photoUrl}
             />
 
             {photoUrl ? (

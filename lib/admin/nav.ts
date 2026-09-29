@@ -19,6 +19,7 @@ export type AdminNavIcon =
   | "customers"
   | "media"
   | "content"
+  | "journal"
   | "appearance"
   | "settings"
   | "administrators"
@@ -44,6 +45,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin/customers", label: "Müşteriler", icon: "customers", permission: "viewCustomers", matchPrefix: true },
   { href: "/admin/media", label: "Medya", icon: "media", permission: "manageMedia", matchPrefix: true },
   { href: "/admin/content", label: "İçerik", icon: "content", permission: "manageContent", matchPrefix: true },
+  { href: "/admin/journal", label: "Günlük", icon: "journal", permission: "manageJournal", matchPrefix: true },
   { href: "/admin/appearance", label: "Görünüm", icon: "appearance", permission: "manageTheme", matchPrefix: true },
   { href: "/admin/settings", label: "Ayarlar", icon: "settings", permission: "manageSettings", matchPrefix: true },
   {

@@ -32,6 +32,11 @@ export type AuditAction =
   | "producer.publish"
   | "producer.unpublish"
   | "producer.delete"
+  | "journal.create"
+  | "journal.update"
+  | "journal.publish"
+  | "journal.unpublish"
+  | "journal.delete"
   | "media.upload"
   | "media.update"
   | "media.delete"
@@ -147,6 +152,11 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "theme.revision_restore": "Tema sürümü geri yüklendi",
   "blog.post_create": "Blog yazısı oluşturuldu",
   "blog.post_update": "Blog yazısı güncellendi",
+  "journal.create": "Günlük notu oluşturuldu",
+  "journal.update": "Günlük notu güncellendi",
+  "journal.publish": "Günlük notu yayınlandı",
+  "journal.unpublish": "Günlük notu yayından kaldırıldı",
+  "journal.delete": "Günlük notu silindi",
   "blog.post_publish": "Blog yazısı yayınlandı",
   "blog.post_unpublish": "Blog yazısı yayından kaldırıldı",
   "blog.post_schedule": "Blog yazısı zamanlandı",
@@ -172,6 +182,7 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   product_image: "Ürün görseli",
   category: "Kategori",
   producer: "Üretici",
+  journal_entry: "Günlük notu",
   order: "Sipariş",
   customer: "Müşteri",
   media: "Medya",

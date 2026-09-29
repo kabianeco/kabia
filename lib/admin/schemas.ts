@@ -528,8 +528,56 @@ export const producerSchema = z.object({
   sort_order: intField("Sıra", 0, 9999),
 })
 
+/** "2026-02-30" has the right shape and is not a date; only a real calendar day passes. */
+function isRealIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const parsed = new Date(`${value}T00:00:00Z`)
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+}
+
+const journalText = (label: string, max: number) =>
+  z
+    .string()
+    .trim()
+    .min(1, `${label} zorunlu.`)
+    .max(max, `${label} en fazla ${max} karakter olabilir.`)
+
+/**
+ * A field-journal entry (/gunluk). The limits mirror the CHECK constraints on
+ * journal_entries, so the operator hears about a too-long line here rather than
+ * as a generic database refusal. The cover image is not part of this schema: it
+ * is written together with the gallery (journalGallerySchema).
+ *
+ * The video is a *local* path (the media library accepts images only), so it is
+ * held to the same shape the database enforces: a site-relative .mp4/.webm.
+ */
+export const journalEntrySchema = z.object({
+  slug: slugSchema,
+  entry_date: z
+    .string()
+    .trim()
+    .refine(isRealIsoDate, { message: "Geçerli bir tarih girin (YYYY-AA-GG)." }),
+  location: journalText("Konum", 120),
+  weather: journalText("Hava", 120),
+  orchard_state: journalText("Bahçenin durumu", 300),
+  application: journalText("Uygulama", 400),
+  observation: journalText("Gözlem", 600),
+  outcome: journalText("Sonuç", 1000),
+  video_path: z
+    .string()
+    .trim()
+    .max(300, "Video yolu en fazla 300 karakter olabilir.")
+    .nullish()
+    .transform((v) => v || null)
+    .refine((v) => v == null || (/^\/[^/]/.test(v) && /\.(mp4|webm)$/i.test(v)), {
+      message: "Video yolu / ile başlamalı ve .mp4 ya da .webm ile bitmeli (ör. /images/not.mp4).",
+    }),
+  is_published: z.boolean(),
+})
+
 export type ProductInput = z.infer<typeof productSchema>
 export type ProducerInput = z.infer<typeof producerSchema>
+export type JournalEntryInput = z.infer<typeof journalEntrySchema>
 export type VariantInput = z.infer<typeof variantSchema>
 export type GalleryImageInput = z.infer<typeof galleryImageSchema>
 

@@ -14,7 +14,7 @@ import {
   uuid,
   variantSchema,
 } from "@/lib/admin/schemas"
-import { saveProductGallery } from "@/lib/admin/gallery-save"
+import { parseGalleryFormFields, saveProductGallery } from "@/lib/admin/gallery-save"
 import { countOrderReferences, loadProductDetail } from "@/lib/admin/queries/products"
 import { CATALOG_PRODUCTS_TAG } from "@/lib/catalog"
 import {
@@ -73,27 +73,6 @@ function parseJsonField<T>(raw: FormDataEntryValue | null, schema: z.ZodType<T>)
   }
 }
 
-/**
- * The gallery and its main image arrive as two fields: `images` (a JSON array in
- * display order) and `main_image_url`. Returned unvalidated — the schema and the
- * database do that — or null when the JSON itself is unreadable.
- */
-function parseGalleryPayload(formData: FormData): { main_image_url: string; images: unknown[] } | null {
-  const raw = formData.get("images")
-  let images: unknown[] = []
-  if (typeof raw === "string" && raw.trim() !== "") {
-    try {
-      const parsed = JSON.parse(raw)
-      if (!Array.isArray(parsed)) return null
-      images = parsed
-    } catch {
-      return null
-    }
-  }
-  const main = formData.get("main_image_url")
-  return { main_image_url: typeof main === "string" ? main.trim() : "", images }
-}
-
 function boolField(formData: FormData, name: string): boolean {
   return formData.get(name) === "on" || formData.get(name) === "true"
 }
@@ -121,7 +100,7 @@ export async function saveProductAction(
     }
 
     const variants = parseJsonField(formData.get("variants"), variantSchema)
-    const gallery = parseGalleryPayload(formData)
+    const gallery = parseGalleryFormFields(formData)
     if (variants === null || gallery === null) {
       return { ok: false, message: "Ürün seçenekleri veya görselleri okunamadı." }
     }

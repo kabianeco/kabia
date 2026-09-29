@@ -208,3 +208,29 @@ describe("buildProductUpdateRow", () => {
     )
   })
 })
+
+describe("parseGalleryFormFields", () => {
+  const form = (entries: Record<string, string>) => {
+    const data = new FormData()
+    for (const [key, value] of Object.entries(entries)) data.set(key, value)
+    return data
+  }
+
+  it("reads the images JSON and the main image from the form", async () => {
+    const { parseGalleryFormFields } = await import("../lib/admin/gallery-save.ts")
+    const parsed = parseGalleryFormFields(form({ images: JSON.stringify([img("a")]), main_image_url: "  /images/a.jpg " }))
+    assert.deepEqual(parsed, { main_image_url: "/images/a.jpg", images: [img("a")] })
+  })
+
+  it("no images field means an empty gallery, not an error", async () => {
+    const { parseGalleryFormFields } = await import("../lib/admin/gallery-save.ts")
+    assert.deepEqual(parseGalleryFormFields(form({})), { main_image_url: "", images: [] })
+    assert.deepEqual(parseGalleryFormFields(form({ images: "   ", main_image_url: "" })), { main_image_url: "", images: [] })
+  })
+
+  it("unreadable or non-array JSON is refused so nothing half-parsed reaches validation", async () => {
+    const { parseGalleryFormFields } = await import("../lib/admin/gallery-save.ts")
+    assert.equal(parseGalleryFormFields(form({ images: "{not json" })), null)
+    assert.equal(parseGalleryFormFields(form({ images: '{"a":1}' })), null)
+  })
+})
