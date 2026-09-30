@@ -6,7 +6,6 @@ import assert from "node:assert/strict"
 // naming convention (folder/YYYY-MM/stem-8hex.ext), the long cache header, the
 // validation order, and that a half-finished upload never leaves an orphan.
 
-const MAX = 10 * 1024 * 1024 // the bucket's own limit
 const UPLOAD_MAX = 4 * 1024 * 1024 // the largest file that can reach the server through the app
 
 function pngFile(name: string, width = 8, height = 6, type = "image/png"): File {
