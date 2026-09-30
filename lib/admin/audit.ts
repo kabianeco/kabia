@@ -68,6 +68,7 @@ export type AuditAction =
   | "order.email_resend"
   | "customer.recovery_sent"
   | "customer.password_set"
+  | "email.send"
   | "administrator.create"
   | "administrator.role_change"
   | "administrator.deactivate"
@@ -142,6 +143,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "order.email_resend": "Sipariş e-postası yeniden gönderildi",
   "customer.recovery_sent": "Müşteriye şifre yenileme bağlantısı gönderildi",
   "customer.password_set": "Müşteri şifresi yönetici tarafından belirlendi",
+  "email.send": "E-posta gönderildi",
   "settings.update": "Ayar güncellendi",
   "content.update": "İçerik güncellendi",
   "theme.draft_save": "Tema taslağı kaydedildi",
@@ -188,6 +190,7 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   media: "Medya",
   setting: "Ayar",
   theme: "Tema",
+  email: "E-posta",
   administrator: "Yönetici",
   blog_post: "Blog yazısı",
   blog_category: "Blog kategorisi",

@@ -44,15 +44,24 @@ export const dynamic = "force-dynamic"
 export const revalidate = 0
 
 async function loadAlerts(): Promise<ShellAlerts> {
-  const empty: ShellAlerts = { outOfStock: 0, lowStock: 0, preparingOrders: 0 }
+  const empty: ShellAlerts = { outOfStock: 0, lowStock: 0, preparingOrders: 0, unreadEmails: 0 }
   try {
     const supabase = await createSupabaseServerClient()
-    const [risk, preparing] = await Promise.all([
+    const [risk, preparing, unread] = await Promise.all([
       supabase.rpc("admin_inventory_risk"),
       supabase
         .from("orders")
         .select("id", { count: "exact", head: true })
         .eq("status", "hazirlaniyor"),
+      // Okunmamış gelen e-postalar (silinmiş ve arşivlenmiş hariç). Hata
+      // olursa 0 kalır; sayfanın kendisi kendi hata durumunu gösterir.
+      supabase
+        .from("emails")
+        .select("id", { count: "exact", head: true })
+        .eq("direction", "inbound")
+        .eq("is_read", false)
+        .eq("is_archived", false)
+        .eq("is_deleted", false),
     ])
 
     const riskData = (risk.data ?? {}) as { out_of_stock?: number; low?: number }
@@ -60,6 +69,7 @@ async function loadAlerts(): Promise<ShellAlerts> {
       outOfStock: Number(riskData.out_of_stock ?? 0),
       lowStock: Number(riskData.low ?? 0),
       preparingOrders: preparing.count ?? 0,
+      unreadEmails: unread.count ?? 0,
     }
   } catch {
     // The shell must render even if the alert queries fail; the pages below

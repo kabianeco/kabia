@@ -46,6 +46,7 @@ export const PERMISSIONS = {
   manageContent: ["admin", "super_admin"],
   manageJournal: ["admin", "super_admin"],
   viewMessages: ["admin", "super_admin"],
+  manageInbox: ["admin", "super_admin"],
   manageSettings: ["admin", "super_admin"],
   manageTheme: ["admin", "super_admin"],
   manageSensitiveSettings: ["super_admin"],

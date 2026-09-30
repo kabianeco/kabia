@@ -106,6 +106,15 @@ export default async function MessagesPage({
                     >
                       {message.email}
                     </a>
+                    <span className="mx-2 text-ink/25" aria-hidden="true">
+                      ·
+                    </span>
+                    <a
+                      href={`/admin/eposta/yeni?kime=${encodeURIComponent(message.email)}&konu=${encodeURIComponent(`İletişim formu — ${contactSubjectLabel(message.subject)}`)}`}
+                      className="underline underline-offset-4 hover:text-ink"
+                    >
+                      E-posta ile yanıtla
+                    </a>
                     {message.phone && (
                       <>
                         <span className="mx-2 text-ink/25" aria-hidden="true">

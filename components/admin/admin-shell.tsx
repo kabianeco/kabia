@@ -13,6 +13,7 @@ import {
   ExternalLink,
   FileText,
   Image as ImageIcon,
+  Inbox,
   LayoutDashboard,
   Mail,
   Menu,
@@ -57,6 +58,7 @@ export interface ShellAlerts {
   outOfStock: number
   lowStock: number
   preparingOrders: number
+  unreadEmails: number
 }
 
 export interface ShellSession {
@@ -83,6 +85,7 @@ const NAV_ICONS: Record<AdminNavIcon, LucideIcon> = {
   administrators: ShieldCheck,
   audit: ScrollText,
   messages: Mail,
+  inbox: Inbox,
 }
 
 function NavIcon({ icon, className }: { icon: AdminNavIcon; className?: string }) {
@@ -193,7 +196,9 @@ function NavList({
             ? alerts.outOfStock + alerts.lowStock
             : item.href === "/admin/orders"
               ? alerts.preparingOrders
-              : 0
+              : item.href === "/admin/eposta"
+                ? alerts.unreadEmails
+                : 0
         return (
           <li key={item.href}>
             <Link
