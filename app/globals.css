@@ -269,7 +269,7 @@ body::before {
     content: "";
     position: absolute;
     inset: 0;
-    border: 1px solid transparent;
+    border: 1.25px solid transparent;
     border-radius: inherit;
     pointer-events: none;
     transition: border-color 350ms var(--ease-editorial);
@@ -283,7 +283,7 @@ body::before {
   }
 
   .site-header__bar--floating .site-header__logo {
-    height: 26px;
+    height: 23.4px;
   }
 
   .site-header__bar--floating::after {
