@@ -159,7 +159,9 @@ export function GalleryEditor({
                     resetDrag()
                   }}
                   className={cn(
-                    "flex flex-wrap items-start gap-4 rounded-[3px] border p-3 transition-colors",
+                    // Stacked on a phone (thumbnail, full-width alt text, then the controls
+                    // as a wrapping row); side by side from sm up.
+                    "flex flex-col gap-3 rounded-[3px] border p-3 transition-colors sm:flex-row sm:flex-wrap sm:items-start sm:gap-4",
                     isMain ? "border-brand/50 bg-brand/[0.03]" : "border-ink/10 bg-ivory/60",
                     dragIndex === index && "opacity-50",
                     dragIndex !== null && overIndex === index && dragIndex !== index && "border-brand ring-2 ring-brand/30",
@@ -188,7 +190,7 @@ export function GalleryEditor({
                     )}
                   </span>
 
-                  <div className="min-w-0 flex-1 space-y-3">
+                  <div className="min-w-0 space-y-3 sm:flex-1">
                     {/* Position and main status are stated in text, not conveyed
                         by the highlighted border alone. */}
                     <p className="text-xs text-ink/50">
@@ -204,7 +206,7 @@ export function GalleryEditor({
                     />
                   </div>
 
-                  <div className="flex shrink-0 flex-col gap-1">
+                  <div className="flex flex-wrap gap-1 sm:shrink-0 sm:flex-col">
                     <AdminButton
                       variant="ghost"
                       data-action="up"
