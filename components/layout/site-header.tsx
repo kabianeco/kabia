@@ -38,6 +38,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
   const { itemCount, hydrated: cartHydrated } = useCart();
 
   const [scrolled, setScrolled] = useState(false);
+  const [scrollReady, setScrollReady] = useState(false);
   // The menu remembers the route it was opened on, so any navigation closes it
   // by derivation — no effect needed to reset it.
   const [openedOn, setOpenedOn] = useState<string | null>(null);
@@ -57,10 +58,32 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
   const focusOnCloseRef = useRef(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
+    let frame = 0;
+    let readyFrame = 0;
+    let readyFrame2 = 0;
+    const updateScroll = () => {
+      frame = 0;
+      const y = window.scrollY;
+      // Keep one scroll state for both the surface and the floating shape.
+      // The gap between thresholds prevents jitter near the top of the page.
+      setScrolled((wasScrolled) => y > 16 ? true : y < 4 ? false : wasScrolled);
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateScroll);
+    };
+    // A restored position is measured after hydration while transitions are
+    // disabled, so the first client change cannot animate from the SSR shape.
+    updateScroll();
+    readyFrame = window.requestAnimationFrame(() => {
+      readyFrame2 = window.requestAnimationFrame(() => setScrollReady(true));
+    });
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.cancelAnimationFrame(frame);
+      window.cancelAnimationFrame(readyFrame);
+      window.cancelAnimationFrame(readyFrame2);
+    };
   }, []);
 
   const close = useCallback((restoreFocus = true) => {
@@ -166,6 +189,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
         // already carries it, so the header only offsets below the band;
         // without the band the header pads itself clear of the notch.
         "site-header fixed inset-x-0 z-40",
+        !scrollReady && "site-header--initial",
         bannerOffset
           ? "top-[calc(2.5rem+var(--safe-top))]"
           : "top-0 pt-[var(--safe-top)]",
@@ -177,17 +201,34 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
         // the full-screen curtain to the bar's own 64px.
         open && "site-header--menu-open",
         open
-          ? "border-b border-ink/10 bg-ivory"
+          ? "lg:border-b lg:border-ink/10 lg:bg-ivory"
           : surfaced
-            ? "border-b border-ink/10 bg-ivory/95 backdrop-blur-sm"
+            ? "lg:border-b lg:border-ink/10 lg:bg-ivory/95 lg:backdrop-blur-sm"
             // Floating with no ground of its own means floating over the
             // intro's footage, which is dark. The ink palette used everywhere
             // else is invisible there, so the header borrows the light one
             // (see .site-header--over-film in globals.css).
-            : "site-header--over-film border-b border-transparent bg-transparent",
+            : "site-header--over-film lg:border-b lg:border-transparent lg:bg-transparent",
       )}
     >
-      <div className="wrap flex h-16 items-center justify-between lg:h-20">
+      {!bannerOffset && (
+        <div
+          aria-hidden="true"
+          className={cn(
+            "site-header__safe-area absolute inset-x-0 top-0 h-[var(--safe-top)] lg:hidden",
+            surfaced ? "bg-ivory" : "bg-transparent",
+          )}
+        />
+      )}
+      <div
+        className={cn(
+          "site-header__bar relative h-16 lg:h-20 lg:bg-transparent",
+          scrolled && !open && "site-header__bar--floating",
+          open || scrolled ? "bg-ivory" : surfaced ? "bg-ivory/95" : "bg-transparent",
+          surfaced && !open && !scrolled && "backdrop-blur-sm lg:backdrop-blur-none",
+        )}
+      >
+        <div className="wrap flex h-full items-center justify-between">
         <Link
           href={routes.home}
           prefetch={false}
@@ -320,6 +361,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
               {icon === "kapat" ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </span>
           </button>
+        </div>
         </div>
       </div>
 

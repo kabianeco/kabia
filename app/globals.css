@@ -110,6 +110,7 @@
      --safe-bottom to simulate a device; env() is 0 where there is none. */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --page-gutter: 1.5rem;
   --surface: #f4f1e8;
   --surface-raised: #eae5d8;
   --text: #1c201b;
@@ -240,6 +241,63 @@ body::before {
     border-color 300ms;
 }
 
+/* On mobile the fixed header stays full width while only its 64px row takes
+   the store grid's gutter. The separate safe-area layer always spans the
+   viewport above it. A painted border avoids changing the row's box size. */
+@media (max-width: 1023px) {
+  .site-header__bar {
+    border-radius: 0;
+    transition:
+      margin-left 350ms var(--ease-editorial),
+      margin-right 350ms var(--ease-editorial),
+      border-radius 350ms var(--ease-editorial),
+      background-color 350ms var(--ease-editorial);
+  }
+
+  .site-header__bar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid transparent;
+    border-radius: inherit;
+    pointer-events: none;
+    transition: border-color 350ms var(--ease-editorial);
+  }
+
+  .site-header__bar--floating {
+    margin-inline: var(--page-gutter);
+    border-radius: 12px;
+  }
+
+  .site-header__bar--floating::after {
+    border-color: var(--color-brand);
+  }
+
+  .site-header__safe-area {
+    transition: background-color 350ms var(--ease-editorial);
+  }
+
+  .site-header--initial .site-header__bar,
+  .site-header--initial .site-header__bar::after,
+  .site-header--initial .site-header__safe-area,
+  .site-header--initial .site-header__bar :is(a, button) {
+    transition: none;
+  }
+}
+
+.site-header--initial,
+.site-header--initial img {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header__bar,
+  .site-header__bar::after,
+  .site-header__safe-area {
+    transition: none;
+  }
+}
+
 [data-intro-stage="on"] .site-header {
   transform: translateY(-100%);
   opacity: 0;
@@ -252,6 +310,16 @@ body::before {
   transform: none;
   opacity: 1;
   pointer-events: auto;
+}
+
+/* The desktop intro still clears the frame. On mobile the bar remains fixed
+   over the film while its own scroll state changes it into the solid card. */
+@media (max-width: 1023px) {
+  [data-intro-stage="on"] .site-header {
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -287,8 +355,19 @@ body::before {
   filter: brightness(0) invert(1);
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (max-width: 1023px) {
+  .site-header__bar :is(a, button) {
+    transition: color 350ms var(--ease-editorial);
+  }
+
   .site-header img {
+    transition: filter 350ms var(--ease-editorial);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header img,
+  .site-header__bar :is(a, button) {
     transition: none;
   }
 }
@@ -379,12 +458,12 @@ body::before {
 .wrap {
   margin-inline: auto;
   max-width: 1200px;
-  padding-inline: 1.5rem;
+  padding-inline: var(--page-gutter);
 }
 
 @media (min-width: 768px) {
-  .wrap {
-    padding-inline: 2.5rem;
+  :root {
+    --page-gutter: 2.5rem;
   }
 }
 
