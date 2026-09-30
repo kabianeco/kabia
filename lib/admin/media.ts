@@ -131,6 +131,17 @@ export function mediaObjectName(parts: {
   return `${prefix}${parts.month}/${parts.stem}-${parts.suffix}.${parts.ext}`
 }
 
+/** The slugified stem of a file name: lowercase ASCII, dashes, at most 48 characters. */
+export function mediaStemFromFilename(originalName: string): string {
+  const base = originalName
+    .replace(/\.[^.]+$/, "")
+    .toLocaleLowerCase("en")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48)
+  return base || "gorsel"
+}
+
 /**
  * Never trust a client-supplied filename as a storage path: it can contain
  * `../`, control characters, a NUL byte, or a wildly different extension from
@@ -142,15 +153,9 @@ export function mediaObjectName(parts: {
  * quickly, and makes the object layout legible in the Supabase dashboard.
  */
 export function safeObjectName(originalName: string, mimeType: string, folder?: MediaFolder | null): string {
-  const base = originalName
-    .replace(/\.[^.]+$/, "")
-    .toLocaleLowerCase("en")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48)
   const now = new Date()
   return mediaObjectName({
-    stem: base || "gorsel",
+    stem: mediaStemFromFilename(originalName),
     suffix: crypto.randomUUID().slice(0, 8),
     ext: MEDIA_EXTENSIONS[mimeType] ?? "bin",
     folder,

@@ -17,7 +17,7 @@ const files = [
   "customer-login-errors", "proxy-skip", "address-dedup", "admin-order-shipping-warning",
   "checkout-payment-methods", "order-status-preference", "order-tracking",
   "honest-cache", "bundle-budget", "seo-contracts", "content-contracts",
-  "journal-reads", "admin-journal", "admin-gallery", "admin-gallery-save", "media-upload", "media-usage",
+  "journal-reads", "admin-journal", "admin-gallery", "admin-gallery-save", "media-upload", "media-usage", "media-migration",
 ].map(name => `tests/${name}.test.ts`);
 files.push("tests/client-boundary.test.js");
 const env = { ...process.env };
