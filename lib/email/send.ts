@@ -17,9 +17,15 @@ import "server-only";
 
 export interface SendEmailInput {
   to: string;
+  /** Kopya alıcıları (boşsa gönderilmez). */
+  cc?: string[];
   subject: string;
   html: string;
   text: string;
+  /** Yanıt zinciri başlıkları: In-Reply-To, References. */
+  headers?: Record<string, string>;
+  /** Müşteri yanıtının düşeceği adres (örn. info@...). */
+  replyTo?: string;
 }
 
 export type SendEmailResult =
@@ -47,6 +53,16 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   }
   // Gönderici doğrulanmış bir alan adı olmalı; yoksa Resend test adresi.
   const from = process.env.RESEND_FROM?.trim() || "onboarding@resend.dev";
+  const payload: Record<string, unknown> = {
+    from,
+    to: [input.to],
+    subject: input.subject,
+    html: input.html,
+    text: input.text,
+  };
+  if (input.cc && input.cc.length > 0) payload.cc = input.cc;
+  if (input.headers && Object.keys(input.headers).length > 0) payload.headers = input.headers;
+  if (input.replyTo && input.replyTo.trim() !== "") payload.reply_to = input.replyTo.trim();
   let response: Response;
   try {
     response = await fetch(RESEND_ENDPOINT, {
@@ -55,13 +71,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from,
-        to: [input.to],
-        subject: input.subject,
-        html: input.html,
-        text: input.text,
-      }),
+      body: JSON.stringify(payload),
     });
   } catch (error) {
     return {

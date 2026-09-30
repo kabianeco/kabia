@@ -112,6 +112,25 @@ export type RateLimitBucket =
   | "account_reauth"
   | "account_update"
   | "admin_order_create"
+  | "admin_email_send"
+  | "inbound_webhook"
+
+/** Testlerin kova varlığını doğrulayabilmesi için liste. */
+export const RATE_LIMIT_BUCKET_IDS: RateLimitBucket[] = [
+  "admin_login",
+  "customer_login",
+  "registration",
+  "password_reset",
+  "confirmation_resend",
+  "code_verification",
+  "contact_notify",
+  "review_submit",
+  "account_reauth",
+  "account_update",
+  "admin_order_create",
+  "admin_email_send",
+  "inbound_webhook",
+]
 
 interface WindowPolicy {
   secs: number
@@ -209,6 +228,28 @@ const POLICIES: Record<RateLimitBucket, BucketPolicy> = {
     identifierSustained: { secs: 3600, max: 30 },
     combinedBurst: { secs: 300, max: 15 },
   },
+  // An administrator sending mail as the brand. Spam-as-the-brand is the
+  // abuse case, so the per-admin (identifier) sustained window is tight and
+  // the limiter fails closed. Identifier is the admin user id.
+  admin_email_send: {
+    ipBurst: { secs: 300, max: 10 },
+    ipSustained: { secs: 3600, max: 30 },
+    identifierBurst: { secs: 300, max: 5 },
+    identifierSustained: { secs: 86400, max: 20 },
+    combinedBurst: { secs: 300, max: 5 },
+  },
+  // The Resend inbound webhook. Authenticity comes from the Svix signature,
+  // not the limiter — this is pure abuse backpressure on a shared,
+  // unauthenticated endpoint, so only IP dimensions are consumed (callers
+  // pass identifier null). Generous: legitimate traffic is metadata-only
+  // POSTs, and Resend retries on 429/5xx.
+  inbound_webhook: {
+    ipBurst: { secs: 60, max: 120 },
+    ipSustained: { secs: 3600, max: 2000 },
+    identifierBurst: { secs: 60, max: 120 },
+    identifierSustained: { secs: 3600, max: 2000 },
+    combinedBurst: { secs: 60, max: 120 },
+  },
 }
 
 export interface RateLimitResult {
@@ -241,6 +282,10 @@ const LIMITER_ERROR_POLICY: Record<RateLimitBucket, "closed" | "open"> = {
   account_update: "open",
   // Stock-mutating admin write: fail closed like the other privileged buckets.
   admin_order_create: "closed",
+  // Brand-impersonating send path and the inbound webhook: an unavailable
+  // limiter must not open either. Dropped webhooks are retried by Resend.
+  admin_email_send: "closed",
+  inbound_webhook: "closed",
 }
 
 export function limiterErrorResult(bucket: RateLimitBucket): RateLimitResult {
