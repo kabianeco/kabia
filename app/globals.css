@@ -279,7 +279,11 @@ body::before {
     --floating-nav-gap: 10px;
     margin-inline: var(--page-gutter);
     margin-top: var(--floating-nav-gap);
-    border-radius: 24px;
+    border-radius: 30px;
+  }
+
+  .site-header__bar--floating .site-header__logo {
+    height: 26px;
   }
 
   .site-header__bar--floating::after {
@@ -354,10 +358,10 @@ body::before {
   pointer-events: auto;
 }
 
-/* The desktop intro still clears the frame. On mobile the bar remains fixed
-   over the film while its own scroll state changes it into the solid card. */
+/* The intro hides the mobile header through its editorial beats. Once the
+   whole hero has passed, the same scroll state reveals its floating card. */
 @media (max-width: 1023px) {
-  [data-intro-stage="on"] .site-header {
+  [data-intro-stage="on"] .site-header--past-hero {
     transform: none;
     opacity: 1;
     pointer-events: auto;
@@ -403,7 +407,13 @@ body::before {
   }
 
   .site-header img {
-    transition: filter 350ms var(--ease-editorial);
+    transition:
+      filter 350ms var(--ease-editorial),
+      height 350ms var(--ease-editorial);
+  }
+
+  .site-header--initial .site-header__logo {
+    transition: none;
   }
 }
 

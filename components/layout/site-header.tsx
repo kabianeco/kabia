@@ -53,12 +53,22 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
     let frame = 0;
     let readyFrame = 0;
     let readyFrame2 = 0;
+    const mobile = window.matchMedia("(max-width: 1023px)");
     const updateScroll = () => {
       frame = 0;
-      const y = window.scrollY;
-      // Keep one scroll state for both the surface and the floating shape.
-      // The gap between thresholds prevents jitter near the top of the page.
-      setScrolled((wasScrolled) => y > 16 ? true : y < 4 ? false : wasScrolled);
+      // On the homepage the entire intro, including its green closing line,
+      // belongs to the full-bleed story. The floating surface starts only
+      // once that section has left the viewport. Other pages keep the small
+      // top-of-page hysteresis they already use.
+      const homeMobile = isHome && mobile.matches;
+      const heroBottom = homeMobile
+        ? document.querySelector("[data-site-hero]")?.getBoundingClientRect().bottom
+        : undefined;
+      setScrolled((wasScrolled) => homeMobile
+        ? heroBottom === undefined
+          ? false
+          : heroBottom < -4 ? true : heroBottom > 4 ? false : wasScrolled
+        : window.scrollY > 16 ? true : window.scrollY < 4 ? false : wasScrolled);
     };
     const onScroll = () => {
       if (!frame) frame = window.requestAnimationFrame(updateScroll);
@@ -70,13 +80,15 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
       readyFrame2 = window.requestAnimationFrame(() => setScrollReady(true));
     });
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
     return () => {
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
       window.cancelAnimationFrame(frame);
       window.cancelAnimationFrame(readyFrame);
       window.cancelAnimationFrame(readyFrame2);
     };
-  }, []);
+  }, [isHome]);
 
   const close = useCallback((restoreFocus = true) => {
     setOpenedOn(null);
@@ -150,6 +162,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
         // already carries it, so the header only offsets below the band;
         // without the band the header pads itself clear of the notch.
         "site-header fixed inset-x-0 z-40",
+        isHome && scrolled && "site-header--past-hero",
         bannerOffset && "site-header--with-banner",
         !scrollReady && "site-header--initial",
         bannerOffset
@@ -200,7 +213,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
             width={177}
             height={60}
             priority
-            className="h-7 w-auto md:h-8"
+            className="site-header__logo h-7 w-auto md:h-8"
           />
         </Link>
 
