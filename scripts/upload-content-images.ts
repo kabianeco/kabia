@@ -86,21 +86,28 @@ async function loadAttributionUser(): Promise<string> {
   return supers[0].user_id
 }
 
-interface HeadResult {
+interface ServedObject {
   status: number
   type: string | null
-  length: number | null
+  length: number
   cache: string | null
+  sha256: string
 }
 
-async function head(publicUrl: string): Promise<HeadResult> {
-  const res = await fetch(publicUrl, { method: "HEAD" })
-  const length = res.headers.get("content-length")
+/**
+ * What the public URL actually serves. A GET, not a HEAD: Storage answers HEAD
+ * with a generic `no-cache`, while the real response carries the stored
+ * cache-control — and only the body can prove the bytes are the ones uploaded.
+ */
+async function fetchServed(publicUrl: string): Promise<ServedObject> {
+  const res = await fetch(publicUrl)
+  const body = Buffer.from(await res.arrayBuffer())
   return {
     status: res.status,
     type: res.headers.get("content-type")?.split(";")[0] ?? null,
-    length: length ? Number(length) : null,
+    length: body.length,
     cache: res.headers.get("cache-control"),
+    sha256: createHash("sha256").update(body).digest("hex"),
   }
 }
 
@@ -161,8 +168,8 @@ async function main() {
         .upload(objectPath, bytes, { contentType: mime, cacheControl: MEDIA_CACHE_CONTROL, upsert: false })
       if (uploadError) {
         // Already there is fine if it is the very same object; anything else is not.
-        const seen = await head(publicUrl)
-        if (seen.status === 200 && seen.length === bytes.length && seen.type === mime) {
+        const seen = await fetchServed(publicUrl)
+        if (seen.status === 200 && seen.sha256 === sha256 && seen.type === mime) {
           status = "already uploaded"
         } else {
           problems.push(`${move.oldPath}: upload failed (${uploadError.message}) and the object is not an identical copy`)
@@ -245,19 +252,25 @@ async function main() {
   )
   console.log(`\nmapping written: ${MAPPING_FILE} (${entries.length} entries)`)
 
-  // Every new URL must answer 200 with the right type and the exact size.
+  // Every new URL must answer 200 with the right type, the identical bytes
+  // (SHA-256 of what is served equals the file in public/) and a long cache header.
   let bad = 0
   for (const entry of entries) {
-    const seen = await head(entry.url)
-    const ok = seen.status === 200 && seen.type === entry.mime && seen.length === entry.bytes
+    const seen = await fetchServed(entry.url)
+    const ok =
+      seen.status === 200 &&
+      seen.type === entry.mime &&
+      seen.length === entry.bytes &&
+      seen.sha256 === entry.sha256 &&
+      (seen.cache ?? "").includes(`max-age=${MEDIA_CACHE_CONTROL}`)
     if (!ok) bad++
-    console.log(`  ${ok ? "OK " : "BAD"} ${seen.status} ${seen.type} ${seen.length} ${seen.cache ?? "-"}  ${entry.object_path}`)
+    console.log(`  ${ok ? "OK " : "BAD"} ${seen.status} ${seen.type} ${seen.length}B sha=${seen.sha256 === entry.sha256 ? "match" : "DIFFERS"} ${seen.cache ?? "-"}  ${entry.object_path}`)
   }
   if (bad) {
     console.error(`${bad} object(s) did not verify`)
     process.exit(1)
   }
-  console.log("all objects verified: 200, correct content type and size")
+  console.log("all objects verified: 200, correct content type, identical bytes, one-year cache header")
 }
 
 main().catch((error) => {
