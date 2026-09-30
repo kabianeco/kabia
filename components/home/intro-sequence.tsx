@@ -249,7 +249,7 @@ function StageBackdrop({ active }: { active: boolean }) {
 function QuietIntro() {
   return (
     <section aria-labelledby="intro-heading" className="on-dark">
-      <div className="relative isolate overflow-hidden">
+      <div className="relative isolate overflow-hidden" data-site-hero>
         <div
           aria-hidden="true"
           className="absolute inset-0 -z-10 bg-forest bg-cover bg-center"
@@ -527,6 +527,14 @@ function ScrollIntro() {
            lands its atmosphere, then hands the visitor to the products
            instead of dwelling on the same feeling twice. */}
       <div ref={wrapperRef} className="relative h-[280vh] md:h-[300vh]">
+        {/* The hero the floating contact button watches: exactly the first
+            screen of the story. Absolute, zero interaction, no layout of its
+            own — leaving the viewport is what brings the button in. */}
+        <div
+          aria-hidden="true"
+          data-site-hero
+          className="pointer-events-none absolute inset-x-0 top-0 h-screen"
+        />
         <div ref={stageRef} className="sticky top-0 h-screen overflow-hidden">
           <StageBackdrop active={inView} />
 

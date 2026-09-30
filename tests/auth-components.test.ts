@@ -233,7 +233,7 @@ describe("reorder message", () => {
   })
 })
 
-describe("route-scoped WhatsApp float and toasts", () => {
+describe("route-scoped toasts", () => {
   it("covers auth and account routes only", () => {
     for (const path of ["/giris", "/kayit", "/dogrulama-kodu", "/eposta-onay-bekleniyor", "/sifremi-unuttum", "/sifre-yenile", "/hesabim", "/hesabim/guvenlik/hesabi-sil", "/hesap-silindi"]) {
       assert.equal(isAccountSurface(path), true, path)
@@ -243,9 +243,7 @@ describe("route-scoped WhatsApp float and toasts", () => {
     }
   })
 
-  it("storefront markup of the float is unchanged; account routes hide it below xl", () => {
-    const src = read("components/layout/whatsapp-float.tsx")
-    assert.match(src, /accountSurface \? "hidden xl:grid" : "grid"/)
+  it("the desktop toast offset on account routes is unchanged", () => {
     assert.match(read("components/providers.tsx"), /accountSurface \? \{ offset: \{ bottom: 96 \} \} : \{\}/)
   })
 })

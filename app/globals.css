@@ -325,6 +325,26 @@ body::before {
 .gallery-fade-out { animation: kabia-fade-out 250ms var(--ease-editorial) both; }
 .gallery-fade-in { animation: kabia-fade-in 250ms var(--ease-editorial) both; }
 
+/* Floating contact button: a short fade in and out. It is unmounted while
+   hidden, so this is purely the transition — never the hiding itself. */
+@keyframes kabia-float-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes kabia-float-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.contact-float-in { animation: kabia-float-in 200ms var(--ease-editorial) both; }
+.contact-float-out { animation: kabia-float-out 200ms var(--ease-editorial) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-float-in,
+  .contact-float-out {
+    animation: none;
+  }
+}
+
 /* Small tracked uppercase metadata label — used sparingly */
 .label {
   font-size: 0.6875rem;
@@ -363,14 +383,16 @@ body::before {
   }
 }
 
-/* Fixed header clearance for every route that does not open with the intro. */
+/* Fixed header clearance for every route that does not open with the intro.
+   The safe-area term keeps notched phones clear of the header once it draws
+   under the status bar (viewport-fit=cover); it is zero everywhere else. */
 .page-top {
-  padding-top: calc(var(--header-offset, 4rem) + 3rem);
+  padding-top: calc(var(--header-offset, 4rem) + 3rem + env(safe-area-inset-top));
 }
 
 @media (min-width: 768px) {
   .page-top {
-    padding-top: calc(var(--header-offset-desktop, 5rem) + 4rem);
+    padding-top: calc(var(--header-offset-desktop, 5rem) + 4rem + env(safe-area-inset-top));
   }
 }
 
@@ -378,12 +400,12 @@ body::before {
    for full-bleed sections (like the shop hero banner) that want to start
    right at the header's edge instead of leaving a gap under it. */
 .banner-top {
-  padding-top: var(--header-offset, 4rem);
+  padding-top: calc(var(--header-offset, 4rem) + env(safe-area-inset-top));
 }
 
 @media (min-width: 768px) {
   .banner-top {
-    padding-top: var(--header-offset-desktop, 5rem);
+    padding-top: calc(var(--header-offset-desktop, 5rem) + env(safe-area-inset-top));
   }
 }
 

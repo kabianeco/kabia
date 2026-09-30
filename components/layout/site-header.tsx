@@ -160,8 +160,11 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
   return (
     <header
       className={cn(
-        "site-header fixed inset-x-0 z-40",
-        bannerOffset ? "top-10" : "top-0",
+        // The bar draws under the iPhone status bar (viewport-fit=cover in
+        // app/layout.tsx) and pads itself clear of the notch, so the row of
+        // logo and icons never slides under it while no strip is left above.
+        "site-header fixed inset-x-0 z-40 pt-[env(safe-area-inset-top)]",
+        bannerOffset ? "top-[calc(2.5rem+env(safe-area-inset-top))]" : "top-0",
         // While the menu is open the header carries its own surface and stays
         // in frame even over the intro film (see .site-header--menu-open in
         // globals.css) — the open index is a destination, not a hidden panel.
@@ -334,8 +337,9 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
           {/* The bar travels with the curtain: one piece from the very top,
               not a fixed bar with a second panel unfolding beneath it.
               w-full matters — as a flex item .wrap would shrink-wrap and
-              pull the logo and icons toward the center. */}
-          <div className="wrap flex h-16 w-full shrink-0 items-center justify-between border-b border-ink/10">
+              pull the logo and icons toward the center. The notch padding
+              matches the header bar so the menu row clears it too. */}
+          <div className="wrap flex h-16 w-full shrink-0 items-center justify-between border-b border-ink/10 pt-[env(safe-area-inset-top)]">
             <Link
               href={routes.home}
               prefetch={false}

@@ -60,7 +60,11 @@ function StoreNotice({ text, urgent }: { text: string; urgent: boolean }) {
   return (
     <div
       role={urgent ? "alert" : "status"}
-      className={`fixed inset-x-0 top-0 z-50 flex h-10 items-center justify-center px-6 text-center text-sm ${
+      // Full bleed under the status bar like the header: the band's own
+      // background fills the notch area and its text starts below it. The
+      // header offsets by this exact height (see bannerOffset in
+      // site-header.tsx), so the two never overlap.
+      className={`fixed inset-x-0 top-0 z-50 flex h-[calc(2.5rem+env(safe-area-inset-top))] items-center justify-center px-6 pt-[env(safe-area-inset-top)] text-center text-sm ${
         urgent ? "bg-clay text-on-brand" : "bg-forest text-on-brand"
       }`}
     >

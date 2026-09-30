@@ -1,20 +1,88 @@
 "use client";
 
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
-import { isAccountSurface, whatsappHref } from "@/lib/site";
+import { isContactFloatRoute, routes, whatsappHref } from "@/lib/site";
+import { usePrefersReducedMotion } from "@/lib/use-reduced-motion";
 
 /**
- * Her sayfada sağ altta duran WhatsApp hattı. Yeşil daire + ahize,
- * hazır mesajla açılır; saf hizada bir linktir.
+ * Marks the homepage hero for this button's IntersectionObserver. The intro
+ * sequence stamps it on its first screen (both the scroll story and the
+ * reduced-motion stills); nothing else in the app uses this attribute.
+ */
+export const CONTACT_FLOAT_HERO_SELECTOR = "[data-site-hero]";
+
+const subscribeMounted = () => () => {};
+
+/**
+ * Sağ altta duran WhatsApp hattı. Yeşil daire + ahize, hazır mesajla açılır;
+ * saf hizada bir linktir.
  *
- * Giriş, kayıt, e-posta/şifre adımları ve hesap sayfaları baştan sona
- * formdur: dar ekranda sabit bir düğme alan ve butonların üstüne biner. Bu
- * rotalarda yalnızca içeriğin yanında boş kenar kalan geniş ekranlarda (xl)
- * gösterilir; WhatsApp bağlantısı alt bilgide her zaman durur. Diğer bütün
- * sayfalarda davranış aynıdır.
+ * Görünürlük tek kurala bağlıdır: lib/site.ts içindeki
+ * `isContactFloatRoute` allowlist'i. Listede olmayan hiçbir rotada render
+ * edilmez — hesap/auth yüzeylerindeki eski koşullu gizleme mantığı bu
+ * kurala taşınmış ve bileşenden kaldırılmıştır.
+ *
+ * Anasayfada hero bekçisi devrededir: ilk render sunucu ve istemcide gizlidir
+ * (hidrasyon eşleşmesi için), mount sonrası hero izlenir; hero viewport'tan
+ * çıkınca belirir, hero'ya dönülünce yeniden gizlenir. Scroll listener
+ * yoktur, yalnızca IntersectionObserver vardır.
+ *
+ * Gizliyken DOM'da hiç yoktur: odaklanamaz ve duyurulamaz — yalnızca görsel
+ * gizleme değil. Belirme/kaybolma kısa bir fade ile olur; reduced-motion
+ * tercihinde anlıktır.
+ *
+ * State updates happen during render (route change, first show) or in event
+ * and observer callbacks — never synchronously inside an effect — so the
+ * first server and client renders agree and no cascading renders occur.
  */
 export function WhatsAppFloat() {
-  const accountSurface = isAccountSurface(usePathname());
+  const pathname = usePathname();
+  const reducedMotion = usePrefersReducedMotion();
+  // False on the server and on the first client render, true after — so the
+  // button never flashes before the route and hero state are known.
+  const mounted = useSyncExternalStore(subscribeMounted, () => true, () => false);
+  const [pastHero, setPastHero] = useState(false);
+  // Kept in the DOM through the exit fade, then removed on animation end.
+  const [rendered, setRendered] = useState(false);
+
+  // A client-side navigation lands back at the top with the hero in frame,
+  // so the previous page's verdict must not leak into this one.
+  const [trackedPath, setTrackedPath] = useState(pathname);
+  if (trackedPath !== pathname) {
+    setTrackedPath(pathname);
+    setPastHero(false);
+  }
+
+  const isHome = pathname === routes.home;
+  const routeAllowed = isContactFloatRoute(pathname);
+
+  // Homepage: watch the hero; elsewhere there is nothing to wait for. The
+  // observer's first callback also corrects pastHero when the page mounts
+  // mid-scroll (e.g. a restored position below the hero).
+  useEffect(() => {
+    if (!mounted || !routeAllowed || !isHome) return;
+    const hero = document.querySelector(CONTACT_FLOAT_HERO_SELECTOR);
+    // The homepage always renders a hero; without one there is nothing to
+    // gate on, so the button stays hidden rather than guessing.
+    if (!hero) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setPastHero(!entry.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, [mounted, routeAllowed, isHome, pathname]);
+
+  const shouldShow = mounted && routeAllowed && (!isHome || pastHero);
+  if (shouldShow && !rendered) setRendered(true);
+  // Reduced motion: no exit fade to wait for, unmount on the spot.
+  if (!shouldShow && reducedMotion && rendered) setRendered(false);
+  const fadingOut = rendered && !shouldShow;
+
+  if (!rendered) return null;
+  if (!shouldShow && reducedMotion) return null;
+
   return (
     <a
       href={whatsappHref()}
@@ -23,7 +91,12 @@ export function WhatsAppFloat() {
       aria-label="WhatsApp'tan yazın"
       title="WhatsApp'tan yazın"
       style={{ backgroundColor: "#25d366" }}
-      className={`fixed bottom-5 right-5 z-40 ${accountSurface ? "hidden xl:grid" : "grid"} h-14 w-14 place-items-center rounded-full text-white shadow-lg transition-transform duration-300 hover:scale-105`}
+      onAnimationEnd={(e) => {
+        if (e.target === e.currentTarget && fadingOut) setRendered(false);
+      }}
+      className={`fixed bottom-5 right-5 z-40 grid h-14 w-14 place-items-center rounded-full text-white shadow-lg transition-transform duration-300 hover:scale-105 ${
+        reducedMotion ? "" : fadingOut ? "contact-float-out" : "contact-float-in"
+      }`}
     >
       <svg
         viewBox="0 0 24 24"

@@ -18,6 +18,7 @@ const files = [
   "checkout-payment-methods", "order-status-preference", "order-tracking",
   "honest-cache", "bundle-budget", "seo-contracts", "content-contracts",
   "journal-reads", "admin-journal", "admin-gallery", "admin-gallery-save", "media-upload", "media-usage", "media-migration",
+  "floating-contact",
   "admin-inbox",
 ].map(name => `tests/${name}.test.ts`);
 files.push("tests/client-boundary.test.js");
