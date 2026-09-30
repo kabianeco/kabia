@@ -138,9 +138,13 @@ describe("notch-safe fixed chrome (one inset source, applied once)", () => {
     assert.match(css, /\+ var\(--safe-top\)/)
   })
 
-  it("covers the status bar with the open mobile menu and parks the float beneath it", () => {
+  it("keeps the status bar covered while the mobile menu grows from the header", () => {
     const header = read("components/layout/site-header.tsx")
-    assert.match(header, /fixed inset-x-0 top-0 z-50 flex h-\[100dvh\] flex-col bg-ivory pt-\[var\(--safe-top\)\]/)
+    assert.match(header, /site-header__safe-area absolute inset-x-0 top-0 h-\[var\(--safe-top\)\]/)
+    assert.match(header, /surfaced \? "bg-ivory" : "bg-transparent"/)
+    assert.match(header, /id="mobile-menu"/)
+    assert.match(header, /site-header__menu-panel lg:hidden/)
+    assert.doesNotMatch(header, /role="dialog"|aria-modal="true"/)
     const float = read("components/layout/whatsapp-float.tsx")
     assert.match(float, /bottom-\[calc\(1\.25rem\+var\(--safe-bottom\)\)\]/)
     assert.match(float, /z-30/)

@@ -43,19 +43,11 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
   // by derivation — no effect needed to reset it.
   const [openedOn, setOpenedOn] = useState<string | null>(null);
   const open = openedOn === pathname;
+  const headerRef = useRef<HTMLElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  // The menu is one full-screen piece, bar included: a single opaque
-  // curtain reveals it top to bottom, and the rows are uncovered by that
-  // same sweep — no second, staggered animation on top of it. Reduced-motion
-  // visitors get the same destinations with no movement at all.
-  //
-  // The motion is plain CSS (app/globals.css, .menu-curtain-* and
-  // .menu-icon-*), so the header ships no animation library.
+  // The icon and the attached menu use CSS motion, with the same destinations
+  // available without animation for reduced-motion visitors.
   const reducedMotion = usePrefersReducedMotion();
-  // Focus returns to the header toggle only after the curtain has lifted,
-  // so it never lands on an element hidden behind the overlay mid-exit.
-  const focusOnCloseRef = useRef(false);
 
   useEffect(() => {
     let frame = 0;
@@ -87,28 +79,9 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
   }, []);
 
   const close = useCallback((restoreFocus = true) => {
-    focusOnCloseRef.current = restoreFocus;
     setOpenedOn(null);
+    if (restoreFocus) window.requestAnimationFrame(() => toggleRef.current?.focus());
   }, []);
-
-  const handleExitComplete = useCallback(() => {
-    if (focusOnCloseRef.current) {
-      focusOnCloseRef.current = false;
-      toggleRef.current?.focus();
-    }
-  }, []);
-
-  // The panel stays mounted through its exit sweep, so the curtain lifts
-  // before it goes; focus returns once it has gone. Reduced motion: no sweep.
-  const [panelShown, setPanelShown] = useState(false);
-  if (open && !panelShown) setPanelShown(true);
-  if (!open && panelShown && reducedMotion) setPanelShown(false);
-  const panelExiting = panelShown && !open;
-  const panelWasShown = useRef(false);
-  useEffect(() => {
-    if (panelWasShown.current && !panelShown) handleExitComplete();
-    panelWasShown.current = panelShown;
-  }, [panelShown, handleExitComplete]);
 
   // The toggle icon turns out, then the other turns in — one at a time.
   const iconTarget = open ? "kapat" : "ac";
@@ -127,37 +100,24 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
     }
   };
 
-  // Escape closes the menu; focus is trapped inside the overlay while open.
+  // The attached menu behaves as a disclosure: Escape returns to the toggle,
+  // while a tap outside closes it without taking focus from the tapped item.
   useEffect(() => {
     if (!open) return;
-    const panel = panelRef.current;
-    panel?.querySelector<HTMLElement>("a, button")?.focus();
-
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        e.preventDefault();
         close();
-        return;
-      }
-      if (e.key === "Tab" && panel) {
-        const focusables = [
-          ...panel.querySelectorAll<HTMLElement>("a, button"),
-        ].filter(Boolean) as HTMLElement[];
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
       }
     };
+    const onPointerDown = (e: PointerEvent) => {
+      if (!headerRef.current?.contains(e.target as Node)) close(false);
+    };
     document.addEventListener("keydown", onKeyDown);
-    document.body.style.overflow = "hidden";
+    document.addEventListener("pointerdown", onPointerDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = "";
+      document.removeEventListener("pointerdown", onPointerDown);
     };
   }, [open, close]);
 
@@ -182,6 +142,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
 
   return (
     <header
+      ref={headerRef}
       className={cn(
         // The bar starts at top: 0 and draws under the status bar
         // (viewport-fit=cover in app/layout.tsx). The inset is applied
@@ -189,16 +150,13 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
         // already carries it, so the header only offsets below the band;
         // without the band the header pads itself clear of the notch.
         "site-header fixed inset-x-0 z-40",
+        bannerOffset && "site-header--with-banner",
         !scrollReady && "site-header--initial",
         bannerOffset
           ? "top-[calc(2.5rem+var(--safe-top))]"
           : "top-0 pt-[var(--safe-top)]",
-        // While the menu is open the header carries its own surface and stays
-        // in frame even over the intro film (see .site-header--menu-open in
-        // globals.css) — the open index is a destination, not a hidden panel.
-        // Deliberately solid, never blurred: backdrop-filter would turn the
-        // header into the containing block for the fixed overlay and shrink
-        // the full-screen curtain to the bar's own 64px.
+        // The menu grows from the bar itself. The outer header keeps its
+        // desktop surface, while mobile draws the surface on the card.
         open && "site-header--menu-open",
         open
           ? "lg:border-b lg:border-ink/10 lg:bg-ivory"
@@ -222,13 +180,14 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
       )}
       <div
         className={cn(
-          "site-header__bar relative h-16 lg:h-20 lg:bg-transparent",
-          scrolled && !open && "site-header__bar--floating",
+          "site-header__bar relative lg:h-20 lg:bg-transparent",
+          scrolled && "site-header__bar--floating",
+          open && "site-header__bar--open",
           open || scrolled ? "bg-ivory" : surfaced ? "bg-ivory/95" : "bg-transparent",
           surfaced && !open && !scrolled && "backdrop-blur-sm lg:backdrop-blur-none",
         )}
       >
-        <div className="wrap flex h-full items-center justify-between">
+        <div className="wrap flex h-16 items-center justify-between lg:h-20">
         <Link
           href={routes.home}
           prefetch={false}
@@ -346,7 +305,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
             aria-expanded={open}
             aria-controls="mobile-menu"
             aria-label={open ? "Menüyü kapat" : "Menüyü aç"}
-            onClick={() => (open ? close() : setOpenedOn(pathname))}
+            onClick={() => (open ? close(false) : setOpenedOn(pathname))}
           >
             <span
               key={icon}
@@ -363,77 +322,19 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
           </button>
         </div>
         </div>
-      </div>
 
-      {panelShown && (
         <div
           id="mobile-menu"
-          ref={panelRef}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Menü"
-          onAnimationEnd={(e) => {
-            if (e.target === e.currentTarget && panelExiting) setPanelShown(false);
-          }}
           className={cn(
-            // From the very top edge to the bottom (100dvh), with its own
-            // padding so the bar row sits below the inset while the panel's
-            // own background covers the status bar area completely.
-            "fixed inset-x-0 top-0 z-50 flex h-[100dvh] flex-col bg-ivory pt-[var(--safe-top)] lg:hidden",
-            !reducedMotion && (panelExiting ? "menu-curtain-out" : "menu-curtain-in"),
+            "site-header__menu-panel lg:hidden",
+            open && "site-header__menu-panel--open",
           )}
+          aria-hidden={!open}
         >
-          {/* The bar travels with the curtain: one piece from the very top,
-              not a fixed bar with a second panel unfolding beneath it.
-              w-full matters — as a flex item .wrap would shrink-wrap and
-              pull the logo and icons toward the center. The panel's own
-              padding already clears the notch, so the row adds none. */}
-          <div className="wrap flex h-16 w-full shrink-0 items-center justify-between border-b border-ink/10">
-            <Link
-              href={routes.home}
-              prefetch={false}
-              aria-label="Kabia Ekolojik — anasayfa"
-              onClick={() => close(false)}
-            >
-              <Image
-                src="/images/logo.svg"
-                alt="Kabia Ekolojik"
-                width={177}
-                height={60}
-                className="h-7 w-auto"
-              />
-            </Link>
-
-            <div className="flex items-center">
-              <ThemeToggle />
-
-              <Link
-                href={routes.cart}
-                prefetch={false}
-                aria-label={cartLabel}
-                onClick={() => close(false)}
-                className="relative flex h-11 w-11 items-center justify-center text-ink"
-              >
-                <ShoppingBag className="h-5 w-5" aria-hidden="true" />
-                {cartBadge}
-              </Link>
-
-              <button
-                type="button"
-                className="flex h-11 w-11 items-center justify-center text-ink"
-                aria-label="Menüyü kapat"
-                onClick={() => close()}
-              >
-                <X className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-
-          {/* The index scrolls within the remaining viewport on short screens. */}
-          <div className="flex-1 overflow-y-auto overscroll-contain pb-[max(2rem,var(--safe-bottom))]">
+          <div className="site-header__menu-content">
             <nav
               aria-label="Mobil menü"
-              className="wrap flex max-h-none flex-col pb-2 pt-8"
+              className="wrap flex w-full flex-col pb-6 pt-5"
             >
               <p className="label text-olive">Kabia</p>
               <ul>
@@ -443,6 +344,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
                       href={item.href}
                       prefetch={false}
                       onClick={() => close(false)}
+                      tabIndex={open ? undefined : -1}
                       aria-current={
                         pathname.startsWith(item.href) ? "page" : undefined
                       }
@@ -461,6 +363,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
                     href={routes.cart}
                     prefetch={false}
                     onClick={() => close(false)}
+                    tabIndex={open ? undefined : -1}
                     className="flex min-h-11 items-baseline justify-between py-3 text-[1.05rem] leading-snug text-ink/80 transition-colors duration-300 hover:text-ink"
                   >
                     Sepet
@@ -474,6 +377,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
                     href={accountHref}
                     prefetch={false}
                     onClick={() => close(false)}
+                    tabIndex={open ? undefined : -1}
                     className="flex min-h-11 items-baseline justify-between py-3 text-[1.05rem] leading-snug text-ink/80 transition-colors duration-300 hover:text-ink"
                   >
                     {accountLabel}
@@ -487,6 +391,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
                     href={routes.contact}
                     prefetch={false}
                     onClick={() => close(false)}
+                    tabIndex={open ? undefined : -1}
                     className="flex min-h-11 items-baseline justify-between py-3 text-[1.05rem] leading-snug text-ink/80 transition-colors duration-300 hover:text-ink"
                   >
                     İletişim
@@ -500,6 +405,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
               {authHydrated && isLoggedIn && (
                 <button
                   type="button"
+                  tabIndex={open ? undefined : -1}
                   onClick={() => {
                     close(false);
                     logout();
@@ -512,7 +418,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
             </nav>
           </div>
         </div>
-      )}
+      </div>
     </header>
   );
 }

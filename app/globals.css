@@ -245,11 +245,22 @@ body::before {
    the store grid's gutter. The separate safe-area layer always spans the
    viewport above it. A painted border avoids changing the row's box size. */
 @media (max-width: 1023px) {
+  .site-header {
+    --mobile-band-height: 0px;
+  }
+
+  .site-header--with-banner {
+    --mobile-band-height: 2.5rem;
+  }
+
   .site-header__bar {
+    --floating-nav-gap: 0px;
+    overflow: hidden;
     border-radius: 0;
     transition:
       margin-left 350ms var(--ease-editorial),
       margin-right 350ms var(--ease-editorial),
+      margin-top 350ms var(--ease-editorial),
       border-radius 350ms var(--ease-editorial),
       background-color 350ms var(--ease-editorial);
   }
@@ -265,8 +276,10 @@ body::before {
   }
 
   .site-header__bar--floating {
+    --floating-nav-gap: 10px;
     margin-inline: var(--page-gutter);
-    border-radius: 12px;
+    margin-top: var(--floating-nav-gap);
+    border-radius: 24px;
   }
 
   .site-header__bar--floating::after {
@@ -275,6 +288,34 @@ body::before {
 
   .site-header__safe-area {
     transition: background-color 350ms var(--ease-editorial);
+  }
+
+  /* The disclosure grows inside the same surface and border. Only its link
+     area scrolls on short screens; the logo and close button stay in place. */
+  .site-header__menu-panel {
+    --menu-open-height: min(40rem, max(0px, calc(100dvh - var(--safe-top) - var(--mobile-band-height) - var(--floating-nav-gap) - 4rem - max(1rem, var(--safe-bottom)))));
+    max-height: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transition: max-height 380ms var(--ease-editorial);
+  }
+
+  .site-header__menu-panel--open {
+    max-height: var(--menu-open-height);
+    pointer-events: auto;
+  }
+
+  .site-header__menu-content {
+    max-height: var(--menu-open-height);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .site-header__menu-content::before {
+    content: "";
+    display: block;
+    margin-inline: var(--page-gutter);
+    border-top: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
   }
 
   .site-header--initial .site-header__bar,
@@ -293,7 +334,8 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   .site-header__bar,
   .site-header__bar::after,
-  .site-header__safe-area {
+  .site-header__safe-area,
+  .site-header__menu-panel {
     transition: none;
   }
 }
@@ -372,18 +414,7 @@ body::before {
   }
 }
 
-/* Mobile menu motion, in CSS so the header needs no animation library: the
-   curtain sweeps the menu in top to bottom (500 ms) and lifts it (350 ms);
-   the toggle icon turns out, then the other turns in (220 ms each). The
-   component only applies these classes when motion is allowed. */
-@keyframes kabia-curtain-in {
-  from { clip-path: inset(0 0 100% 0); }
-  to { clip-path: inset(0 0 0% 0); }
-}
-@keyframes kabia-curtain-out {
-  from { clip-path: inset(0 0 0% 0); }
-  to { clip-path: inset(0 0 100% 0); }
-}
+/* The toggle icon turns out, then the other turns in (220 ms each). */
 @keyframes kabia-icon-out {
   from { opacity: 1; transform: rotate(0deg); }
   to { opacity: 0; transform: rotate(60deg); }
@@ -392,8 +423,6 @@ body::before {
   from { opacity: 0; transform: rotate(-60deg); }
   to { opacity: 1; transform: rotate(0deg); }
 }
-.menu-curtain-in { animation: kabia-curtain-in 500ms var(--ease-editorial) both; }
-.menu-curtain-out { animation: kabia-curtain-out 350ms var(--ease-editorial) both; }
 .menu-icon-out { animation: kabia-icon-out 220ms var(--ease-editorial) both; }
 .menu-icon-in { animation: kabia-icon-in 220ms var(--ease-editorial) both; }
 
