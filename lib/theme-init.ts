@@ -12,10 +12,18 @@
 export const THEME_STORAGE_KEY = "kabia_theme";
 
 /**
+ * The top-surface colors the status-bar tint follows, in both modes. Kept
+ * next to the boot script so the pre-paint value and the provider effect
+ * below can never drift apart from each other — or from --surface.
+ */
+export const THEME_SURFACE_LIGHT = "#f4f1e8";
+export const THEME_SURFACE_DARK = "#12150f";
+
+/**
  * Runs before first paint, ahead of React, so the correct surface is already
  * painted when the page appears — no flash of the wrong theme. Kept in sync
  * with the reader in lib/theme.tsx; both use this key and the same attribute.
  */
 export const themeInitScript = `(function(){try{var c=localStorage.getItem(${JSON.stringify(
   THEME_STORAGE_KEY,
-)});if(c==="light"||c==="dark"){document.documentElement.setAttribute("data-theme",c)}}catch(e){}})();`;
+)});var t=(c==="light"||c==="dark")?c:(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");if(c==="light"||c==="dark"){document.documentElement.setAttribute("data-theme",c)}var m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement("meta");m.setAttribute("name","theme-color");document.head.appendChild(m)}m.setAttribute("content",t==="dark"?"#12150f":"#f4f1e8")}catch(e){}})();`;

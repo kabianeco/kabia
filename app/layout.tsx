@@ -91,15 +91,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const viewport: Viewport = {
   // Cover lets the fixed header and the homepage film draw under the iPhone
-  // status bar instead of leaving the theme-colour letterbox strip above the
-  // navbar. The header (and the announcement band, and the mobile menu bar)
-  // carry their own env(safe-area-inset-top) padding, so content still clears
-  // the notch — see site-header.tsx and page-shell.tsx.
+  // status bar instead of leaving a letterbox strip above the navbar. The
+  // header (and the announcement band, and the mobile menu) carry the
+  // --safe-top inset exactly once, so content still clears the notch — see
+  // site-header.tsx and page-shell.tsx. The status-bar tint itself is owned
+  // by the boot script (lib/theme-init.ts), which follows the effective
+  // theme including the manual toggle — a static OS-media theme-color
+  // cannot see it.
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4f1e8" },
-    { media: "(prefers-color-scheme: dark)", color: "#12150f" },
-  ],
 };
 
 /** Organization data limited to facts from the existing Kabia project. */

@@ -94,7 +94,10 @@ export function WhatsAppFloat() {
       onAnimationEnd={(e) => {
         if (e.target === e.currentTarget && fadingOut) setRendered(false);
       }}
-      className={`fixed bottom-5 right-5 z-40 grid h-14 w-14 place-items-center rounded-full text-white shadow-lg transition-transform duration-300 hover:scale-105 ${
+      // Bottom-right, clear of the home indicator. z-30 keeps it stacked
+      // beneath the open mobile menu (which lives in the header's z-40
+      // stacking context), so the menu is never covered by the button.
+      className={`fixed bottom-[calc(1.25rem+var(--safe-bottom))] right-5 z-30 grid h-14 w-14 place-items-center rounded-full text-white shadow-lg transition-transform duration-300 hover:scale-105 ${
         reducedMotion ? "" : fadingOut ? "contact-float-out" : "contact-float-in"
       }`}
     >

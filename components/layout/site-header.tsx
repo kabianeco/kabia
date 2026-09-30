@@ -160,11 +160,15 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
   return (
     <header
       className={cn(
-        // The bar draws under the iPhone status bar (viewport-fit=cover in
-        // app/layout.tsx) and pads itself clear of the notch, so the row of
-        // logo and icons never slides under it while no strip is left above.
-        "site-header fixed inset-x-0 z-40 pt-[env(safe-area-inset-top)]",
-        bannerOffset ? "top-[calc(2.5rem+env(safe-area-inset-top))]" : "top-0",
+        // The bar starts at top: 0 and draws under the status bar
+        // (viewport-fit=cover in app/layout.tsx). The inset is applied
+        // exactly once in the stack: with the announcement band the band
+        // already carries it, so the header only offsets below the band;
+        // without the band the header pads itself clear of the notch.
+        "site-header fixed inset-x-0 z-40",
+        bannerOffset
+          ? "top-[calc(2.5rem+var(--safe-top))]"
+          : "top-0 pt-[var(--safe-top)]",
         // While the menu is open the header carries its own surface and stays
         // in frame even over the intro film (see .site-header--menu-open in
         // globals.css) — the open index is a destination, not a hidden panel.
@@ -330,16 +334,19 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
             if (e.target === e.currentTarget && panelExiting) setPanelShown(false);
           }}
           className={cn(
-            "fixed inset-0 z-50 flex flex-col bg-ivory lg:hidden",
+            // From the very top edge to the bottom (100dvh), with its own
+            // padding so the bar row sits below the inset while the panel's
+            // own background covers the status bar area completely.
+            "fixed inset-x-0 top-0 z-50 flex h-[100dvh] flex-col bg-ivory pt-[var(--safe-top)] lg:hidden",
             !reducedMotion && (panelExiting ? "menu-curtain-out" : "menu-curtain-in"),
           )}
         >
           {/* The bar travels with the curtain: one piece from the very top,
               not a fixed bar with a second panel unfolding beneath it.
               w-full matters — as a flex item .wrap would shrink-wrap and
-              pull the logo and icons toward the center. The notch padding
-              matches the header bar so the menu row clears it too. */}
-          <div className="wrap flex h-16 w-full shrink-0 items-center justify-between border-b border-ink/10 pt-[env(safe-area-inset-top)]">
+              pull the logo and icons toward the center. The panel's own
+              padding already clears the notch, so the row adds none. */}
+          <div className="wrap flex h-16 w-full shrink-0 items-center justify-between border-b border-ink/10">
             <Link
               href={routes.home}
               prefetch={false}
@@ -381,7 +388,7 @@ export function SiteHeader({ bannerOffset = false }: { bannerOffset?: boolean })
           </div>
 
           {/* The index scrolls within the remaining viewport on short screens. */}
-          <div className="flex-1 overflow-y-auto overscroll-contain pb-[max(2rem,env(safe-area-inset-bottom))]">
+          <div className="flex-1 overflow-y-auto overscroll-contain pb-[max(2rem,var(--safe-bottom))]">
             <nav
               aria-label="Mobil menü"
               className="wrap flex max-h-none flex-col pb-2 pt-8"

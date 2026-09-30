@@ -73,15 +73,20 @@ export function Providers({ children }: { children: ReactNode }) {
 
 /**
  * Sonner, dressed in the site's palette. Shared by both branches above.
- * On sign-in and account screens, where the WhatsApp control shows only on
- * wide screens, desktop toasts sit above it instead of on top of it.
+ * On sign-in and account screens, where the floating contact button never
+ * renders, desktop toasts sit above it instead of on top of it. Every edge
+ * clears the home indicator through the single --safe-bottom source, which
+ * is 0 on devices without one — so these values match Sonner's own
+ * defaults (24px desktop, 16px mobile) everywhere else.
  */
 function SiteToaster() {
   const accountSurface = isAccountSurface(usePathname());
+  const desktopBottom = accountSurface ? 96 : 24;
   return (
     <Toaster
       position="bottom-right"
-      {...(accountSurface ? { offset: { bottom: 96 } } : {})}
+      offset={{ bottom: `calc(${desktopBottom}px + var(--safe-bottom))` }}
+      mobileOffset={{ bottom: "calc(16px + var(--safe-bottom))" }}
       toastOptions={{
         style: {
           background: "var(--color-ivory)",

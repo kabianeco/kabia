@@ -243,8 +243,10 @@ describe("route-scoped toasts", () => {
     }
   })
 
-  it("the desktop toast offset on account routes is unchanged", () => {
-    assert.match(read("components/providers.tsx"), /accountSurface \? \{ offset: \{ bottom: 96 \} \} : \{\}/)
+  it("the toast offsets keep their desktop values and clear the home indicator", () => {
+    const src = read("components/providers.tsx")
+    assert.match(src, /accountSurface \? 96 : 24/)
+    assert.match(src, /var\(--safe-bottom\)/)
   })
 })
 

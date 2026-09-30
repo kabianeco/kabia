@@ -105,6 +105,11 @@
 /* The light surface: warm paper, as the brand has always been. */
 :root {
   color-scheme: light;
+  /* The notch and home-indicator insets, read once here so every fixed
+     edge draws from the same source. Tests override --safe-top and
+     --safe-bottom to simulate a device; env() is 0 where there is none. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
   --surface: #f4f1e8;
   --surface-raised: #eae5d8;
   --text: #1c201b;
@@ -387,12 +392,12 @@ body::before {
    The safe-area term keeps notched phones clear of the header once it draws
    under the status bar (viewport-fit=cover); it is zero everywhere else. */
 .page-top {
-  padding-top: calc(var(--header-offset, 4rem) + 3rem + env(safe-area-inset-top));
+  padding-top: calc(var(--header-offset, 4rem) + 3rem + var(--safe-top));
 }
 
 @media (min-width: 768px) {
   .page-top {
-    padding-top: calc(var(--header-offset-desktop, 5rem) + 4rem + env(safe-area-inset-top));
+    padding-top: calc(var(--header-offset-desktop, 5rem) + 4rem + var(--safe-top));
   }
 }
 
@@ -400,12 +405,12 @@ body::before {
    for full-bleed sections (like the shop hero banner) that want to start
    right at the header's edge instead of leaving a gap under it. */
 .banner-top {
-  padding-top: calc(var(--header-offset, 4rem) + env(safe-area-inset-top));
+  padding-top: calc(var(--header-offset, 4rem) + var(--safe-top));
 }
 
 @media (min-width: 768px) {
   .banner-top {
-    padding-top: calc(var(--header-offset-desktop, 5rem) + env(safe-area-inset-top));
+    padding-top: calc(var(--header-offset-desktop, 5rem) + var(--safe-top));
   }
 }
 

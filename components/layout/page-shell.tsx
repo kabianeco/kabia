@@ -58,17 +58,22 @@ export async function PageShell({ children }: { children: ReactNode }) {
  */
 function StoreNotice({ text, urgent }: { text: string; urgent: boolean }) {
   return (
+    // Full bleed under the status bar: the band starts at top: 0 and its
+    // own background fills the notch area. The text lives in the fixed
+    // 2.5rem row below the inset — never inside the status bar. The header
+    // offsets by this exact height (see bannerOffset in site-header.tsx),
+    // so the two never overlap and no strip is left between them. z-30
+    // parks it beneath the open mobile menu (header's z-40 context), so
+    // the menu index — including its close control — is never covered.
     <div
       role={urgent ? "alert" : "status"}
-      // Full bleed under the status bar like the header: the band's own
-      // background fills the notch area and its text starts below it. The
-      // header offsets by this exact height (see bannerOffset in
-      // site-header.tsx), so the two never overlap.
-      className={`fixed inset-x-0 top-0 z-50 flex h-[calc(2.5rem+env(safe-area-inset-top))] items-center justify-center px-6 pt-[env(safe-area-inset-top)] text-center text-sm ${
+      className={`fixed inset-x-0 top-0 z-30 pt-[var(--safe-top)] ${
         urgent ? "bg-clay text-on-brand" : "bg-forest text-on-brand"
       }`}
     >
-      <span className="truncate">{text}</span>
+      <div className="flex h-10 items-center justify-center px-6 text-center text-sm">
+        <span className="truncate">{text}</span>
+      </div>
     </div>
   );
 }

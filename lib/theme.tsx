@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { THEME_STORAGE_KEY } from "@/lib/theme-init";
+import { THEME_STORAGE_KEY, THEME_SURFACE_DARK, THEME_SURFACE_LIGHT } from "@/lib/theme-init";
 
 export type ThemeChoice = "system" | "light" | "dark";
 export type ResolvedTheme = "light" | "dark";
@@ -67,6 +67,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (choice === "system") root.removeAttribute("data-theme");
     else root.setAttribute("data-theme", choice);
   }, [choice]);
+
+  // The status-bar tint follows the effective surface, including the manual
+  // choice — a static OS-media theme-color cannot see the toggle. DOM-only,
+  // so it never touches render state.
+  useEffect(() => {
+    const color = resolved === "dark" ? THEME_SURFACE_DARK : THEME_SURFACE_LIGHT;
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", color);
+  }, [resolved]);
 
   const setChoice = useCallback((next: ThemeChoice) => {
     setChoiceState(next);

@@ -104,15 +104,62 @@ describe("floating contact button component rules", () => {
   })
 })
 
-describe("notch-safe fixed chrome (gap above the navbar)", () => {
-  it("draws under the status bar and pads clear of the notch", () => {
-    assert.match(read("app/layout.tsx"), /viewportFit: "cover"/)
-    const header = read("components/layout/site-header.tsx")
-    assert.match(header, /pt-\[env\(safe-area-inset-top\)\]/)
-    assert.match(header, /top-\[calc\(2\.5rem\+env\(safe-area-inset-top\)\)\]/)
-    const shell = read("components/layout/page-shell.tsx")
-    assert.match(shell, /pt-\[env\(safe-area-inset-top\)\]/)
+describe("notch-safe fixed chrome (one inset source, applied once)", () => {
+  it("reads env() once into --safe-top/--safe-bottom and uses var() everywhere else", () => {
     const css = read("app/globals.css")
-    assert.match(css, /env\(safe-area-inset-top\)/)
+    assert.match(css, /--safe-top: env\(safe-area-inset-top, 0px\)/)
+    assert.match(css, /--safe-bottom: env\(safe-area-inset-bottom, 0px\)/)
+    // No other file may read the raw inset: a single source keeps the
+    // stack from counting it twice, and tests override the vars.
+    for (const file of [
+      "components/layout/site-header.tsx",
+      "components/layout/page-shell.tsx",
+      "components/layout/whatsapp-float.tsx",
+      "components/shop/product-detail-islands.tsx",
+      "components/providers.tsx",
+    ]) {
+      assert.ok(!read(file).includes("env(safe-area-inset-"), file)
+    }
+  })
+
+  it("stacks band, header and clearance with the inset exactly once", () => {
+    const shell = read("components/layout/page-shell.tsx")
+    // Band: top edge at 0, own background under the status bar, text in the
+    // fixed 2.5rem row below the inset.
+    assert.match(shell, /top-0 z-30 pt-\[var\(--safe-top\)\]/)
+    assert.match(shell, /flex h-10 items-center justify-center/)
+    const header = read("components/layout/site-header.tsx")
+    // With the band the header only offsets below it; without the band it
+    // starts at 0 and pads itself. Nothing fixed starts at top: var().
+    assert.match(header, /top-\[calc\(2\.5rem\+var\(--safe-top\)\)\]/)
+    assert.match(header, /top-0 pt-\[var\(--safe-top\)\]/)
+    assert.ok(!header.includes("top-[var(--safe-top)]"), "no hole at the top edge")
+    const css = read("app/globals.css")
+    assert.match(css, /\+ var\(--safe-top\)/)
+  })
+
+  it("covers the status bar with the open mobile menu and parks the float beneath it", () => {
+    const header = read("components/layout/site-header.tsx")
+    assert.match(header, /fixed inset-x-0 top-0 z-50 flex h-\[100dvh\] flex-col bg-ivory pt-\[var\(--safe-top\)\]/)
+    const float = read("components/layout/whatsapp-float.tsx")
+    assert.match(float, /bottom-\[calc\(1\.25rem\+var\(--safe-bottom\)\)\]/)
+    assert.match(float, /z-30/)
+  })
+
+  it("clears the home indicator at every bottom edge", () => {
+    assert.match(read("components/shop/product-detail-islands.tsx"), /var\(--safe-bottom\)/)
+    const providers = read("components/providers.tsx")
+    assert.match(providers, /var\(--safe-bottom\)/)
+    assert.match(providers, /mobileOffset=/)
+  })
+
+  it("tints the status bar from the effective theme, not a static export", () => {
+    // The boot script paints it before first paint (toggle-aware); the
+    // provider keeps it in sync. A static OS-media theme-color cannot see
+    // the manual choice, so the layout exports none.
+    assert.match(read("lib/theme-init.ts"), /meta\[name="theme-color"\]/)
+    assert.match(read("lib/theme.tsx"), /THEME_SURFACE_DARK/)
+    assert.ok(!read("app/layout.tsx").includes("themeColor"), "no static theme-color")
+    assert.match(read("app/layout.tsx"), /viewportFit: "cover"/)
   })
 })
