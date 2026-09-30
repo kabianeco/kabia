@@ -225,8 +225,8 @@ export function isAccountSurface(pathname: string | null | undefined): boolean {
  * guides (/rehber/*) and all of /admin stay free of it without their own
  * per-page or per-breakpoint conditions.
  *
- * The homepage is listed but hero-gated: WhatsAppFloat keeps it hidden
- * until its IntersectionObserver reports the hero has left the viewport.
+ * The homepage is listed but intro-gated: WhatsAppFloat keeps it hidden
+ * until its IntersectionObserver reports the whole intro has left the viewport.
  */
 const CONTACT_FLOAT_PREFIXES = [
   routes.store,

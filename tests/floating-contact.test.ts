@@ -76,11 +76,15 @@ describe("floating contact button component rules", () => {
     }
   })
 
-  it("gates the homepage on an IntersectionObserver over the hero, not a scroll listener", () => {
+  it("gates the homepage on an IntersectionObserver over the whole intro, not a scroll listener", () => {
     assert.match(src(), /IntersectionObserver/)
     assert.match(src(), /CONTACT_FLOAT_HERO_SELECTOR/)
     assert.ok(!/addEventListener\("scroll"|window\.scrollY|scrollTo/.test(src()), "no scroll listener")
-    assert.match(read("components/home/intro-sequence.tsx"), /data-site-hero/)
+    const intro = read("components/home/intro-sequence.tsx")
+    // Both variants (scroll story and reduced-motion stills) gate on the
+    // whole section — past the closing green panel — not the first screen.
+    const sections = intro.match(/<section[^>]*data-site-hero/g) || []
+    assert.equal(sections.length, 2, "both intro variants carry the marker on their section")
   })
 
   it("starts hidden on server and client and unmounts when hidden", () => {

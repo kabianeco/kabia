@@ -248,8 +248,8 @@ function StageBackdrop({ active }: { active: boolean }) {
  *  the footage appears only as its own still frame. */
 function QuietIntro() {
   return (
-    <section aria-labelledby="intro-heading" className="on-dark">
-      <div className="relative isolate overflow-hidden" data-site-hero>
+    <section aria-labelledby="intro-heading" className="on-dark" data-site-hero>
+      <div className="relative isolate overflow-hidden">
         <div
           aria-hidden="true"
           className="absolute inset-0 -z-10 bg-forest bg-cover bg-center"
@@ -521,20 +521,15 @@ function ScrollIntro() {
   };
 
   return (
-    <section aria-labelledby="intro-heading" className="on-dark">
+    // data-site-hero: the floating contact button waits for this whole
+    // section — the scroll story and its closing green panel alike — to
+    // leave the viewport, and only then comes in.
+    <section aria-labelledby="intro-heading" className="on-dark" data-site-hero>
       {/* Four beats, one breath each: the run is a third shorter than the
            sculpture era, and the holds between beats are tight — the story
            lands its atmosphere, then hands the visitor to the products
            instead of dwelling on the same feeling twice. */}
       <div ref={wrapperRef} className="relative h-[280vh] md:h-[300vh]">
-        {/* The hero the floating contact button watches: exactly the first
-            screen of the story. Absolute, zero interaction, no layout of its
-            own — leaving the viewport is what brings the button in. */}
-        <div
-          aria-hidden="true"
-          data-site-hero
-          className="pointer-events-none absolute inset-x-0 top-0 h-screen"
-        />
         <div ref={stageRef} className="sticky top-0 h-screen overflow-hidden">
           <StageBackdrop active={inView} />
 

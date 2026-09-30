@@ -6,8 +6,8 @@ import { isContactFloatRoute, routes, whatsappHref } from "@/lib/site";
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion";
 
 /**
- * Marks the homepage hero for this button's IntersectionObserver. The intro
- * sequence stamps it on its first screen (both the scroll story and the
+ * Marks the homepage intro for this button's IntersectionObserver. The intro
+ * sequence stamps it on its section (both the scroll story and the
  * reduced-motion stills); nothing else in the app uses this attribute.
  */
 export const CONTACT_FLOAT_HERO_SELECTOR = "[data-site-hero]";
@@ -23,10 +23,10 @@ const subscribeMounted = () => () => {};
  * edilmez — hesap/auth yüzeylerindeki eski koşullu gizleme mantığı bu
  * kurala taşınmış ve bileşenden kaldırılmıştır.
  *
- * Anasayfada hero bekçisi devrededir: ilk render sunucu ve istemcide gizlidir
- * (hidrasyon eşleşmesi için), mount sonrası hero izlenir; hero viewport'tan
- * çıkınca belirir, hero'ya dönülünce yeniden gizlenir. Scroll listener
- * yoktur, yalnızca IntersectionObserver vardır.
+ * Anasayfada intro bekçisi devrededir: ilk render sunucu ve istemcide gizlidir
+ * (hidrasyon eşleşmesi için), mount sonrası intronun tamamı izlenir; intro
+ * viewport'tan çıkınca belirir, intro'ya dönülünce yeniden gizlenir. Scroll
+ * listener yoktur, yalnızca IntersectionObserver vardır.
  *
  * Gizliyken DOM'da hiç yoktur: odaklanamaz ve duyurulamaz — yalnızca görsel
  * gizleme değil. Belirme/kaybolma kısa bir fade ile olur; reduced-motion
@@ -57,13 +57,13 @@ export function WhatsAppFloat() {
   const isHome = pathname === routes.home;
   const routeAllowed = isContactFloatRoute(pathname);
 
-  // Homepage: watch the hero; elsewhere there is nothing to wait for. The
-  // observer's first callback also corrects pastHero when the page mounts
-  // mid-scroll (e.g. a restored position below the hero).
+  // Homepage: watch the intro section; elsewhere there is nothing to wait
+  // for. The observer's first callback also corrects pastHero when the page
+  // mounts mid-scroll (e.g. a restored position below the intro).
   useEffect(() => {
     if (!mounted || !routeAllowed || !isHome) return;
     const hero = document.querySelector(CONTACT_FLOAT_HERO_SELECTOR);
-    // The homepage always renders a hero; without one there is nothing to
+    // The homepage always renders the intro; without it there is nothing to
     // gate on, so the button stays hidden rather than guessing.
     if (!hero) return;
     const observer = new IntersectionObserver(
