@@ -11,13 +11,25 @@
 export const MEDIA_BUCKET = "product-media"
 
 /**
- * 10 MB. Product photography is shot at high resolution and the storefront
- * downsamples through next/image, so the original is kept intact rather than
- * forcing the operator to resize before uploading. Mirrored by
+ * 10 MB — what the *bucket* accepts. Product photography is shot at high
+ * resolution and the storefront downsamples through next/image. Mirrored by
  * `storage.buckets.file_size_limit`, which is the boundary that actually
  * enforces it — this constant only buys a better error message.
  */
 export const MEDIA_MAX_BYTES = 10 * 1024 * 1024
+
+/**
+ * 4 MB. The largest file the app accepts in one upload.
+ *
+ * Smaller than the bucket's 10 MB on purpose: an upload travels to the server
+ * inside a request, and Vercel refuses any function request body over 4.5 MB
+ * before the app sees it (Next's own default for server actions is 1 MB; it is
+ * raised to match in next.config.ts). Advertising 10 MB would mean every photo
+ * between 4 and 10 MB fails with an error the operator cannot act on. A
+ * larger cap needs uploads that go straight to Storage instead of through the
+ * app — until then the message says to shrink the image.
+ */
+export const MEDIA_UPLOAD_MAX_BYTES = 4 * 1024 * 1024
 
 export const MEDIA_EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -74,13 +86,13 @@ export interface MediaUsage {
 
 /**
  * A quick, specific pre-check of a file before it is sent, so the operator hears
- * "big.jpg 10 MB sınırını aşıyor" immediately instead of after an upload. The
+ * "big.jpg 4 MB sınırını aşıyor" immediately instead of after an upload. The
  * server re-validates everything, including the actual bytes, and is the
  * boundary that counts; this only buys a better message.
  */
 export function clientFileProblem(file: { name: string; size: number; type: string }): string | null {
   if (file.size === 0) return `${file.name} boş bir dosya.`
-  if (file.size > MEDIA_MAX_BYTES) return `${file.name} 10 MB sınırını aşıyor.`
+  if (file.size > MEDIA_UPLOAD_MAX_BYTES) return `${file.name} 4 MB sınırını aşıyor. Görseli küçültüp yeniden yükleyin.`
   if (!(file.type in MEDIA_EXTENSIONS)) return `${file.name} desteklenmiyor. Yalnızca JPEG, PNG, WebP ve AVIF yüklenebilir.`
   return null
 }

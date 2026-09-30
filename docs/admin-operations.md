@@ -16,9 +16,9 @@ time, each with its own outcome, so one failure does not take the batch down.
 | | |
 |---|---|
 | Formats | JPEG, PNG, WebP, AVIF |
-| Maximum size | 10 MB |
+| Maximum size | 4 MB per file through the dashboard (the bucket itself accepts 10 MB). Resize larger photos before uploading. |
 | SVG | **Not accepted.** Nothing here sanitises SVG, and it can carry script. |
-| Stored at | `product-media/YYYY-MM/<name>-<random>.<ext>` |
+| Stored at | `product-media/[products/ \| producers/ \| journal/]YYYY-MM/<name>-<8 hex>.<ext>` — the folder is set by the editor the upload was made from; the library page itself uses the bare `YYYY-MM/` layout |
 
 The file's **actual bytes** are checked against its declared type. A `.png` that
 is really something else is rejected with

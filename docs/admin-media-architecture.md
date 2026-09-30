@@ -104,6 +104,13 @@ behind, which is itself part of the trail.
 Bucket `product-media`, **public read**, 10 MB limit (raised from 5 MB),
 MIME-restricted to `image/jpeg`, `image/png`, `image/webp`, `image/avif`.
 
+> Updated 2026-09-30: uploads made *through the app* are capped at **4 MB**, not
+> 10 MB — the bucket accepts 10 MB, but a request body over 4.5 MB never reaches the
+> server on Vercel, and Next's server-action default was 1 MB. Object names can now
+> carry a folder (`products/`, `producers/`, `journal/`) and uploads carry a
+> one-year cache header. Usage detection covers producers and the journal. See
+> `content-images-to-storage.md`.
+
 Public read is the correct choice here, per the brief's Option A: product
 photographs are rendered to anonymous visitors on every storefront page. Making
 the bucket private would put an expiring signed URL behind every product image
@@ -137,7 +144,7 @@ which is the boundary that counts.
 | Check | Client | Server | Database |
 |---|---|---|---|
 | Non-empty | ✓ | ✓ | |
-| Size ≤ 10 MB | ✓ | ✓ | bucket `file_size_limit` |
+| Size ≤ 4 MB (app cap) | ✓ | ✓ | bucket `file_size_limit` (10 MB) |
 | Declared MIME allowed | ✓ | ✓ | bucket `allowed_mime_types` |
 | **Bytes match the declared type** | | ✓ | |
 | Dimensions | | ✓ (probed) | |

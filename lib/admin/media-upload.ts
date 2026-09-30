@@ -5,7 +5,7 @@ import { probeImage, PROBE_BYTES } from "@/lib/admin/image-probe"
 import {
   MEDIA_BUCKET,
   MEDIA_CACHE_CONTROL,
-  MEDIA_MAX_BYTES,
+  MEDIA_UPLOAD_MAX_BYTES,
   safeObjectName,
   type MediaAsset,
   type MediaFolder,
@@ -47,8 +47,8 @@ export async function performMediaUpload(
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, kind: "invalid", message: "Yüklenecek dosya seçilmedi." }
   }
-  if (file.size > MEDIA_MAX_BYTES) {
-    return { ok: false, kind: "invalid", message: "Dosya 10 MB sınırını aşıyor." }
+  if (file.size > MEDIA_UPLOAD_MAX_BYTES) {
+    return { ok: false, kind: "invalid", message: "Dosya 4 MB sınırını aşıyor. Görseli küçültüp yeniden yükleyin." }
   }
   if (!(MEDIA_MIME_TYPES as readonly string[]).includes(file.type)) {
     return { ok: false, kind: "invalid", message: "Yalnızca JPEG, PNG, WebP ve AVIF görselleri yüklenebilir." }

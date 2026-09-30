@@ -317,7 +317,7 @@ export function MediaPicker({
               <Upload className="h-4 w-4 text-ink/30" aria-hidden="true" />
             )}
           </div>
-          <p className="mt-1.5 text-xs text-ink/45">JPEG, PNG, WebP veya AVIF · en fazla 10 MB</p>
+          <p className="mt-1.5 text-xs text-ink/45">JPEG, PNG, WebP veya AVIF · en fazla 4 MB</p>
           {uploadMessage && (
             <p
               role={uploadMessage.tone === "error" ? "alert" : "status"}

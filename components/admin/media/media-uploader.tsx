@@ -6,7 +6,7 @@ import { Upload, Check, X, AlertCircle } from "lucide-react"
 import { uploadMediaAction } from "@/app/admin/(protected)/media/actions"
 import { Panel } from "@/components/admin/ui/surfaces"
 import { AdminButton } from "@/components/admin/ui/form"
-import { MEDIA_ACCEPT, MEDIA_MAX_BYTES, formatBytes } from "@/lib/admin/media"
+import { MEDIA_ACCEPT, MEDIA_UPLOAD_MAX_BYTES, formatBytes } from "@/lib/admin/media"
 import { cn } from "@/lib/utils"
 
 /**
@@ -41,7 +41,7 @@ const ACCEPTED = new Set(MEDIA_ACCEPT.split(","))
 
 function preflight(file: File): string | null {
   if (file.size === 0) return "Dosya boş."
-  if (file.size > MEDIA_MAX_BYTES) return `Dosya 10 MB sınırını aşıyor (${formatBytes(file.size)}).`
+  if (file.size > MEDIA_UPLOAD_MAX_BYTES) return `Dosya 4 MB sınırını aşıyor (${formatBytes(file.size)}). Görseli küçültüp yeniden yükleyin.`
   if (!ACCEPTED.has(file.type)) return "Yalnızca JPEG, PNG, WebP ve AVIF görselleri yüklenebilir."
   return null
 }
@@ -123,7 +123,7 @@ export function MediaUploader() {
   return (
     <Panel
       title="Görsel yükle"
-      description="JPEG, PNG, WebP veya AVIF · en fazla 10 MB · birden fazla dosya seçilebilir"
+      description="JPEG, PNG, WebP veya AVIF · en fazla 4 MB · birden fazla dosya seçilebilir"
     >
       <div
         onDragEnter={(event) => {

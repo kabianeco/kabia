@@ -22,8 +22,9 @@ describe("S25 media size alignment", () => {
     assert.match(sql, /file_size_limit = 10485760/);
   });
 
-  it("upload message matches the constant (the check lives in the upload core)", () => {
+  it("the upload core enforces the app's own (smaller) upload cap, stated in its message", () => {
     const src = readFileSync("lib/admin/media-upload.ts", "utf8");
-    assert.match(src, /Dosya 10 MB sınırını aşıyor\./);
+    assert.match(src, /MEDIA_UPLOAD_MAX_BYTES/);
+    assert.match(src, /Dosya 4 MB sınırını aşıyor\./);
   });
 });

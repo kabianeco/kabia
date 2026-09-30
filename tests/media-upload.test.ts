@@ -6,7 +6,8 @@ import assert from "node:assert/strict"
 // naming convention (folder/YYYY-MM/stem-8hex.ext), the long cache header, the
 // validation order, and that a half-finished upload never leaves an orphan.
 
-const MAX = 10 * 1024 * 1024
+const MAX = 10 * 1024 * 1024 // the bucket's own limit
+const UPLOAD_MAX = 4 * 1024 * 1024 // the largest file that can reach the server through the app
 
 function pngFile(name: string, width = 8, height = 6, type = "image/png"): File {
   const bytes = new Uint8Array(33)
@@ -123,14 +124,24 @@ describe("performMediaUpload validation", () => {
     assert.equal(log.uploads.length, 0)
   })
 
-  it("rejects a file over the size limit", async () => {
+  it("rejects a file over the upload cap, with advice the operator can act on", async () => {
     const { performMediaUpload } = await import("../lib/admin/media-upload.ts")
     const { client, log } = fakeSupabase()
-    const big = new File([new Uint8Array(MAX + 1)], "big.png", { type: "image/png" })
+    const big = new File([new Uint8Array(UPLOAD_MAX + 1)], "big.png", { type: "image/png" })
     const result = await performMediaUpload(client as never, { file: big, userId: "u1" })
     assert.equal(result.ok, false)
-    if (!result.ok && result.kind === "invalid") assert.equal(result.message, "Dosya 10 MB sınırını aşıyor.")
+    if (!result.ok && result.kind === "invalid") {
+      assert.equal(result.message, "Dosya 4 MB sınırını aşıyor. Görseli küçültüp yeniden yükleyin.")
+    }
     assert.equal(log.uploads.length, 0)
+  })
+
+  it("a file between the upload cap and the bucket limit is refused too: it could never have arrived", async () => {
+    const { performMediaUpload } = await import("../lib/admin/media-upload.ts")
+    const { client } = fakeSupabase()
+    const between = new File([new Uint8Array(5 * 1024 * 1024)], "five.png", { type: "image/png" })
+    const result = await performMediaUpload(client as never, { file: between, userId: "u1" })
+    assert.equal(result.ok, false)
   })
 
   it("rejects a declared type that is not an accepted image type", async () => {
@@ -238,14 +249,44 @@ describe("clientFileProblem", () => {
   it("accepts an image within the limit", async () => {
     const { clientFileProblem } = await import("../lib/admin/media.ts")
     assert.equal(clientFileProblem({ name: "a.jpg", size: 1000, type: "image/jpeg" }), null)
-    assert.equal(clientFileProblem({ name: "a.avif", size: MAX, type: "image/avif" }), null)
+    assert.equal(clientFileProblem({ name: "a.avif", size: UPLOAD_MAX, type: "image/avif" }), null)
   })
 
   it("names the file and the reason when it is too big, empty or the wrong type", async () => {
     const { clientFileProblem } = await import("../lib/admin/media.ts")
-    assert.match(clientFileProblem({ name: "big.jpg", size: MAX + 1, type: "image/jpeg" }) ?? "", /big\.jpg.*10 MB/)
+    assert.match(clientFileProblem({ name: "big.jpg", size: UPLOAD_MAX + 1, type: "image/jpeg" }) ?? "", /big\.jpg.*4 MB/)
+    assert.match(clientFileProblem({ name: "five.jpg", size: 5 * 1024 * 1024, type: "image/jpeg" }) ?? "", /five\.jpg.*4 MB/)
     assert.match(clientFileProblem({ name: "empty.jpg", size: 0, type: "image/jpeg" }) ?? "", /empty\.jpg.*boş/)
     assert.match(clientFileProblem({ name: "x.svg", size: 10, type: "image/svg+xml" }) ?? "", /x\.svg.*JPEG, PNG, WebP ve AVIF/)
     assert.match(clientFileProblem({ name: "doc.pdf", size: 10, type: "application/pdf" }) ?? "", /doc\.pdf/)
+  })
+})
+
+describe("upload size limits", () => {
+  it("the app's upload cap fits under the bucket limit and under the platform's request-body limit", async () => {
+    const { MEDIA_MAX_BYTES, MEDIA_UPLOAD_MAX_BYTES } = await import("../lib/admin/media.ts")
+    assert.equal(MEDIA_UPLOAD_MAX_BYTES, 4 * 1024 * 1024)
+    assert.ok(MEDIA_UPLOAD_MAX_BYTES <= MEDIA_MAX_BYTES, "must not exceed what the bucket accepts")
+    assert.ok(MEDIA_UPLOAD_MAX_BYTES < 4.5 * 1024 * 1024, "Vercel rejects request bodies over 4.5 MB before the app sees them")
+  })
+
+  it("Next's server-action body limit is raised to carry a file of that size plus multipart overhead", async () => {
+    const { readFileSync } = await import("node:fs")
+    const { MEDIA_UPLOAD_MAX_BYTES } = await import("../lib/admin/media.ts")
+    const config = readFileSync("next.config.ts", "utf8")
+    const match = config.match(/bodySizeLimit:\s*"([\d.]+)mb"/i)
+    assert.ok(match, "next.config.ts must set experimental.serverActions.bodySizeLimit (the default is 1 MB and rejects any photo over it with a 413)")
+    const limit = Number(match[1]) * 1024 * 1024
+    assert.ok(limit >= MEDIA_UPLOAD_MAX_BYTES + 256 * 1024, "room for the multipart envelope around the file")
+    assert.ok(limit <= 4.5 * 1024 * 1024, "raising it beyond the platform's own limit would only move the failure")
+  })
+
+  it("the upload UI states the cap that is actually enforced", async () => {
+    const { readFileSync } = await import("node:fs")
+    for (const file of ["components/admin/media/media-picker.tsx", "components/admin/media/media-uploader.tsx"]) {
+      const src = readFileSync(file, "utf8")
+      assert.ok(!/en fazla 10 MB/.test(src), `${file} still promises 10 MB`)
+      assert.match(src, /en fazla 4 MB/, file)
+    }
   })
 })

@@ -32,6 +32,13 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
+    // Next rejects any server-action request body over 1 MB by default (a 413
+    // "Body exceeded 1 MB limit"), which silently broke every image upload above
+    // 1 MB. Media uploads go through a server action, so the limit is raised to
+    // carry a file of MEDIA_UPLOAD_MAX_BYTES (4 MB) plus its multipart envelope.
+    // 4.5 MB is also Vercel's own ceiling for a function request body, so raising
+    // it further would only move the failure somewhere the app cannot explain.
+    serverActions: { bodySizeLimit: "4.5mb" },
     optimizePackageImports: ["lucide-react", "framer-motion", "recharts", "sonner"],
   },
   async redirects() {
